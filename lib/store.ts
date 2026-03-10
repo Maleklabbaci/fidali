@@ -38,8 +38,15 @@ export function getClientStatus(pts: number, max: number, createdAt: number): Cl
 }
 
 export function extractEmoji(text: string): string {
-  const match = text.match(/[\u{1F000}-\u{1FFFF}]/u)
-  return match ? match[0] : '🏪'
+  const emojiRegex = /(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu
+  try {
+    const match = text.match(emojiRegex)
+    return match ? match[0] : '🏪'
+  } catch {
+    // Fallback sans regex unicode
+    const simple = text.match(/[^\w\s,.!?;:'"()-]/g)
+    return simple ? simple[0] : '🏪'
+  }
 }
 
 export function stripEmoji(text: string): string {
