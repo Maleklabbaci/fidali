@@ -544,12 +544,21 @@ export async function getPendingMerchants() {
 }
 
 export async function approveMerchant(merchantId: string) {
-  await supabase
-    .from('merchants')
-    .update({ status: 'active', validated_at: new Date().toISOString() })
-    .eq('id', merchantId)
-}
+  const { data, error } = await supabase.rpc('approve_merchant_full', {
+    p_merchant_id: merchantId,
+  })
 
+  if (error) {
+    console.error('Approve error:', error)
+    // Fallback
+    await supabase
+      .from('merchants')
+      .update({ status: 'active', validated_at: new Date().toISOString() })
+      .eq('id', merchantId)
+  }
+
+  return data
+}
 export async function suspendMerchant(merchantId: string) {
   await supabase
     .from('merchants')
