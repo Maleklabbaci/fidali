@@ -132,36 +132,8 @@ export async function loginMerchant(email: string, password: string) {
   return { success: true as const, merchant, role: 'merchant' as const }
 }
 
-export async function loginAdmin(email: string, password: string) {
-  // Step 1: Verify password via RPC (bypasses RLS)
-  const { data: verified, error: verifyError } = await supabase.rpc('verify_admin_password', {
-    p_email: email,
-    p_password: password,
-  })
-
-  if (verifyError) {
-    console.error('Admin verify error:', verifyError)
-    return { success: false as const, error: 'Erreur serveur' }
-  }
-
-  if (!verified) {
-    return { success: false as const, error: 'Email ou mot de passe incorrect' }
-  }
-
-  // Step 2: Get admin data via RPC (bypasses RLS)
-  const { data: adminData, error: adminError } = await supabase.rpc('get_admin_by_email', {
-    p_email: email,
-  })
-
-  if (adminError || !adminData) {
-    console.error('Admin fetch error:', adminError)
-    // Fallback: create admin object from email
-    return {
-      success: true as const,
-      admin: { id: 'admin', email, name: 'Admin Fidali', role: 'super_admin' },
-      role: 'admin' as const,
-    }
-  }
+-- Test 4 : La fonction get_admin existe ?
+SELECT get_admin_by_email('admin@fidali.dz'); }
 
   return { success: true as const, admin: adminData, role: 'admin' as const }
 }
