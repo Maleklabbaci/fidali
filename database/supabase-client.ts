@@ -1,11 +1,91 @@
 // ============================================
 // FIDALI — Supabase Client & API Helpers
 // ============================================
-// Copy this to your Next.js project: lib/supabase.ts
-// ============================================
 
 import { createClient } from '@supabase/supabase-js'
-import type { Database, PlanType, PaymentMethod } from './supabase-types'
+
+// ============================================
+// TYPES
+// ============================================
+
+type PlanType = 'starter' | 'pro' | 'premium'
+type PaymentMethod = 'ccp' | 'baridi_mob' | 'cash'
+
+interface Merchant {
+  id: string
+  auth_user_id: string
+  email: string
+  password_hash: string
+  name: string
+  business_name: string
+  sector: string
+  phone: string
+  plan: PlanType
+  status: 'active' | 'pending' | 'suspended'
+  logo_url?: string
+  color?: string
+  created_at: string
+  updated_at?: string
+  validated_at?: string
+  last_login_at?: string
+  [key: string]: any
+}
+
+interface Admin {
+  id: string
+  email: string
+  name: string
+  role: string
+  [key: string]: any
+}
+
+interface LoyaltyCard {
+  id: string
+  merchant_id: string
+  business_name: string
+  code: string
+  color1: string
+  color2: string
+  points_rule: string
+  points_rule_type: string
+  points_per_visit: number
+  reward: string
+  max_points: number
+  welcome_message: string
+  is_active: boolean
+  created_at: string
+  [key: string]: any
+}
+
+interface Client {
+  id: string
+  name: string
+  phone: string
+  [key: string]: any
+}
+
+interface ClientCard {
+  id: string
+  client_id: string
+  card_id: string
+  points: number
+  [key: string]: any
+}
+
+interface PendingPresence {
+  id: string
+  client_id: string
+  client_card_id: string
+  card_id: string
+  merchant_id: string
+  client_name: string
+  client_phone: string
+  status: 'pending' | 'validated' | 'rejected' | 'expired'
+  expires_at: string
+  created_at: string
+  resolved_at?: string
+  [key: string]: any
+}
 
 // ============================================
 // CLIENT SETUP
@@ -14,11 +94,10 @@ import type { Database, PlanType, PaymentMethod } from './supabase-types'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-// Server-side client (for admin operations)
 export function createServerClient() {
-  return createClient<Database>(
+  return createClient(
     supabaseUrl,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { autoRefreshToken: false, persistSession: false } }
@@ -31,44 +110,47 @@ export function createServerClient() {
 
 export async function loginMerchant(email: string, password: string) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-  if (error) return { success: false, error: error.message }
+  if (error) return { success: false as const, error: error.message }
 
-  // Get merchant profile
-  const { data: merchant } = await supabase
+  const { data: merchantData } = await supabase
     .from('merchants')
     .select('*')
     .eq('auth_user_id', data.user.id)
     .single()
 
-  if (!merchant) return { success: false, error: 'Profil commerçant introuvable' }
-  if (merchant.status === 'pending') return { success: false, error: '⏳ Compte en attente de validation' }
-  if (merchant.status === 'suspended') return { success: false, error: '🚫 Compte suspendu' }
+  const merchant = merchantData as Merchant | null
 
-  // Update last login
-  await supabase.from('merchants').update({ last_login_at: new Date().toISOString() }).eq('id', merchant.id)
+  if (!merchant) return { success: false as const, error: 'Profil commerçant introuvable' }
+  if (merchant.status === 'pending') return { success: false as const, error: '⏳ Compte en attente de validation' }
+  if (merchant.status === 'suspended') return { success: false as const, error: '🚫 Compte suspendu' }
 
-  return { success: true, merchant, role: 'merchant' as const }
+  await supabase
+    .from('merchants')
+    .update({ last_login_at: new Date().toISOString() })
+    .eq('id', merchant.id)
+
+  return { success: true as const, merchant, role: 'merchant' as const }
 }
 
 export async function loginAdmin(email: string, password: string) {
-  const { data: admin } = await supabase
+  const { data: adminData } = await supabase
     .from('admins')
     .select('*')
     .eq('email', email)
     .single()
 
-  if (!admin) return { success: false, error: 'Admin introuvable' }
+  const admin = adminData as Admin | null
 
-  // In production, use Supabase Auth for admin too
-  // For now, verify with pgcrypto
+  if (!admin) return { success: false as const, error: 'Admin introuvable' }
+
   const { data: verified } = await supabase.rpc('verify_admin_password', {
     p_email: email,
-    p_password: password
+    p_password: password,
   })
 
-  if (!verified) return { success: false, error: 'Mot de passe incorrect' }
+  if (!verified) return { success: false as const, error: 'Mot de passe incorrect' }
 
-  return { success: true, admin, role: 'admin' as const }
+  return { success: true as const, admin, role: 'admin' as const }
 }
 
 export async function signupMerchant(data: {
@@ -79,18 +161,16 @@ export async function signupMerchant(data: {
   email: string
   password: string
 }) {
-  // Create auth user
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email: data.email,
     password: data.password,
   })
-  if (authError) return { success: false, error: authError.message }
+  if (authError) return { success: false as const, error: authError.message }
 
-  // Create merchant profile
   const { error: profileError } = await supabase.from('merchants').insert({
     auth_user_id: authData.user!.id,
     email: data.email,
-    password_hash: '', // Supabase Auth handles this
+    password_hash: '',
     name: data.name,
     business_name: data.business,
     sector: data.sector,
@@ -99,9 +179,9 @@ export async function signupMerchant(data: {
     status: 'pending',
   })
 
-  if (profileError) return { success: false, error: profileError.message }
+  if (profileError) return { success: false as const, error: profileError.message }
 
-  return { success: true }
+  return { success: true as const }
 }
 
 export async function logout() {
@@ -123,18 +203,17 @@ export async function createCard(merchantId: string, data: {
   maxPoints: number
   welcomeMessage: string
 }) {
-  // Generate unique code
   const { data: code } = await supabase.rpc('generate_card_code', {
-    biz_name: data.businessName
+    biz_name: data.businessName,
   })
 
-  const { data: card, error } = await supabase.from('loyalty_cards').insert({
+  const { data: cardData, error } = await supabase.from('loyalty_cards').insert({
     merchant_id: merchantId,
     business_name: data.businessName,
     color1: data.color1,
     color2: data.color2,
     points_rule: data.pointsRule,
-    points_rule_type: data.pointsRuleType as any,
+    points_rule_type: data.pointsRuleType,
     points_per_visit: data.pointsPerVisit,
     reward: data.reward,
     max_points: data.maxPoints,
@@ -142,19 +221,21 @@ export async function createCard(merchantId: string, data: {
     code: code!,
   }).select().single()
 
-  if (error) return { success: false, error: error.message }
-  return { success: true, card }
+  const card = cardData as LoyaltyCard | null
+
+  if (error) return { success: false as const, error: error.message }
+  return { success: true as const, card }
 }
 
 export async function getMyCards(merchantId: string) {
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from('loyalty_cards')
     .select('*')
     .eq('merchant_id', merchantId)
     .eq('is_active', true)
     .order('created_at', { ascending: false })
 
-  return data || []
+  return (data as LoyaltyCard[] | null) || []
 }
 
 export async function deleteCard(cardId: string) {
@@ -169,7 +250,7 @@ export async function getCardByCode(code: string) {
     .eq('is_active', true)
     .single()
 
-  return data
+  return data as LoyaltyCard | null
 }
 
 // ============================================
@@ -184,26 +265,28 @@ export async function joinCard(cardCode: string, clientName: string, clientPhone
     p_device_token: deviceToken || null,
   })
 
-  if (error) return { success: false, error: error.message }
+  if (error) return { success: false as const, error: error.message }
   return data as any
 }
 
 export async function findClientByPhone(phone: string, cardId: string) {
-  const { data: client } = await supabase
+  const { data: clientData } = await supabase
     .from('clients')
     .select('*')
     .eq('phone', phone)
     .single()
 
+  const client = clientData as Client | null
   if (!client) return null
 
-  const { data: clientCard } = await supabase
+  const { data: clientCardData } = await supabase
     .from('client_cards')
     .select('*')
     .eq('client_id', client.id)
     .eq('card_id', cardId)
     .single()
 
+  const clientCard = clientCardData as ClientCard | null
   if (!clientCard) return null
 
   return { client, clientCard }
@@ -231,14 +314,13 @@ export async function createPendingPresence(data: {
   clientName: string
   clientPhone: string
 }) {
-  // Clean up old pending presences for this client
   await supabase
     .from('pending_presences')
     .update({ status: 'expired', resolved_at: new Date().toISOString() })
     .eq('client_id', data.clientId)
     .eq('status', 'pending')
 
-  const { data: presence, error } = await supabase
+  const { data: presenceData, error } = await supabase
     .from('pending_presences')
     .insert({
       client_id: data.clientId,
@@ -252,7 +334,7 @@ export async function createPendingPresence(data: {
     .single()
 
   if (error) return null
-  return presence
+  return presenceData as PendingPresence
 }
 
 export async function getPendingPresences(merchantId: string) {
@@ -264,7 +346,7 @@ export async function getPendingPresences(merchantId: string) {
     .gt('expires_at', new Date().toISOString())
     .order('created_at', { ascending: false })
 
-  return data || []
+  return (data as PendingPresence[] | null) || []
 }
 
 export async function validatePresence(clientCardId: string, points: number, merchantId: string) {
@@ -274,7 +356,7 @@ export async function validatePresence(clientCardId: string, points: number, mer
     p_merchant_id: merchantId,
   })
 
-  if (error) return { success: false, error: error.message }
+  if (error) return { success: false as const, error: error.message }
   return data as any
 }
 
@@ -295,7 +377,7 @@ export async function redeemReward(clientCardId: string, merchantId: string) {
     p_merchant_id: merchantId,
   })
 
-  if (error) return { success: false, error: error.message }
+  if (error) return { success: false as const, error: error.message }
   return data as any
 }
 
@@ -393,8 +475,8 @@ export async function requestUpgrade(merchantId: string, data: {
     contact_email: data.email,
   })
 
-  if (error) return { success: false, error: error.message }
-  return { success: true }
+  if (error) return { success: false as const, error: error.message }
+  return { success: true as const }
 }
 
 // ============================================
@@ -412,7 +494,7 @@ export async function getAllMerchants(search?: string) {
   }
 
   const { data } = await query
-  return data || []
+  return (data as Merchant[] | null) || []
 }
 
 export async function getPendingMerchants() {
@@ -422,7 +504,7 @@ export async function getPendingMerchants() {
     .eq('status', 'pending')
     .order('created_at', { ascending: false })
 
-  return data || []
+  return (data as Merchant[] | null) || []
 }
 
 export async function approveMerchant(merchantId: string) {
@@ -470,13 +552,11 @@ export async function getPendingPayments() {
 }
 
 export async function approvePayment(paymentId: string, merchantId: string, plan: PlanType) {
-  // Update payment status
   await supabase
     .from('payment_requests')
     .update({ status: 'confirmed', processed_at: new Date().toISOString() })
     .eq('id', paymentId)
 
-  // Upgrade merchant plan
   await changeMerchantPlan(merchantId, plan)
 }
 
