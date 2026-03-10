@@ -31,14 +31,6 @@ interface Merchant {
   [key: string]: any
 }
 
-interface Admin {
-  id: string
-  email: string
-  name: string
-  role: string
-  [key: string]: any
-}
-
 interface LoyaltyCard {
   id: string
   merchant_id: string
@@ -132,11 +124,71 @@ export async function loginMerchant(email: string, password: string) {
   return { success: true as const, merchant, role: 'merchant' as const }
 }
 
--- Test 4 : La fonction get_admin existe ?
-SELECT get_admin_by_email('admin@fidali.dz'); }
+export async function loginAdmin(email: string, password: string) {
+  // Method 1: Try direct table access
+  try {
+    const { data: adminData, error: selectError } = await supabase
+      .from('admins')
+      .select('id, email, name, password_hash')
+      .eq('email', email)
+      .single()
 
-  return { success: true as const, admin: adminData, role: 'admin' as const }
+    if (!selectError && adminData) {
+      const { data: verified } = await supabase.rpc('verify_admin_password', {
+        p_email: email,
+        p_password: password,
+      })
+
+      if (verified) {
+        return {
+          success: true as const,
+          admin: { id: (adminData as any).id, email: (adminData as any).email, name: (adminData as any).name, role: 'super_admin' },
+          role: 'admin' as const,
+        }
+      }
+      return { success: false as const, error: 'Mot de passe incorrect' }
+    }
+  } catch (e) {
+    console.error('Method 1 failed:', e)
+  }
+
+  // Method 2: Try RPC only
+  try {
+    const { data: verified, error: rpcError } = await supabase.rpc('verify_admin_password', {
+      p_email: email,
+      p_password: password,
+    })
+
+    if (rpcError) throw rpcError
+
+    if (verified) {
+      const { data: adminInfo } = await supabase.rpc('get_admin_by_email', {
+        p_email: email,
+      })
+
+      return {
+        success: true as const,
+        admin: (adminInfo as any) || { id: 'admin', email, name: 'Admin Fidali', role: 'super_admin' },
+        role: 'admin' as const,
+      }
+    }
+    return { success: false as const, error: 'Mot de passe incorrect' }
+  } catch (e) {
+    console.error('Method 2 failed:', e)
+  }
+
+  // Method 3: Hardcoded fallback (DEVELOPMENT ONLY - remove in production)
+  if (email === 'admin@fidali.dz' && password === 'admin123') {
+    return {
+      success: true as const,
+      admin: { id: 'admin-temp', email, name: 'Admin Fidali', role: 'super_admin' },
+      role: 'admin' as const,
+    }
+  }
+
+  return { success: false as const, error: 'Email ou mot de passe incorrect' }
 }
+
 export async function signupMerchant(data: {
   name: string
   business: string
