@@ -560,12 +560,20 @@ export async function approveMerchant(merchantId: string) {
   return data
 }
 export async function suspendMerchant(merchantId: string) {
-  await supabase
-    .from('merchants')
-    .update({ status: 'suspended' })
-    .eq('id', merchantId)
-}
+  const { data, error } = await supabase.rpc('suspend_merchant_full', {
+    p_merchant_id: merchantId,
+  })
 
+  if (error) {
+    console.error('Suspend error:', error)
+    await supabase
+      .from('merchants')
+      .update({ status: 'suspended' })
+      .eq('id', merchantId)
+  }
+
+  return data
+}
 export async function changeMerchantPlan(merchantId: string, plan: PlanType) {
   await supabase
     .from('merchants')
