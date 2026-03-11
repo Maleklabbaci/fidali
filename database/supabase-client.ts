@@ -1,99 +1,96 @@
 // ============================================
-// FIDALI — Supabase Client & API Helpers
+// FIDALI — Supabase Client STABLE
 // ============================================
 
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
 // ============================================
-// TYPES
+// SINGLETON CLIENT
 // ============================================
 
-type PlanType = 'starter' | 'pro' | 'premium'
-type PaymentMethod = 'ccp' | 'baridi_mob' | 'cash'
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 
-interface Merchant {
-  id: string
-  auth_user_id: string
-  email: string
-  password_hash: string
-  name: string
-  business_name: string
-  sector: string
-  phone: string
-  plan: PlanType
-  status: 'active' | 'pending' | 'suspended'
-  logo_url?: string
-  color?: string
-  created_at: string
-  updated_at?: string
-  validated_at?: string
-  last_login_at?: string
-  [key: string]: any
+let _supabase: SupabaseClient | null = null
+
+function getSupabase(): SupabaseClient {
+  if (_supabase) return _supabase
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error('❌ SUPABASE ENV VARS MISSING')
+    throw new Error('Supabase configuration missing')
+  }
+
+  _supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true,
+      storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+    },
+    realtime: {
+      params: {
+        eventsPerSecond: 10,
+      },
+    },
+    global: {
+      headers: {
+        'x-client-info': 'fidali-web',
+      },
+    },
+    db: {
+      schema: 'public',
+    },
+  })
+
+  return _supabase
 }
 
-interface LoyaltyCard {
-  id: string
-  merchant_id: string
-  business_name: string
-  code: string
-  color1: string
-  color2: string
-  points_rule: string
-  points_rule_type: string
-  points_per_visit: number
-  reward: string
-  max_points: number
-  welcome_message: string
-  is_active: boolean
-  created_at: string
-  [key: string]: any
-}
-
-interface Client {
-  id: string
-  name: string
-  phone: string
-  [key: string]: any
-}
-
-interface ClientCard {
-  id: string
-  client_id: string
-  card_id: string
-  points: number
-  [key: string]: any
-}
-
-interface PendingPresence {
-  id: string
-  client_id: string
-  client_card_id: string
-  card_id: string
-  merchant_id: string
-  client_name: string
-  client_phone: string
-  status: 'pending' | 'validated' | 'rejected' | 'expired'
-  expires_at: string
-  created_at: string
-  resolved_at?: string
-  [key: string]: any
-}
-
-// ============================================
-// CLIENT SETUP
-// ============================================
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Export stable
+export const supabase = getSupabase()
 
 export function createServerClient() {
   return createClient(
     supabaseUrl,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY || '',
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
+}
+
+// ============================================
+// SAFE QUERY WRAPPER — Retry automatique
+// ============================================
+
+async function safeQuery<T>(fn: () => Promise<{ data: T | null; error: any }>): Promise<T | null> {
+  let attempts = 0
+  const maxAttempts = 3
+
+  while (attempts < maxAttempts) {
+    try {
+      const { data, error } = await fn()
+      if (error) {
+        console.warn(`⚠️ Query error (attempt ${attempts + 1}):`, error.message)
+        if (error.message?.includes('JWT') || error.message?.includes('token')) {
+          // Token expiré, refresh
+          await supabase.auth.refreshSession()
+        }
+        attempts++
+        if (attempts < maxAttempts) {
+          await new Promise((r) => setTimeout(r, 1000 * attempts))
+          continue
+        }
+        return null
+      }
+      return data
+    } catch (err) {
+      console.warn(`⚠️ Network error (attempt ${attempts + 1}):`, err)
+      attempts++
+      if (attempts < maxAttempts) {
+        await new Promise((r) => setTimeout(r, 1000 * attempts))
+      }
+    }
+  }
+  return null
 }
 
 // ============================================
@@ -101,89 +98,64 @@ export function createServerClient() {
 // ============================================
 
 export async function loginMerchant(email: string, password: string) {
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-  if (error) return { success: false as const, error: error.message }
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) return { success: false as const, error: error.message }
 
-  const { data: merchantData } = await supabase
-    .from('merchants')
-    .select('*')
-    .eq('auth_user_id', data.user.id)
-    .single()
+    const merchantData = await safeQuery(() =>
+      supabase.from('merchants').select('*').eq('auth_user_id', data.user.id).single()
+    )
 
-  const merchant = merchantData as Merchant | null
+    if (!merchantData) return { success: false as const, error: 'Profil commerçant introuvable' }
 
-  if (!merchant) return { success: false as const, error: 'Profil commerçant introuvable' }
-  if (merchant.status === 'pending') return { success: false as const, error: '⏳ Compte en attente de validation' }
-  if (merchant.status === 'suspended') return { success: false as const, error: '🚫 Compte suspendu' }
+    const merchant = merchantData as any
+    if (merchant.status === 'pending') return { success: false as const, error: '⏳ Compte en attente de validation' }
+    if (merchant.status === 'suspended') return { success: false as const, error: '🚫 Compte suspendu' }
 
-  await supabase
-    .from('merchants')
-    .update({ last_login_at: new Date().toISOString() })
-    .eq('id', merchant.id)
+    // Update last login (non bloquant)
+    supabase.from('merchants').update({ last_login_at: new Date().toISOString() }).eq('id', merchant.id).then(() => {})
 
-  return { success: true as const, merchant, role: 'merchant' as const }
+    return { success: true as const, merchant, role: 'merchant' as const }
+  } catch (err) {
+    console.error('Login error:', err)
+    return { success: false as const, error: 'Erreur de connexion' }
+  }
 }
 
 export async function loginAdmin(email: string, password: string) {
   try {
-    const { data: adminData, error: selectError } = await supabase
-      .from('admins')
-      .select('id, email, name, password_hash')
-      .eq('email', email)
-      .single()
-
-    if (!selectError && adminData) {
-      const { data: verified } = await supabase.rpc('verify_admin_password', {
-        p_email: email,
-        p_password: password,
-      })
-
-      if (verified) {
-        return {
-          success: true as const,
-          admin: { id: (adminData as any).id, email: (adminData as any).email, name: (adminData as any).name, role: 'super_admin' },
-          role: 'admin' as const,
-        }
-      }
-      return { success: false as const, error: 'Mot de passe incorrect' }
-    }
-  } catch (e) {
-    console.error('Method 1 failed:', e)
-  }
-
-  try {
+    // Méthode 1: Via RPC
     const { data: verified, error: rpcError } = await supabase.rpc('verify_admin_password', {
       p_email: email,
       p_password: password,
     })
 
-    if (rpcError) throw rpcError
-
-    if (verified) {
-      const { data: adminInfo } = await supabase.rpc('get_admin_by_email', {
-        p_email: email,
-      })
+    if (!rpcError && verified) {
+      const adminData = await safeQuery(() =>
+        supabase.from('admins').select('id, email, name').eq('email', email).single()
+      )
 
       return {
         success: true as const,
-        admin: (adminInfo as any) || { id: 'admin', email, name: 'Admin Fidali', role: 'super_admin' },
+        admin: adminData || { id: 'admin', email, name: 'Admin Fidali', role: 'super_admin' },
         role: 'admin' as const,
       }
     }
-    return { success: false as const, error: 'Mot de passe incorrect' }
-  } catch (e) {
-    console.error('Method 2 failed:', e)
-  }
 
-  if (email === 'admin@fidali.dz' && password === 'admin123') {
-    return {
-      success: true as const,
-      admin: { id: 'admin-temp', email, name: 'Admin Fidali', role: 'super_admin' },
-      role: 'admin' as const,
+    // Méthode 2: Fallback
+    if (email === 'admin@fidali.dz' && password === 'admin123') {
+      return {
+        success: true as const,
+        admin: { id: 'admin-temp', email, name: 'Admin Fidali', role: 'super_admin' },
+        role: 'admin' as const,
+      }
     }
-  }
 
-  return { success: false as const, error: 'Email ou mot de passe incorrect' }
+    return { success: false as const, error: 'Email ou mot de passe incorrect' }
+  } catch (err) {
+    console.error('Admin login error:', err)
+    return { success: false as const, error: 'Erreur de connexion' }
+  }
 }
 
 export async function signupMerchant(data: {
@@ -194,31 +166,38 @@ export async function signupMerchant(data: {
   email: string
   password: string
 }) {
-  const { data: authData, error: authError } = await supabase.auth.signUp({
-    email: data.email,
-    password: data.password,
-  })
-  if (authError) return { success: false as const, error: authError.message }
+  try {
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: data.email,
+      password: data.password,
+    })
+    if (authError) return { success: false as const, error: authError.message }
+    if (!authData.user) return { success: false as const, error: 'Erreur création compte' }
 
-  const { error: profileError } = await supabase.from('merchants').insert({
-    auth_user_id: authData.user!.id,
-    email: data.email,
-    password_hash: '',
-    name: data.name,
-    business_name: data.business,
-    sector: data.sector,
-    phone: data.phone,
-    plan: 'starter',
-    status: 'pending',
-  })
+    const { error: profileError } = await supabase.from('merchants').insert({
+      auth_user_id: authData.user.id,
+      email: data.email,
+      password_hash: '',
+      name: data.name,
+      business_name: data.business,
+      sector: data.sector,
+      phone: data.phone,
+      plan: 'starter',
+      status: 'pending',
+    })
 
-  if (profileError) return { success: false as const, error: profileError.message }
-
-  return { success: true as const }
+    if (profileError) return { success: false as const, error: profileError.message }
+    return { success: true as const }
+  } catch (err) {
+    console.error('Signup error:', err)
+    return { success: false as const, error: 'Erreur de connexion' }
+  }
 }
 
 export async function logout() {
-  await supabase.auth.signOut()
+  try {
+    await supabase.auth.signOut()
+  } catch {}
 }
 
 // ============================================
@@ -236,54 +215,54 @@ export async function createCard(merchantId: string, data: {
   maxPoints: number
   welcomeMessage: string
 }) {
-  const { data: code } = await supabase.rpc('generate_card_code', {
-    biz_name: data.businessName,
-  })
+  try {
+    const codeResult = await safeQuery(() =>
+      supabase.rpc('generate_card_code', { biz_name: data.businessName })
+    )
 
-  const { data: cardData, error } = await supabase.from('loyalty_cards').insert({
-    merchant_id: merchantId,
-    business_name: data.businessName,
-    color1: data.color1,
-    color2: data.color2,
-    points_rule: data.pointsRule,
-    points_rule_type: data.pointsRuleType,
-    points_per_visit: data.pointsPerVisit,
-    reward: data.reward,
-    max_points: data.maxPoints,
-    welcome_message: data.welcomeMessage,
-    code: code!,
-  }).select().single()
+    const code = codeResult || `${data.businessName.slice(0, 3).toUpperCase()}${Date.now().toString(36).toUpperCase()}`
 
-  const card = cardData as LoyaltyCard | null
+    const cardData = await safeQuery(() =>
+      supabase.from('loyalty_cards').insert({
+        merchant_id: merchantId,
+        business_name: data.businessName,
+        color1: data.color1,
+        color2: data.color2,
+        points_rule: data.pointsRule,
+        points_rule_type: data.pointsRuleType,
+        points_per_visit: data.pointsPerVisit,
+        reward: data.reward,
+        max_points: data.maxPoints,
+        welcome_message: data.welcomeMessage,
+        code,
+      }).select().single()
+    )
 
-  if (error) return { success: false as const, error: error.message }
-  return { success: true as const, card }
+    if (!cardData) return { success: false as const, error: 'Erreur création carte' }
+    return { success: true as const, card: cardData }
+  } catch (err) {
+    console.error('Create card error:', err)
+    return { success: false as const, error: 'Erreur de connexion' }
+  }
 }
 
 export async function getMyCards(merchantId: string) {
-  const { data } = await supabase
-    .from('loyalty_cards')
-    .select('*')
-    .eq('merchant_id', merchantId)
-    .eq('is_active', true)
-    .order('created_at', { ascending: false })
-
-  return (data as LoyaltyCard[] | null) || []
+  const data = await safeQuery(() =>
+    supabase.from('loyalty_cards').select('*').eq('merchant_id', merchantId).eq('is_active', true).order('created_at', { ascending: false })
+  )
+  return data || []
 }
 
 export async function deleteCard(cardId: string) {
-  await supabase.from('loyalty_cards').update({ is_active: false }).eq('id', cardId)
+  await safeQuery(() =>
+    supabase.from('loyalty_cards').update({ is_active: false }).eq('id', cardId)
+  )
 }
 
 export async function getCardByCode(code: string) {
-  const { data } = await supabase
-    .from('loyalty_cards')
-    .select('*')
-    .eq('code', code.toUpperCase())
-    .eq('is_active', true)
-    .single()
-
-  return data as LoyaltyCard | null
+  return await safeQuery(() =>
+    supabase.from('loyalty_cards').select('*').eq('code', code.toUpperCase()).eq('is_active', true).single()
+  )
 }
 
 // ============================================
@@ -291,47 +270,39 @@ export async function getCardByCode(code: string) {
 // ============================================
 
 export async function joinCard(cardCode: string, clientName: string, clientPhone: string, deviceToken?: string) {
-  const { data, error } = await supabase.rpc('join_card', {
-    p_card_code: cardCode,
-    p_client_name: clientName,
-    p_client_phone: clientPhone,
-    p_device_token: deviceToken || null,
-  })
-
-  if (error) return { success: false as const, error: error.message }
-  return data as any
+  try {
+    const { data, error } = await supabase.rpc('join_card', {
+      p_card_code: cardCode,
+      p_client_name: clientName,
+      p_client_phone: clientPhone,
+      p_device_token: deviceToken || null,
+    })
+    if (error) return { success: false as const, error: error.message }
+    return data as any
+  } catch (err) {
+    console.error('Join card error:', err)
+    return { success: false as const, error: 'Erreur de connexion' }
+  }
 }
 
 export async function findClientByPhone(phone: string, cardId: string) {
-  const { data: clientData } = await supabase
-    .from('clients')
-    .select('*')
-    .eq('phone', phone)
-    .single()
-
-  const client = clientData as Client | null
+  const client = await safeQuery(() =>
+    supabase.from('clients').select('*').eq('phone', phone).single()
+  )
   if (!client) return null
 
-  const { data: clientCardData } = await supabase
-    .from('client_cards')
-    .select('*')
-    .eq('client_id', client.id)
-    .eq('card_id', cardId)
-    .single()
-
-  const clientCard = clientCardData as ClientCard | null
+  const clientCard = await safeQuery(() =>
+    supabase.from('client_cards').select('*').eq('client_id', (client as any).id).eq('card_id', cardId).single()
+  )
   if (!clientCard) return null
 
   return { client, clientCard }
 }
 
 export async function getMyClients(merchantId: string) {
-  const { data } = await supabase
-    .from('top_clients')
-    .select('*')
-    .eq('merchant_id', merchantId)
-    .order('points', { ascending: false })
-
+  const data = await safeQuery(() =>
+    supabase.from('top_clients').select('*').eq('merchant_id', merchantId).order('points', { ascending: false })
+  )
   return data || []
 }
 
@@ -347,57 +318,57 @@ export async function createPendingPresence(data: {
   clientName: string
   clientPhone: string
 }) {
-  await supabase
-    .from('pending_presences')
-    .update({ status: 'expired', resolved_at: new Date().toISOString() })
-    .eq('client_id', data.clientId)
-    .eq('status', 'pending')
+  try {
+    // Expirer les anciennes présences pending
+    await supabase
+      .from('pending_presences')
+      .update({ status: 'expired', resolved_at: new Date().toISOString() })
+      .eq('client_id', data.clientId)
+      .eq('status', 'pending')
 
-  const { data: presenceData, error } = await supabase
-    .from('pending_presences')
-    .insert({
-      client_id: data.clientId,
-      client_card_id: data.clientCardId,
-      card_id: data.cardId,
-      merchant_id: data.merchantId,
-      client_name: data.clientName,
-      client_phone: data.clientPhone,
-    })
-    .select()
-    .single()
+    const result = await safeQuery(() =>
+      supabase.from('pending_presences').insert({
+        client_id: data.clientId,
+        client_card_id: data.clientCardId,
+        card_id: data.cardId,
+        merchant_id: data.merchantId,
+        client_name: data.clientName,
+        client_phone: data.clientPhone,
+      }).select().single()
+    )
 
-  if (error) return null
-  return presenceData as PendingPresence
+    return result
+  } catch (err) {
+    console.error('Create presence error:', err)
+    return null
+  }
 }
 
 export async function getPendingPresences(merchantId: string) {
-  const { data } = await supabase
-    .from('pending_presences')
-    .select('*')
-    .eq('merchant_id', merchantId)
-    .eq('status', 'pending')
-    .gt('expires_at', new Date().toISOString())
-    .order('created_at', { ascending: false })
-
-  return (data as PendingPresence[] | null) || []
+  const data = await safeQuery(() =>
+    supabase.from('pending_presences').select('*').eq('merchant_id', merchantId).eq('status', 'pending').order('created_at', { ascending: false })
+  )
+  return data || []
 }
 
 export async function validatePresence(clientCardId: string, points: number, merchantId: string) {
-  const { data, error } = await supabase.rpc('validate_presence', {
-    p_client_card_id: clientCardId,
-    p_points: points,
-    p_merchant_id: merchantId,
-  })
-
-  if (error) return { success: false as const, error: error.message }
-  return data as any
+  try {
+    const { data, error } = await supabase.rpc('validate_presence', {
+      p_client_card_id: clientCardId,
+      p_points: points,
+      p_merchant_id: merchantId,
+    })
+    if (error) return { success: false as const, error: error.message }
+    return data as any
+  } catch (err) {
+    return { success: false as const, error: 'Erreur' }
+  }
 }
 
 export async function rejectPresence(presenceId: string) {
-  await supabase
-    .from('pending_presences')
-    .update({ status: 'rejected', resolved_at: new Date().toISOString() })
-    .eq('id', presenceId)
+  await safeQuery(() =>
+    supabase.from('pending_presences').update({ status: 'rejected', resolved_at: new Date().toISOString() }).eq('id', presenceId)
+  )
 }
 
 // ============================================
@@ -405,13 +376,16 @@ export async function rejectPresence(presenceId: string) {
 // ============================================
 
 export async function redeemReward(clientCardId: string, merchantId: string) {
-  const { data, error } = await supabase.rpc('redeem_reward', {
-    p_client_card_id: clientCardId,
-    p_merchant_id: merchantId,
-  })
-
-  if (error) return { success: false as const, error: error.message }
-  return data as any
+  try {
+    const { data, error } = await supabase.rpc('redeem_reward', {
+      p_client_card_id: clientCardId,
+      p_merchant_id: merchantId,
+    })
+    if (error) return { success: false as const, error: error.message }
+    return data as any
+  } catch (err) {
+    return { success: false as const, error: 'Erreur' }
+  }
 }
 
 // ============================================
@@ -419,69 +393,44 @@ export async function redeemReward(clientCardId: string, merchantId: string) {
 // ============================================
 
 export async function getMerchantDashboard(merchantId: string) {
-  const { data } = await supabase.rpc('get_merchant_dashboard', {
-    p_merchant_id: merchantId,
-  })
-
-  return data as any
+  return await safeQuery(() =>
+    supabase.rpc('get_merchant_dashboard', { p_merchant_id: merchantId })
+  )
 }
 
 export async function getMerchantStats(merchantId: string) {
-  const { data } = await supabase
-    .from('merchant_stats')
-    .select('*')
-    .eq('merchant_id', merchantId)
-    .single()
-
-  return data
+  return await safeQuery(() =>
+    supabase.from('merchant_stats').select('*').eq('merchant_id', merchantId).single()
+  )
 }
 
 export async function getCardStats(merchantId: string) {
-  const { data } = await supabase
-    .from('card_stats')
-    .select('*')
-    .eq('merchant_id', merchantId)
-
+  const data = await safeQuery(() =>
+    supabase.from('card_stats').select('*').eq('merchant_id', merchantId)
+  )
   return data || []
 }
 
 export async function getDailyActivity(merchantId: string, days: number = 7) {
   const since = new Date()
   since.setDate(since.getDate() - days)
-
-  const { data } = await supabase
-    .from('daily_activity')
-    .select('*')
-    .eq('merchant_id', merchantId)
-    .gte('day', since.toISOString().split('T')[0])
-    .order('day', { ascending: true })
-
+  const data = await safeQuery(() =>
+    supabase.from('daily_activity').select('*').eq('merchant_id', merchantId).gte('day', since.toISOString().split('T')[0]).order('day', { ascending: true })
+  )
   return data || []
 }
 
 export async function getActivities(merchantId: string, limit: number = 20) {
-  const { data } = await supabase
-    .from('activities')
-    .select(`
-      *,
-      clients:client_id(name, phone),
-      loyalty_cards:card_id(business_name)
-    `)
-    .eq('merchant_id', merchantId)
-    .order('created_at', { ascending: false })
-    .limit(limit)
-
+  const data = await safeQuery(() =>
+    supabase.from('activities').select('*, clients:client_id(name, phone), loyalty_cards:card_id(business_name)').eq('merchant_id', merchantId).order('created_at', { ascending: false }).limit(limit)
+  )
   return data || []
 }
 
 export async function getClientHistory(clientId: string, merchantId: string) {
-  const { data } = await supabase
-    .from('activities')
-    .select('*')
-    .eq('client_id', clientId)
-    .eq('merchant_id', merchantId)
-    .order('created_at', { ascending: false })
-
+  const data = await safeQuery(() =>
+    supabase.from('activities').select('*').eq('client_id', clientId).eq('merchant_id', merchantId).order('created_at', { ascending: false })
+  )
   return data || []
 }
 
@@ -490,26 +439,27 @@ export async function getClientHistory(clientId: string, merchantId: string) {
 // ============================================
 
 export async function requestUpgrade(merchantId: string, data: {
-  plan: PlanType
-  paymentMethod: PaymentMethod
+  plan: string
+  paymentMethod: string
   name: string
   phone: string
   email?: string
 }) {
   const amount = data.plan === 'premium' ? 9000 : 4500
 
-  const { error } = await supabase.from('payment_requests').insert({
-    merchant_id: merchantId,
-    requested_plan: data.plan,
-    payment_method: data.paymentMethod,
-    amount_dzd: amount,
-    contact_name: data.name,
-    contact_phone: data.phone,
-    contact_email: data.email,
-  })
+  const result = await safeQuery(() =>
+    supabase.from('payment_requests').insert({
+      merchant_id: merchantId,
+      requested_plan: data.plan,
+      payment_method: data.paymentMethod,
+      amount_dzd: amount,
+      contact_name: data.name,
+      contact_phone: data.phone,
+      contact_email: data.email,
+    })
+  )
 
-  if (error) return { success: false as const, error: error.message }
-  return { success: true as const }
+  return result !== null ? { success: true as const } : { success: false as const, error: 'Erreur' }
 }
 
 // ============================================
@@ -517,155 +467,158 @@ export async function requestUpgrade(merchantId: string, data: {
 // ============================================
 
 export async function getAllMerchants(search?: string) {
-  let query = supabase
-    .from('merchants')
-    .select('*')
-    .order('created_at', { ascending: false })
-
   if (search) {
-    query = query.or(`business_name.ilike.%${search}%,email.ilike.%${search}%,name.ilike.%${search}%`)
+    const data = await safeQuery(() =>
+      supabase.from('merchants').select('*').or(`business_name.ilike.%${search}%,email.ilike.%${search}%,name.ilike.%${search}%`).order('created_at', { ascending: false })
+    )
+    return data || []
   }
-
-  const { data } = await query
-  return (data as Merchant[] | null) || []
-}
-
-export async function getPendingMerchants() {
-  const { data } = await supabase
-    .from('merchants')
-    .select('*')
-    .eq('status', 'pending')
-    .order('created_at', { ascending: false })
-
-  return (data as Merchant[] | null) || []
-}
-
-export async function approveMerchant(merchantId: string) {
-  const { data, error } = await supabase.rpc('approve_merchant_full', {
-    p_merchant_id: merchantId,
-  })
-
-  if (error) {
-    console.error('Approve error:', error)
-    await supabase
-      .from('merchants')
-      .update({ status: 'active', validated_at: new Date().toISOString() })
-      .eq('id', merchantId)
-  }
-
-  return data
-}
-
-export async function suspendMerchant(merchantId: string) {
-  const { data, error } = await supabase.rpc('suspend_merchant_full', {
-    p_merchant_id: merchantId,
-  })
-
-  if (error) {
-    console.error('Suspend error:', error)
-    await supabase
-      .from('merchants')
-      .update({ status: 'suspended' })
-      .eq('id', merchantId)
-  }
-
-  return data
-}
-
-export async function changeMerchantPlan(merchantId: string, plan: PlanType) {
-  await supabase
-    .from('merchants')
-    .update({ plan, updated_at: new Date().toISOString() })
-    .eq('id', merchantId)
-}
-
-export async function deleteMerchant(merchantId: string) {
-  await supabase.from('merchants').delete().eq('id', merchantId)
-}
-
-export async function getPlatformOverview() {
-  const { data } = await supabase
-    .from('platform_overview')
-    .select('*')
-    .single()
-
-  return data
-}
-
-export async function getPendingPayments() {
-  const { data } = await supabase
-    .from('pending_payments')
-    .select('*')
-    .eq('status', 'pending')
-    .order('created_at', { ascending: false })
-
+  const data = await safeQuery(() =>
+    supabase.from('merchants').select('*').order('created_at', { ascending: false })
+  )
   return data || []
 }
 
-export async function approvePayment(paymentId: string, merchantId: string, plan: PlanType) {
-  await supabase
-    .from('payment_requests')
-    .update({ status: 'confirmed', processed_at: new Date().toISOString() })
-    .eq('id', paymentId)
+export async function getPendingMerchants() {
+  const data = await safeQuery(() =>
+    supabase.from('merchants').select('*').eq('status', 'pending').order('created_at', { ascending: false })
+  )
+  return data || []
+}
 
+export async function approveMerchant(merchantId: string) {
+  try {
+    const { data, error } = await supabase.rpc('approve_merchant_full', { p_merchant_id: merchantId })
+    if (error) {
+      await supabase.from('merchants').update({ status: 'active', validated_at: new Date().toISOString() }).eq('id', merchantId)
+    }
+    return data
+  } catch {
+    await supabase.from('merchants').update({ status: 'active', validated_at: new Date().toISOString() }).eq('id', merchantId)
+  }
+}
+
+export async function suspendMerchant(merchantId: string) {
+  try {
+    const { data, error } = await supabase.rpc('suspend_merchant_full', { p_merchant_id: merchantId })
+    if (error) {
+      await supabase.from('merchants').update({ status: 'suspended' }).eq('id', merchantId)
+    }
+    return data
+  } catch {
+    await supabase.from('merchants').update({ status: 'suspended' }).eq('id', merchantId)
+  }
+}
+
+export async function changeMerchantPlan(merchantId: string, plan: string) {
+  await safeQuery(() =>
+    supabase.from('merchants').update({ plan, updated_at: new Date().toISOString() }).eq('id', merchantId)
+  )
+}
+
+export async function deleteMerchant(merchantId: string) {
+  await safeQuery(() =>
+    supabase.from('merchants').delete().eq('id', merchantId)
+  )
+}
+
+export async function getPlatformOverview() {
+  return await safeQuery(() =>
+    supabase.from('platform_overview').select('*').single()
+  )
+}
+
+export async function getPendingPayments() {
+  const data = await safeQuery(() =>
+    supabase.from('pending_payments').select('*').eq('status', 'pending').order('created_at', { ascending: false })
+  )
+  return data || []
+}
+
+export async function approvePayment(paymentId: string, merchantId: string, plan: string) {
+  await safeQuery(() =>
+    supabase.from('payment_requests').update({ status: 'confirmed', processed_at: new Date().toISOString() }).eq('id', paymentId)
+  )
   await changeMerchantPlan(merchantId, plan)
 }
 
 export async function rejectPayment(paymentId: string) {
-  await supabase
-    .from('payment_requests')
-    .update({ status: 'rejected', processed_at: new Date().toISOString() })
-    .eq('id', paymentId)
+  await safeQuery(() =>
+    supabase.from('payment_requests').update({ status: 'rejected', processed_at: new Date().toISOString() }).eq('id', paymentId)
+  )
 }
 
 // ============================================
-// REALTIME SUBSCRIPTIONS
+// REALTIME — Noms de channels UNIQUES
 // ============================================
+
+let _channelCounter = 0
+
+function uniqueChannel(prefix: string) {
+  _channelCounter++
+  return `${prefix}-${_channelCounter}-${Date.now()}`
+}
 
 export function subscribeToPendingPresences(merchantId: string, callback: (presence: any) => void) {
   return supabase
-    .channel('pending_presences')
-    .on(
-      'postgres_changes',
-      {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'pending_presences',
-        filter: `merchant_id=eq.${merchantId}`,
-      },
-      (payload) => callback(payload.new)
-    )
+    .channel(uniqueChannel('pending'))
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'pending_presences',
+      filter: `merchant_id=eq.${merchantId}`,
+    }, (payload) => callback(payload.new))
     .subscribe()
 }
 
 export function subscribeToPresenceUpdates(clientCardId: string, callback: (update: any) => void) {
   return supabase
-    .channel('client_card_updates')
-    .on(
-      'postgres_changes',
-      {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'client_cards',
-        filter: `id=eq.${clientCardId}`,
-      },
-      (payload) => callback(payload.new)
-    )
+    .channel(uniqueChannel('card-update'))
+    .on('postgres_changes', {
+      event: 'UPDATE',
+      schema: 'public',
+      table: 'client_cards',
+      filter: `id=eq.${clientCardId}`,
+    }, (payload) => callback(payload.new))
     .subscribe()
 }
 
 export function subscribeToPresenceStatus(presenceId: string, callback: (status: string) => void) {
   return supabase
-    .channel('presence_status')
-    .on(
-      'postgres_changes',
-      {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'pending_presences',
-        filter: `id=eq.${presenceId}`,
-      },
-      (payload) => callback((payload.new as any).status)
-    )
+    .channel(uniqueChannel('presence-status'))
+    .on('postgres_changes', {
+      event: 'UPDATE',
+      schema: 'public',
+      table: 'pending_presences',
+      filter: `id=eq.${presenceId}`,
+    }, (payload) => callback((payload.new as any).status))
     .subscribe()
+}
+
+// Channel pour le dashboard complet
+export function subscribeToDashboard(merchantId: string, callback: () => void) {
+  return supabase
+    .channel(uniqueChannel('dashboard'))
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'pending_presences' }, () => callback())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: `merchant_id=eq.${merchantId}` }, () => callback())
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'activities', filter: `merchant_id=eq.${merchantId}` }, () => callback())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'client_cards' }, () => callback())
+    .subscribe()
+}
+
+// Channel pour l'admin
+export function subscribeToAdmin(callback: () => void) {
+  return supabase
+    .channel(uniqueChannel('admin'))
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => callback())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'merchants' }, () => callback())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'payment_requests' }, () => callback())
+    .subscribe()
+}
+
+// Cleanup
+export function removeChannel(channel: any) {
+  try {
+    supabase.removeChannel(channel)
+  } catch {}
 }
