@@ -670,4 +670,33 @@ export function subscribeToPresenceStatus(presenceId: string, callback: (status:
       (payload) => callback((payload.new as any).status)
     )
     .subscribe()
+  // ========== UPGRADE REQUEST ==========
+export async function requestUpgrade(
+  merchantId: string,
+  data: {
+    plan: 'starter' | 'pro' | 'premium'
+    paymentMethod: 'ccp' | 'baridimob' | 'especes'
+    name: string
+    phone: string
+    email: string
+  }
+) {
+  try {
+    const { error } = await supabase.from('payment_requests').insert({
+      merchant_id: merchantId,
+      plan: data.plan,
+      payment_method: data.paymentMethod,
+      contact_name: data.name,
+      contact_phone: data.phone,
+      contact_email: data.email,
+      amount: data.plan === 'pro' ? 4500 : 9000,
+      status: 'pending',
+      created_at: new Date().toISOString(),
+    })
+
+    if (error) return { success: false, error: error.message }
+    return { success: true }
+  } catch (err: any) {
+    return { success: false, error: err.message }
+  }
 }
