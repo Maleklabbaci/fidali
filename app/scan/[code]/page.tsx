@@ -357,7 +357,10 @@ export default function ScanPage() {
                 <div className="relative z-10 text-white">
                   <div className="flex items-start justify-between mb-2">
                     <div>
-                      <p className="text-[10px] text-white/40 uppercase tracking-[0.2em]">Carte de fidélité</p>
+                      <div className="flex items-center gap-2">
+  <img src="/logo-white.png" alt="" className="w-5 h-5 object-contain opacity-50" />
+  <p className="text-[10px] text-white/40 uppercase tracking-[0.2em]">Carte de fidélité</p>
+</div>
                       <h2 className="text-xl font-bold mt-0.5">{card.business_name}</h2>
                     </div>
                     <div className="bg-white/15 backdrop-blur px-3 py-1.5 rounded-full border border-white/10">
