@@ -42,52 +42,73 @@ export default function DashboardPage() {
       setLoading(true)
       const { supabase } = await import('@/database/supabase-client')
 
-      // Load cards
-      const { data: cardsData } = await supabase
+      // Load cards — CORRIGÉ: is_active au lieu de active
+      const { data: cardsData, error: cardsError } = await supabase
         .from('loyalty_cards')
         .select('*')
         .eq('merchant_id', merchantId)
-        .eq('active', true)
+        .eq('is_active', true)
 
-      // Load client_cards with client info
-      const { data: clientCardsData } = await supabase
-        .from('client_cards')
-        .select('*, clients(*), loyalty_cards(*)')
-        .in('card_id', (cardsData || []).map((c: any) => c.id))
+      console.log('Cards:', cardsData, 'Error:', cardsError)
+
+      const cardIds = (cardsData || []).map((c: any) => c.id)
+
+      // Load client_cards — CORRIGÉ: vérifier que cardIds n'est pas vide
+      let clientCardsData: any[] = []
+      if (cardIds.length > 0) {
+        const { data, error: clientError } = await supabase
+          .from('client_cards')
+          .select('*, clients(*), loyalty_cards(*)')
+          .in('card_id', cardIds)
+
+        console.log('Client cards:', data, 'Error:', clientError)
+        clientCardsData = data || []
+      }
 
       // Load pending presences
-      const { data: pendingData } = await supabase
-        .from('pending_presences')
-        .select('*, clients(*), loyalty_cards(*)')
-        .in('card_id', (cardsData || []).map((c: any) => c.id))
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false })
+      let pendingData: any[] = []
+      if (cardIds.length > 0) {
+        const { data, error: pendingError } = await supabase
+          .from('pending_presences')
+          .select('*, clients(*), loyalty_cards(*)')
+          .in('card_id', cardIds)
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false })
+
+        console.log('Pending:', data, 'Error:', pendingError)
+        pendingData = data || []
+      }
 
       // Load activities
-      const { data: activitiesData } = await supabase
+      const { data: activitiesData, error: actError } = await supabase
         .from('activities')
         .select('*')
         .eq('merchant_id', merchantId)
         .order('created_at', { ascending: false })
         .limit(20)
 
+      console.log('Activities:', activitiesData, 'Error:', actError)
+
       setCards(cardsData || [])
-      setClients(clientCardsData || [])
-      setPending(pendingData || [])
+      setClients(clientCardsData)
+      setPending(pendingData)
       setActivities(activitiesData || [])
 
       // Calculate stats
-      const totalClients = new Set((clientCardsData || []).map((c: any) => c.client_id)).size
-      const totalPoints = (clientCardsData || []).reduce((sum: number, c: any) => sum + (c.points || 0), 0)
-      const totalRewards = (clientCardsData || []).reduce((sum: number, c: any) => sum + (c.total_rewards_redeemed || 0), 0)
+      const totalClients = new Set(clientCardsData.map((c: any) => c.client_id)).size
+      const totalPoints = clientCardsData.reduce((sum: number, c: any) => sum + (c.points || 0), 0)
+      const totalRewards = clientCardsData.reduce((sum: number, c: any) => sum + (c.total_rewards_redeemed || 0), 0)
 
       setStats({ total_clients: totalClients, total_points: totalPoints, total_rewards: totalRewards })
+
+      console.log('Stats:', { totalClients, totalPoints, totalRewards })
     } catch (err) {
       console.error('Error loading data:', err)
     } finally {
       setLoading(false)
     }
   }
+}
 
   // Validate / Reject presence
   const handlePresence = async (presenceId: string, action: 'validated' | 'rejected') => {
