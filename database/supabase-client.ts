@@ -670,7 +670,9 @@ export function subscribeToPresenceStatus(presenceId: string, callback: (status:
       (payload) => callback((payload.new as any).status)
     )
     .subscribe()
-  // ========== UPGRADE REQUEST ==========
+}
+
+// ========== UPGRADE REQUEST ==========
 export async function requestUpgrade(
   merchantId: string,
   data: {
