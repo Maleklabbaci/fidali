@@ -104,16 +104,17 @@ export default function DashboardPage() {
     loadData(merchant.id)
   }
 
-     const handlePresence = async (presenceId: string, action: 'validated' | 'rejected') => {
+  const handlePresence = async (presenceId: string, action: 'validated' | 'rejected') => {
     try {
       const { supabase } = await import('@/database/supabase-client')
       const presence = pending.find((p) => p.id === presenceId)
       if (!presence) return
-      const { error: presenceError } = await supabase
+
+      await supabase
         .from('pending_presences')
-        .update({ status: action, resolved_at: new Date().toISOString() })
+        .update({ status: action })
         .eq('id', presenceId)
-      if (presenceError) { console.error('Erreur:', presenceError); return }
+
       if (action === 'validated') {
         const clientCard = clients.find((c) => c.client_id === presence.client_id && c.card_id === presence.card_id)
         if (clientCard) {
@@ -122,16 +123,22 @@ export default function DashboardPage() {
           const ptsPerVisit = card?.points_per_visit || 1
           const newPoints = Math.min((clientCard.points || 0) + ptsPerVisit, maxPts)
           const rewardEarned = newPoints >= maxPts
-          await supabase.from('client_cards').update({ points: rewardEarned ? 0 : newPoints, total_rewards_redeemed: (clientCard.total_rewards_redeemed || 0) + (rewardEarned ? 1 : 0) }).eq('id', clientCard.id)
+          await supabase
+            .from('client_cards')
+            .update({
+              points: rewardEarned ? 0 : newPoints,
+              total_rewards_redeemed: (clientCard.total_rewards_redeemed || 0) + (rewardEarned ? 1 : 0)
+            })
+            .eq('id', clientCard.id)
         }
       }
+
       setPending((prev) => prev.filter((p) => p.id !== presenceId))
       if (merchant) { loadData(merchant.id) }
     } catch (err) {
       console.error('Error:', err)
     }
   }
-
   const handleExportPDF = async () => {
     if (!merchant) return
     setExportingPDF(true)
