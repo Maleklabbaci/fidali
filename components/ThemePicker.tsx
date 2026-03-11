@@ -5,6 +5,7 @@ import { themes, getTheme, saveTheme, loadTheme, applyTheme } from '@/lib/themes
 
 export function ThemePicker({ onSelect }: { onSelect?: (themeId: string) => void }) {
   const [selected, setSelected] = useState('default')
+  const [applied, setApplied] = useState(false)
 
   useEffect(() => {
     const saved = loadTheme()
@@ -16,7 +17,13 @@ export function ThemePicker({ onSelect }: { onSelect?: (themeId: string) => void
     setSelected(id)
     saveTheme(id)
     applyTheme(getTheme(id))
+    setApplied(true)
     onSelect?.(id)
+    
+    // Reload pour appliquer le thème partout
+    setTimeout(() => {
+      window.location.reload()
+    }, 300)
   }
 
   return (
@@ -35,17 +42,33 @@ export function ThemePicker({ onSelect }: { onSelect?: (themeId: string) => void
             style={{ backgroundColor: theme.colors.background }}
           >
             <div className="flex gap-1 mb-2">
-              <div className="w-4 h-4 rounded-full" style={{ backgroundColor: theme.colors.primary }} />
-              <div className="w-4 h-4 rounded-full" style={{ backgroundColor: theme.colors.secondary }} />
-              <div className="w-4 h-4 rounded-full" style={{ backgroundColor: theme.colors.accent }} />
+              <div
+                className="w-4 h-4 rounded-full"
+                style={{ backgroundColor: theme.colors.primary }}
+              />
+              <div
+                className="w-4 h-4 rounded-full"
+                style={{ backgroundColor: theme.colors.secondary }}
+              />
+              <div
+                className="w-4 h-4 rounded-full"
+                style={{ backgroundColor: theme.colors.accent }}
+              />
             </div>
-            <p className="text-xs font-bold" style={{ color: theme.colors.text }}>{theme.name}</p>
+            <p className="text-xs font-bold" style={{ color: theme.colors.text }}>
+              {theme.name}
+            </p>
             {selected === theme.id && (
-              <div className="absolute top-1 right-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-white text-[10px]">✓</div>
+              <div className="absolute top-1 right-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-white text-[10px]">
+                ✓
+              </div>
             )}
           </button>
         ))}
       </div>
+      {applied && (
+        <p className="text-xs text-green-600 font-medium">✅ Thème appliqué !</p>
+      )}
     </div>
   )
 }
