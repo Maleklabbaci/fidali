@@ -15,7 +15,7 @@ export default function MerchantsPage() {
     try {
       const { getAllMerchants } = await import('@/database/supabase-client')
       const data = await getAllMerchants()
-      setMerchants(data)
+      setMerchants(Array.isArray(data) ? data : [])
     } catch (err) {
       console.error(err)
     } finally {
