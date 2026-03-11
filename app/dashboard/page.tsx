@@ -800,6 +800,156 @@ export default function DashboardPage() {
         )}
 
       </main>
+          {/* ===== BULLE CONTACT ADMIN ===== */}
+      {(() => {
+        const [showContact, setShowContact] = useState(false)
+        const [contactForm, setContactForm] = useState({ subject: '', message: '' })
+        const [contactSending, setContactSending] = useState(false)
+        const [contactSent, setContactSent] = useState(false)
+
+        const handleSendMessage = async () => {
+          if (!contactForm.subject.trim() || !contactForm.message.trim()) return
+          setContactSending(true)
+          try {
+            const { supabase } = await import('@/database/supabase-client')
+            await supabase.from('messages').insert({
+              merchant_id: merchant?.id,
+              merchant_name: merchant?.business_name || merchant?.name,
+              merchant_email: merchant?.email,
+              subject: contactForm.subject.trim(),
+              message: contactForm.message.trim(),
+            })
+            setContactSent(true)
+            setContactForm({ subject: '', message: '' })
+          } catch (err) {
+            console.error(err)
+          } finally {
+            setContactSending(false)
+          }
+        }
+
+        return (
+          <>
+            {/* Bulle flottante */}
+            <button
+              onClick={() => { setShowContact(true); setContactSent(false) }}
+              className="fixed bottom-6 right-6 z-30 w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg shadow-indigo-300 flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+            </button>
+
+            {/* Petit label */}
+            <div className="fixed bottom-[88px] right-6 z-30 bg-slate-800 text-white text-[10px] font-medium px-3 py-1.5 rounded-lg shadow-lg pointer-events-none opacity-0 hover:opacity-100 transition">
+              Besoin d&apos;aide ?
+            </div>
+
+            {/* Modal contact */}
+            {showContact && (
+              <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4" onClick={() => setShowContact(false)}>
+                <div className="bg-white rounded-2xl sm:rounded-2xl w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+
+                  {contactSent ? (
+                    <div className="p-8 text-center">
+                      <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-8 h-8 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                      <h3 className="text-lg font-bold text-slate-900 mb-1">Message envoyé !</h3>
+                      <p className="text-sm text-slate-400 mb-6">Nous vous répondrons dans les plus brefs délais</p>
+                      <button onClick={() => setShowContact(false)} className="px-6 py-2.5 bg-slate-100 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-200 transition">
+                        Fermer
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="p-6 border-b border-slate-100">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
+                              <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                              </svg>
+                            </div>
+                            <div>
+                              <h3 className="text-base font-bold text-slate-900">Contactez-nous</h3>
+                              <p className="text-xs text-slate-400">Support Fidali</p>
+                            </div>
+                          </div>
+                          <button onClick={() => setShowContact(false)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="p-6 space-y-4">
+                        <div>
+                          <label className="text-xs font-semibold text-slate-600 mb-1.5 block">Sujet</label>
+                          <select
+                            value={contactForm.subject}
+                            onChange={(e) => setContactForm({ ...contactForm, subject: e.target.value })}
+                            className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition bg-white"
+                          >
+                            <option value="">Choisir un sujet...</option>
+                            <option value="Problème technique">🔧 Problème technique</option>
+                            <option value="Question sur mon abonnement">💰 Question sur mon abonnement</option>
+                            <option value="Demande de fonctionnalité">💡 Demande de fonctionnalité</option>
+                            <option value="Signaler un bug">🐛 Signaler un bug</option>
+                            <option value="Aide utilisation">❓ Aide utilisation</option>
+                            <option value="Autre">📋 Autre</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-semibold text-slate-600 mb-1.5 block">Votre message</label>
+                          <textarea
+                            value={contactForm.message}
+                            onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
+                            placeholder="Décrivez votre problème ou question..."
+                            rows={4}
+                            maxLength={1000}
+                            className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition resize-none"
+                          />
+                          <p className="text-[10px] text-slate-300 text-right mt-1">{contactForm.message.length}/1000</p>
+                        </div>
+
+                        <div className="bg-slate-50 rounded-xl p-3 flex items-center gap-3">
+                          <span className="text-lg">👤</span>
+                          <div>
+                            <p className="text-xs font-semibold text-slate-700">{merchant?.business_name}</p>
+                            <p className="text-[10px] text-slate-400">{merchant?.email}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="p-6 pt-0">
+                        <button
+                          onClick={handleSendMessage}
+                          disabled={contactSending || !contactForm.subject || !contactForm.message.trim()}
+                          className="w-full py-3.5 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition disabled:opacity-40 disabled:cursor-not-allowed shadow-md shadow-indigo-200 text-sm"
+                        >
+                          {contactSending ? (
+                            <span className="flex items-center justify-center gap-2">
+                              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              Envoi...
+                            </span>
+                          ) : (
+                            '📤 Envoyer le message'
+                          )}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+          </>
+        )
+      })()}
     </div>
   )
 }
