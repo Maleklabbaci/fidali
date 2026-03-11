@@ -37,7 +37,7 @@ export default function SignupPage() {
       const result = await signupMerchant(form)
 
       if (result.success) {
-        setSuccess(true)
+        router.push('/dashboard')
       } else {
         setError(result.error || 'Erreur lors de l\'inscription')
       }
