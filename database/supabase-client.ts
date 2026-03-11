@@ -239,8 +239,7 @@ export async function createMerchantProfile(profile: {
       .upsert(
         {
           ...profile,
-          status: 'pending',
-          created_at: new Date().toISOString(),
+          status: 'approved',
         },
         { onConflict: 'merchant_id' }
       )
