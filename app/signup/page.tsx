@@ -72,7 +72,7 @@ export default function SignupPage() {
     <div className="min-h-screen bg-gradient-to-br from-blue-600 to-purple-700 flex items-center justify-center px-4 py-10">
       <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-extrabold text-gray-900">🎯 Fidali</h1>
+<img src="/logo.png" alt="Fidali" className="w-9 h-9 rounded-xl object-contain" />
           <p className="text-gray-500 mt-2">Créez votre compte commerçant</p>
         </div>
 
