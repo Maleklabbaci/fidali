@@ -66,22 +66,8 @@ export default function CompleteProfilePage() {
         const profile = await getMerchantProfile(m.id)
 
         if (profile) {
-          if (profile.status === 'approved') {
-            router.push('/dashboard')
-            return
-          }
-          if (profile.status === 'pending') {
-            setForm({
-              fullName: profile.full_name || '',
-              phone: profile.phone || '',
-              businessName: profile.business_name || '',
-              businessType: profile.business_type || '',
-              businessTypeOther: '',
-              businessAddress: profile.business_address || '',
-              city: profile.city || '',
-            })
-            setSuccess(true)
-          }
+          router.push('/dashboard')
+          return
         } else {
           setForm(prev => ({
             ...prev,
@@ -178,7 +164,7 @@ export default function CompleteProfilePage() {
       })
 
       if (result.success) {
-        setSuccess(true)
+        router.push('/dashboard')
       } else {
         setError(result.error || "Erreur lors de l'envoi")
       }
