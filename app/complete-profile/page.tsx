@@ -2,25 +2,22 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { auth, db } from '@/lib/firebase'
-import { onAuthStateChanged } from 'firebase/auth'
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore'
 
 const BUSINESS_TYPES = [
-  { value: 'cafe', label: '☕ Café', },
-  { value: 'restaurant', label: '🍕 Restaurant', },
-  { value: 'salon', label: '💇‍♀️ Salon de coiffure / beauté', },
-  { value: 'boulangerie', label: '🥖 Boulangerie / Pâtisserie', },
-  { value: 'boutique', label: '🛍️ Boutique / Magasin', },
-  { value: 'pharmacie', label: '💊 Pharmacie', },
-  { value: 'salle_sport', label: '💪 Salle de sport', },
-  { value: 'spa', label: '🧖‍♀️ Spa / Hammam', },
-  { value: 'lavage_auto', label: '🚗 Lavage auto', },
-  { value: 'epicerie', label: '🏪 Épicerie / Superette', },
-  { value: 'librairie', label: '📚 Librairie / Papeterie', },
-  { value: 'fleuriste', label: '💐 Fleuriste', },
-  { value: 'pressing', label: '👔 Pressing / Blanchisserie', },
-  { value: 'autre', label: '🏢 Autre', },
+  { value: 'cafe', label: '☕ Café' },
+  { value: 'restaurant', label: '🍕 Restaurant' },
+  { value: 'salon', label: '💇‍♀️ Salon de coiffure / beauté' },
+  { value: 'boulangerie', label: '🥖 Boulangerie / Pâtisserie' },
+  { value: 'boutique', label: '🛍️ Boutique / Magasin' },
+  { value: 'pharmacie', label: '💊 Pharmacie' },
+  { value: 'salle_sport', label: '💪 Salle de sport' },
+  { value: 'spa', label: '🧖‍♀️ Spa / Hammam' },
+  { value: 'lavage_auto', label: '🚗 Lavage auto' },
+  { value: 'epicerie', label: '🏪 Épicerie / Superette' },
+  { value: 'librairie', label: '📚 Librairie / Papeterie' },
+  { value: 'fleuriste', label: '💐 Fleuriste' },
+  { value: 'pressing', label: '👔 Pressing / Blanchisserie' },
+  { value: 'autre', label: '🏢 Autre' },
 ]
 
 const CITIES = [
@@ -28,7 +25,7 @@ const CITIES = [
   'Batna', 'Sétif', 'Sidi Bel Abbès', 'Biskra', 'Tébessa',
   'Tlemcen', 'Béjaïa', 'Tizi Ouzou', 'Djelfa', 'Bordj Bou Arréridj',
   'Skikda', 'Chlef', 'Médéa', 'Mostaganem', 'Mascara',
-  'Ouargla', 'Ghardaïa', 'Jijel', 'Relizane', 'M\'sila',
+  'Ouargla', 'Ghardaïa', 'Jijel', 'Relizane', "M'sila",
   'Tiaret', 'El Oued', 'Laghouat', 'Bouira', 'Boumerdès',
   'Tipaza', 'Ain Defla', 'Khenchela', 'Souk Ahras', 'Mila',
   'Autre',
@@ -36,7 +33,7 @@ const CITIES = [
 
 export default function CompleteProfilePage() {
   const router = useRouter()
-  const [user, setUser] = useState<any>(null)
+  const [merchant, setMerchant] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [step, setStep] = useState(1)
@@ -54,40 +51,50 @@ export default function CompleteProfilePage() {
   })
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (u) => {
-      if (!u) {
-        router.push('/login')
-        return
-      }
-      setUser(u)
+    const stored = localStorage.getItem('merchant') || sessionStorage.getItem('merchant')
+    if (!stored) {
+      router.push('/login')
+      return
+    }
 
-      // Vérifier si le profil existe déjà
+    const m = JSON.parse(stored)
+    setMerchant(m)
+
+    const checkProfile = async () => {
       try {
-        const profileDoc = await getDoc(doc(db, 'merchantProfiles', u.uid))
-        if (profileDoc.exists()) {
-          const data = profileDoc.data()
-          if (data.status === 'approved') {
+        const { getMerchantProfile } = await import('@/database/supabase-client')
+        const profile = await getMerchantProfile(m.id)
+
+        if (profile) {
+          if (profile.status === 'approved') {
             router.push('/dashboard')
             return
           }
-          if (data.status === 'pending') {
+          if (profile.status === 'pending') {
+            setForm({
+              fullName: profile.full_name || '',
+              phone: profile.phone || '',
+              businessName: profile.business_name || '',
+              businessType: profile.business_type || '',
+              businessTypeOther: '',
+              businessAddress: profile.business_address || '',
+              city: profile.city || '',
+            })
             setSuccess(true)
-            setLoading(false)
-            return
           }
+        } else {
+          setForm(prev => ({
+            ...prev,
+            fullName: m.name || m.business_name || '',
+          }))
         }
       } catch (e) {
         console.error(e)
       }
-
-      // Pré-remplir le nom depuis le compte
-      setForm(prev => ({
-        ...prev,
-        fullName: u.displayName || '',
-      }))
       setLoading(false)
-    })
-    return () => unsub()
+    }
+
+    checkProfile()
   }, [router])
 
   const updateField = (field: string, value: string) => {
@@ -95,11 +102,18 @@ export default function CompleteProfilePage() {
     setError('')
   }
 
+  const formatPhone = (value: string) => {
+    const digits = value.replace(/\D/g, '')
+    if (digits.length <= 4) return digits
+    if (digits.length <= 6) return `${digits.slice(0, 4)} ${digits.slice(4)}`
+    if (digits.length <= 8) return `${digits.slice(0, 4)} ${digits.slice(4, 6)} ${digits.slice(6)}`
+    return `${digits.slice(0, 4)} ${digits.slice(4, 6)} ${digits.slice(6, 8)} ${digits.slice(8, 10)}`
+  }
+
   const validateStep1 = () => {
     if (!form.fullName.trim()) return 'Entrez votre nom complet'
     if (form.fullName.trim().length < 3) return 'Le nom doit contenir au moins 3 caractères'
     if (!form.phone.trim()) return 'Entrez votre numéro de téléphone'
-    // Format algérien : 05/06/07 + 8 chiffres
     const phoneClean = form.phone.replace(/\s/g, '')
     if (!/^(0[567]\d{8}|\+213[567]\d{8})$/.test(phoneClean)) {
       return 'Numéro invalide (ex: 0555 12 34 56)'
@@ -109,7 +123,6 @@ export default function CompleteProfilePage() {
 
   const validateStep2 = () => {
     if (!form.businessName.trim()) return 'Entrez le nom de votre commerce'
-    if (form.businessName.trim().length < 2) return 'Le nom doit contenir au moins 2 caractères'
     if (!form.businessType) return 'Sélectionnez le type de commerce'
     if (form.businessType === 'autre' && !form.businessTypeOther.trim()) {
       return 'Précisez le type de votre commerce'
@@ -118,8 +131,8 @@ export default function CompleteProfilePage() {
   }
 
   const validateStep3 = () => {
-    if (!form.businessAddress.trim()) return 'Entrez l\'adresse de votre commerce'
-    if (form.businessAddress.trim().length < 5) return 'L\'adresse doit être plus précise'
+    if (!form.businessAddress.trim()) return "Entrez l'adresse de votre commerce"
+    if (form.businessAddress.trim().length < 5) return "L'adresse doit être plus précise"
     if (!form.city) return 'Sélectionnez votre ville'
     return ''
   }
@@ -128,10 +141,7 @@ export default function CompleteProfilePage() {
     let err = ''
     if (step === 1) err = validateStep1()
     if (step === 2) err = validateStep2()
-    if (err) {
-      setError(err)
-      return
-    }
+    if (err) { setError(err); return }
     setStep(s => s + 1)
     setError('')
   }
@@ -143,115 +153,85 @@ export default function CompleteProfilePage() {
 
   const handleSubmit = async () => {
     const err = validateStep3()
-    if (err) {
-      setError(err)
-      return
-    }
+    if (err) { setError(err); return }
 
     setSubmitting(true)
     setError('')
 
     try {
-      const profileData = {
-        uid: user.uid,
-        email: user.email,
-        fullName: form.fullName.trim(),
+      const { createMerchantProfile } = await import('@/database/supabase-client')
+
+      const businessTypeLabel = form.businessType === 'autre'
+        ? form.businessTypeOther.trim()
+        : BUSINESS_TYPES.find(b => b.value === form.businessType)?.label || form.businessType
+
+      const result = await createMerchantProfile({
+        merchant_id: merchant.id,
+        email: merchant.email,
+        full_name: form.fullName.trim(),
         phone: form.phone.replace(/\s/g, ''),
-        businessName: form.businessName.trim(),
-        businessType: form.businessType === 'autre' ? form.businessTypeOther.trim() : form.businessType,
-        businessTypeLabel: form.businessType === 'autre'
-          ? form.businessTypeOther.trim()
-          : BUSINESS_TYPES.find(b => b.value === form.businessType)?.label || form.businessType,
-        businessAddress: form.businessAddress.trim(),
+        business_name: form.businessName.trim(),
+        business_type: form.businessType === 'autre' ? form.businessTypeOther.trim() : form.businessType,
+        business_type_label: businessTypeLabel,
+        business_address: form.businessAddress.trim(),
         city: form.city,
-        status: 'pending',
-        createdAt: serverTimestamp(),
-      }
-
-      // Sauvegarder dans merchantProfiles
-      await setDoc(doc(db, 'merchantProfiles', user.uid), profileData)
-
-      // Aussi dans adminRequests pour que l'admin voie la demande
-      await setDoc(doc(db, 'adminRequests', user.uid), {
-        ...profileData,
-        type: 'new_merchant',
-        read: false,
       })
 
-      setSuccess(true)
+      if (result.success) {
+        setSuccess(true)
+      } else {
+        setError(result.error || "Erreur lors de l'envoi")
+      }
     } catch (e: any) {
       console.error(e)
-      setError('Erreur lors de l\'envoi. Réessayez.')
+      setError("Erreur lors de l'envoi. Réessayez.")
     } finally {
       setSubmitting(false)
     }
   }
 
-  // Format phone number as user types
-  const formatPhone = (value: string) => {
-    const digits = value.replace(/\D/g, '')
-    if (digits.length <= 4) return digits
-    if (digits.length <= 6) return `${digits.slice(0, 4)} ${digits.slice(4)}`
-    if (digits.length <= 8) return `${digits.slice(0, 4)} ${digits.slice(4, 6)} ${digits.slice(6)}`
-    return `${digits.slice(0, 4)} ${digits.slice(4, 6)} ${digits.slice(6, 8)} ${digits.slice(8, 10)}`
-  }
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-[#f8f9fb] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
-  // ═══ Success screen ═══
   if (success) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center px-6">
-        <div className="max-w-md w-full text-center">
-
-          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-            <svg className="w-10 h-10 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+      <div className="min-h-screen bg-[#f8f9fb] flex items-center justify-center px-4">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-md w-full text-center">
+          <div className="w-16 h-16 mx-auto mb-5 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center">
+            <svg className="w-8 h-8 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-
-          <h1 className="text-2xl font-black text-white mb-3">Demande envoyée !</h1>
-
-          <p className="text-white/40 leading-relaxed mb-8">
-            Votre profil est en cours de vérification par notre équipe.
-            Vous recevrez une confirmation très bientôt.
+          <h1 className="text-xl font-bold text-gray-900 mb-2">Demande envoyée !</h1>
+          <p className="text-gray-400 text-sm leading-relaxed mb-6">
+            Votre profil est en cours de vérification. Vous recevrez une confirmation très bientôt.
           </p>
-
-          <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5 mb-8 text-left">
-            <h3 className="text-sm font-bold text-white/60 mb-3">Récapitulatif</h3>
+          <div className="bg-gray-50 rounded-xl p-4 text-left mb-6 border border-gray-100">
+            <p className="text-[10px] text-gray-400 uppercase tracking-wider font-bold mb-3">Récapitulatif</p>
             <div className="space-y-2">
               {[
-                { l: 'Nom', v: form.fullName || '—' },
-                { l: 'Téléphone', v: form.phone || '—' },
-                { l: 'Commerce', v: form.businessName || '—' },
-                { l: 'Ville', v: form.city || '—' },
+                { l: 'Nom', v: form.fullName },
+                { l: 'Téléphone', v: form.phone },
+                { l: 'Commerce', v: form.businessName },
+                { l: 'Ville', v: form.city },
               ].map((item, i) => (
                 <div key={i} className="flex justify-between">
-                  <span className="text-[12px] text-white/25">{item.l}</span>
-                  <span className="text-[12px] text-white/60 font-medium">{item.v}</span>
+                  <span className="text-xs text-gray-400">{item.l}</span>
+                  <span className="text-xs text-gray-700 font-medium">{item.v || '—'}</span>
                 </div>
               ))}
             </div>
           </div>
-
-          <div className="flex items-center justify-center gap-2 text-[12px] text-white/20">
+          <div className="flex items-center justify-center gap-2 text-xs text-amber-600 bg-amber-50 rounded-lg py-2 px-3 border border-amber-200">
             <div className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse" />
             En attente de validation par l&apos;administrateur
           </div>
-
-          <button
-            onClick={() => {
-              auth.signOut()
-              router.push('/go')
-            }}
-            className="mt-8 text-[13px] text-white/30 hover:text-white/60 transition-colors"
-          >
+          <button onClick={() => router.push('/go')} className="mt-6 text-sm text-gray-400 hover:text-gray-600 transition-colors">
             Retour à l&apos;accueil
           </button>
         </div>
@@ -259,28 +239,20 @@ export default function CompleteProfilePage() {
     )
   }
 
-  // ═══ Form ═══
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center px-6 py-12">
-      <div className="max-w-lg w-full">
-
-        {/* Header */}
-        <div className="text-center mb-8">
-          <img src="/logo.png" alt="Fidali" className="w-12 h-12 rounded-xl object-contain mx-auto mb-4" />
-          <h1 className="text-2xl font-black text-white mb-2">Complétez votre profil</h1>
-          <p className="text-white/30 text-sm">
-            Ces informations sont nécessaires pour activer votre compte commerçant.
-          </p>
+    <div className="min-h-screen bg-[#f8f9fb] flex items-center justify-center px-4 py-10">
+      <div className="w-full max-w-lg">
+        <div className="text-center mb-6">
+          <img src="/logo.png" alt="Fidali" className="w-12 h-12 rounded-xl object-contain mx-auto mb-3" />
+          <h1 className="text-xl font-bold text-gray-900 mb-1">Complétez votre profil</h1>
+          <p className="text-gray-400 text-sm">Informations nécessaires pour activer votre compte</p>
         </div>
 
-        {/* Progress steps */}
-        <div className="flex items-center justify-center gap-2 mb-8">
+        <div className="flex items-center justify-center gap-2 mb-6">
           {[1, 2, 3].map((s) => (
             <div key={s} className="flex items-center gap-2">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold transition-all duration-500 ${
-                step >= s
-                  ? 'bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-lg shadow-violet-500/20'
-                  : 'bg-white/[0.05] text-white/20 border border-white/[0.08]'
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                step >= s ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'bg-gray-100 text-gray-400 border border-gray-200'
               }`}>
                 {step > s ? (
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
@@ -288,165 +260,101 @@ export default function CompleteProfilePage() {
                   </svg>
                 ) : s}
               </div>
-              {s < 3 && (
-                <div className={`w-12 h-[2px] rounded-full transition-all duration-500 ${
-                  step > s ? 'bg-violet-500' : 'bg-white/[0.06]'
-                }`} />
-              )}
+              {s < 3 && <div className={`w-10 h-[2px] rounded-full transition-all ${step > s ? 'bg-blue-500' : 'bg-gray-200'}`} />}
             </div>
           ))}
         </div>
 
-        {/* Step labels */}
-        <div className="flex justify-between mb-8 px-2">
+        <div className="flex justify-between mb-6 px-4">
           {['Identité', 'Commerce', 'Adresse'].map((label, i) => (
             <span key={i} className={`text-[10px] uppercase tracking-wider font-bold transition-colors ${
-              step === i + 1 ? 'text-violet-400' : 'text-white/15'
-            }`}>
-              {label}
-            </span>
+              step === i + 1 ? 'text-blue-600' : 'text-gray-300'
+            }`}>{label}</span>
           ))}
         </div>
 
-        {/* Form card */}
-        <div className="bg-white/[0.03] border border-white/[0.06] rounded-3xl p-6 backdrop-blur-sm">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
 
-          {/* ─── STEP 1 : Identité ─── */}
           {step === 1 && (
-            <div className="space-y-5">
+            <div className="space-y-4">
               <div>
-                <label className="block text-[11px] text-white/40 uppercase tracking-wider font-bold mb-2">
-                  Nom complet *
-                </label>
-                <input
-                  type="text"
-                  value={form.fullName}
-                  onChange={(e) => updateField('fullName', e.target.value)}
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">Nom complet *</label>
+                <input type="text" value={form.fullName} onChange={(e) => updateField('fullName', e.target.value)}
                   placeholder="Mohamed Benali"
-                  className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-white placeholder:text-white/15 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all text-[14px]"
-                />
+                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition" />
               </div>
-
               <div>
-                <label className="block text-[11px] text-white/40 uppercase tracking-wider font-bold mb-2">
-                  Numéro de téléphone *
-                </label>
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">Numéro de téléphone *</label>
                 <div className="relative">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none">
-                    <span className="text-[14px]">🇩🇿</span>
-                    <span className="text-white/30 text-[13px] font-medium">+213</span>
-                    <div className="w-px h-4 bg-white/10 ml-1" />
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none">
+                    <span className="text-sm">🇩🇿</span>
+                    <span className="text-gray-400 text-xs font-medium">+213</span>
+                    <div className="w-px h-4 bg-gray-200 ml-0.5" />
                   </div>
-                  <input
-                    type="tel"
-                    value={form.phone}
-                    onChange={(e) => updateField('phone', formatPhone(e.target.value))}
-                    placeholder="0555 12 34 56"
-                    maxLength={14}
-                    className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl pl-[110px] pr-4 py-3 text-white placeholder:text-white/15 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all text-[14px]"
-                  />
+                  <input type="tel" value={form.phone} onChange={(e) => updateField('phone', formatPhone(e.target.value))}
+                    placeholder="0555 12 34 56" maxLength={14}
+                    className="w-full pl-[100px] pr-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition" />
                 </div>
-                <p className="text-[10px] text-white/15 mt-1.5 ml-1">
-                  Format : 05XX XX XX XX ou 06XX XX XX XX
-                </p>
+                <p className="text-[10px] text-gray-400 mt-1 ml-1">Format : 05XX XX XX XX ou 06XX XX XX XX</p>
               </div>
             </div>
           )}
 
-          {/* ─── STEP 2 : Commerce ─── */}
           {step === 2 && (
-            <div className="space-y-5">
+            <div className="space-y-4">
               <div>
-                <label className="block text-[11px] text-white/40 uppercase tracking-wider font-bold mb-2">
-                  Nom du commerce *
-                </label>
-                <input
-                  type="text"
-                  value={form.businessName}
-                  onChange={(e) => updateField('businessName', e.target.value)}
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">Nom du commerce *</label>
+                <input type="text" value={form.businessName} onChange={(e) => updateField('businessName', e.target.value)}
                   placeholder="Café du Port"
-                  className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-white placeholder:text-white/15 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all text-[14px]"
-                />
+                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition" />
               </div>
-
               <div>
-                <label className="block text-[11px] text-white/40 uppercase tracking-wider font-bold mb-2">
-                  Type de commerce *
-                </label>
-                <div className="grid grid-cols-2 gap-2 max-h-[280px] overflow-y-auto pr-1 custom-scrollbar">
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">Type de commerce *</label>
+                <div className="grid grid-cols-2 gap-1.5 max-h-[260px] overflow-y-auto pr-1">
                   {BUSINESS_TYPES.map((type) => (
-                    <button
-                      key={type.value}
-                      onClick={() => updateField('businessType', type.value)}
-                      className={`text-left px-3 py-2.5 rounded-xl border transition-all duration-300 text-[12px] ${
+                    <button key={type.value} type="button" onClick={() => updateField('businessType', type.value)}
+                      className={`text-left px-3 py-2.5 rounded-lg border transition-all text-xs ${
                         form.businessType === type.value
-                          ? 'bg-violet-500/15 border-violet-500/30 text-white'
-                          : 'bg-white/[0.02] border-white/[0.05] text-white/40 hover:bg-white/[0.04] hover:border-white/[0.1]'
-                      }`}
-                    >
-                      {type.label}
-                    </button>
+                          ? 'bg-blue-50 border-blue-300 text-blue-700 font-medium'
+                          : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                      }`}>{type.label}</button>
                   ))}
                 </div>
               </div>
-
               {form.businessType === 'autre' && (
                 <div>
-                  <label className="block text-[11px] text-white/40 uppercase tracking-wider font-bold mb-2">
-                    Précisez *
-                  </label>
-                  <input
-                    type="text"
-                    value={form.businessTypeOther}
-                    onChange={(e) => updateField('businessTypeOther', e.target.value)}
-                    placeholder="Ex: Librairie, Bijouterie..."
-                    className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-white placeholder:text-white/15 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all text-[14px]"
-                  />
+                  <label className="block text-xs font-medium text-gray-600 mb-1.5">Précisez *</label>
+                  <input type="text" value={form.businessTypeOther} onChange={(e) => updateField('businessTypeOther', e.target.value)}
+                    placeholder="Ex: Bijouterie, Opticien..."
+                    className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition" />
                 </div>
               )}
             </div>
           )}
 
-          {/* ─── STEP 3 : Adresse ─── */}
           {step === 3 && (
-            <div className="space-y-5">
+            <div className="space-y-4">
               <div>
-                <label className="block text-[11px] text-white/40 uppercase tracking-wider font-bold mb-2">
-                  Adresse du commerce *
-                </label>
-                <textarea
-                  value={form.businessAddress}
-                  onChange={(e) => updateField('businessAddress', e.target.value)}
-                  placeholder="Rue Didouche Mourad, n°45, Alger Centre"
-                  rows={3}
-                  className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-white placeholder:text-white/15 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all text-[14px] resize-none"
-                />
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">Adresse du commerce *</label>
+                <textarea value={form.businessAddress} onChange={(e) => updateField('businessAddress', e.target.value)}
+                  placeholder="Rue Didouche Mourad, n°45, Alger Centre" rows={3}
+                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition resize-none" />
               </div>
-
               <div>
-                <label className="block text-[11px] text-white/40 uppercase tracking-wider font-bold mb-2">
-                  Ville / Wilaya *
-                </label>
-                <div className="grid grid-cols-3 gap-1.5 max-h-[200px] overflow-y-auto pr-1 custom-scrollbar">
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">Ville / Wilaya *</label>
+                <div className="grid grid-cols-3 gap-1 max-h-[180px] overflow-y-auto pr-1">
                   {CITIES.map((city) => (
-                    <button
-                      key={city}
-                      onClick={() => updateField('city', city)}
-                      className={`px-2 py-2 rounded-lg border transition-all duration-300 text-[11px] font-medium ${
+                    <button key={city} type="button" onClick={() => updateField('city', city)}
+                      className={`px-2 py-2 rounded-lg border transition-all text-[11px] font-medium ${
                         form.city === city
-                          ? 'bg-violet-500/15 border-violet-500/30 text-white'
-                          : 'bg-white/[0.02] border-white/[0.05] text-white/30 hover:bg-white/[0.04] hover:text-white/50'
-                      }`}
-                    >
-                      {city}
-                    </button>
+                          ? 'bg-blue-50 border-blue-300 text-blue-700'
+                          : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'
+                      }`}>{city}</button>
                   ))}
                 </div>
               </div>
-
-              {/* Récap rapide */}
-              <div className="bg-white/[0.02] border border-white/[0.04] rounded-xl p-4 mt-4">
-                <p className="text-[10px] text-white/25 uppercase tracking-wider font-bold mb-2">Récapitulatif</p>
+              <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                <p className="text-[10px] text-gray-400 uppercase tracking-wider font-bold mb-2">Récapitulatif</p>
                 <div className="space-y-1.5">
                   {[
                     { l: '👤', v: form.fullName },
@@ -456,7 +364,7 @@ export default function CompleteProfilePage() {
                   ].map((r, i) => (
                     <div key={i} className="flex items-center gap-2">
                       <span className="text-[10px]">{r.l}</span>
-                      <span className="text-[11px] text-white/50">{r.v || '—'}</span>
+                      <span className="text-xs text-gray-600">{r.v || '—'}</span>
                     </div>
                   ))}
                 </div>
@@ -464,38 +372,34 @@ export default function CompleteProfilePage() {
             </div>
           )}
 
-          {/* Error */}
           {error && (
-            <div className="mt-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20">
-              <p className="text-[12px] text-red-400 font-medium">{error}</p>
+            <div className="mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+              {error}
             </div>
           )}
 
-          {/* Buttons */}
           <div className="flex items-center justify-between mt-6">
             {step > 1 ? (
-              <button onClick={prevStep}
-                className="text-[13px] text-white/30 hover:text-white/60 transition-colors font-medium flex items-center gap-1">
+              <button type="button" onClick={prevStep}
+                className="text-sm text-gray-400 hover:text-gray-600 transition font-medium flex items-center gap-1">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
                 </svg>
                 Retour
               </button>
-            ) : (
-              <div />
-            )}
+            ) : <div />}
 
             {step < 3 ? (
-              <button onClick={nextStep}
-                className="px-6 py-2.5 bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white font-bold rounded-xl text-[13px] hover:opacity-90 transition-all shadow-lg shadow-violet-500/20 flex items-center gap-1">
+              <button type="button" onClick={nextStep}
+                className="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg text-sm hover:bg-blue-700 transition flex items-center gap-1">
                 Suivant
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                 </svg>
               </button>
             ) : (
-              <button onClick={handleSubmit} disabled={submitting}
-                className="px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold rounded-xl text-[13px] hover:opacity-90 transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+              <button type="button" onClick={handleSubmit} disabled={submitting}
+                className="px-6 py-2.5 bg-emerald-600 text-white font-medium rounded-lg text-sm hover:bg-emerald-700 transition disabled:opacity-50 flex items-center gap-2">
                 {submitting ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -514,24 +418,10 @@ export default function CompleteProfilePage() {
           </div>
         </div>
 
-        {/* Footer info */}
-        <p className="text-center text-[10px] text-white/10 mt-6">
+        <p className="text-center text-[10px] text-gray-300 mt-4">
           Vos données sont sécurisées et ne seront jamais partagées.
         </p>
       </div>
-
-      <style jsx>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 3px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(255,255,255,0.1);
-          border-radius: 10px;
-        }
-      `}</style>
     </div>
   )
 }
