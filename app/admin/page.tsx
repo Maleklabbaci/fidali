@@ -14,16 +14,14 @@ export default function AdminLoginPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
-
     try {
       const { loginAdmin } = await import('@/database/supabase-client')
       const result = await loginAdmin(email, password)
-
       if (result.success) {
         localStorage.setItem('admin', JSON.stringify(result.admin))
         router.push('/admin/dashboard')
       } else {
-        setError(result.error || 'Erreur de connexion')
+        setError(result.error || 'Identifiants incorrects')
       }
     } catch {
       setError('Erreur de connexion au serveur')
@@ -33,60 +31,47 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a1a] flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
-        <div className="bg-white/5 border border-white/10 backdrop-blur-xl rounded-3xl p-8">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-red-500/20 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4">
-              🛡️
-            </div>
-            <h1 className="text-2xl font-extrabold text-white">Admin Fidali</h1>
-            <p className="text-gray-500 mt-1">Accès réservé aux administrateurs</p>
-          </div>
+    <div className="min-h-screen bg-[#060608] flex items-center justify-center px-4">
+      <div className="w-full max-w-sm">
 
+        {/* Logo */}
+        <div className="text-center mb-10">
+          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center mx-auto mb-5">
+            <span className="text-black font-black text-lg">F</span>
+          </div>
+          <h1 className="text-xl font-bold text-white">Fidali Admin</h1>
+          <p className="text-sm text-white/30 mt-1">Accès réservé</p>
+        </div>
+
+        {/* Form */}
+        <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-7">
           {error && (
-            <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-xl mb-6 text-sm">
+            <div className="mb-5 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-400">
               {error}
             </div>
           )}
-
-          <form onSubmit={handleLogin} className="space-y-5">
+          <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-600 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none"
+              <label className="block text-xs text-white/30 mb-1.5">Email</label>
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
                 placeholder="admin@fidali.dz"
-              />
+                className="w-full px-4 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder-white/20 outline-none focus:border-white/20 transition" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">Mot de passe</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-600 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none"
+              <label className="block text-xs text-white/30 mb-1.5">Mot de passe</label>
+              <input type="password" value={password} onChange={e => setPassword(e.target.value)} required
                 placeholder="••••••••"
-              />
+                className="w-full px-4 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-lg text-sm text-white placeholder-white/20 outline-none focus:border-white/20 transition" />
             </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-xl font-bold text-lg hover:from-red-500 hover:to-rose-500 transition disabled:opacity-50"
-            >
-              {loading ? '⏳ Connexion...' : '🔐 Connexion Admin'}
+            <button type="submit" disabled={loading}
+              className="w-full py-2.5 bg-white text-black rounded-lg text-sm font-semibold hover:bg-white/90 transition disabled:opacity-40 mt-2">
+              {loading ? 'Connexion...' : 'Se connecter'}
             </button>
           </form>
+        </div>
 
-          <div className="mt-6 text-center">
-            <a href="/" className="text-gray-600 hover:text-gray-400 text-sm transition">
-              ← Retour au site
-            </a>
-          </div>
+        <div className="mt-5 text-center">
+          <a href="/" className="text-xs text-white/20 hover:text-white/40 transition">← Retour au site</a>
         </div>
       </div>
     </div>
