@@ -17,19 +17,47 @@ export default function LoginPage() {
     setError('')
 
     try {
-      const { loginMerchant } = await import('@/database/supabase-client')
+      const { loginMerchant, getMerchantProfile } = await import('@/database/supabase-client')
       const result = await loginMerchant(email, password)
 
       if (result.success) {
+        const merchant = result.merchant
+
+        // Stocker selon "rester connecté"
         if (rememberMe) {
-          localStorage.setItem('merchant', JSON.stringify(result.merchant))
+          localStorage.setItem('merchant', JSON.stringify(merchant))
           localStorage.setItem('fidali_remember', 'true')
         } else {
-          sessionStorage.setItem('merchant', JSON.stringify(result.merchant))
+          sessionStorage.setItem('merchant', JSON.stringify(merchant))
           localStorage.removeItem('fidali_remember')
           localStorage.removeItem('merchant')
         }
-        router.push('/dashboard')
+
+        // Vérifier si le profil commerçant est complété
+        try {
+          const profile = await getMerchantProfile(merchant.id)
+
+          if (!profile) {
+            // Pas de profil → compléter
+            router.push('/complete-profile')
+          } else if (profile.status === 'pending') {
+            // En attente de validation admin
+            router.push('/complete-profile')
+          } else if (profile.status === 'approved') {
+            // Approuvé → dashboard
+            router.push('/dashboard')
+          } else if (profile.status === 'rejected') {
+            // Refusé → peut refaire sa demande
+            router.push('/complete-profile')
+          } else {
+            router.push('/dashboard')
+          }
+        } catch (profileErr) {
+          // Si erreur en vérifiant le profil, envoyer vers complete-profile par sécurité
+          console.error('Erreur vérification profil:', profileErr)
+          router.push('/complete-profile')
+        }
+
       } else {
         setError(result.error || 'Erreur de connexion')
       }
@@ -44,7 +72,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-[#f8f9fb] flex items-center justify-center px-4">
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 w-full max-w-md">
         <div className="text-center mb-8">
-<img src="/logo.png" alt="Fidali" className="w-14 h-14 rounded-2xl object-contain mx-auto" />
+          <img src="/logo.png" alt="Fidali" className="w-14 h-14 rounded-2xl object-contain mx-auto" />
           <h1 className="text-xl font-bold text-gray-900">Connexion</h1>
           <p className="text-gray-400 text-sm mt-1">Connectez-vous à votre espace commerçant</p>
         </div>
