@@ -2,255 +2,172 @@
 
 import { useState, useEffect } from 'react'
 
+const STATUS_STYLE: any = {
+  active: 'bg-emerald-500/10 text-emerald-400',
+  pending: 'bg-amber-500/10 text-amber-400',
+  suspended: 'bg-red-500/10 text-red-400',
+}
+const PLAN_STYLE: any = {
+  starter: 'bg-white/[0.06] text-white/50',
+  pro: 'bg-blue-500/10 text-blue-400',
+  premium: 'bg-violet-500/10 text-violet-400',
+}
+
 export default function MerchantsPage() {
   const [merchants, setMerchants] = useState<any[]>([])
   const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState<string>('all')
+  const [filter, setFilter] = useState('all')
   const [loading, setLoading] = useState(true)
-  const [selectedMerchant, setSelectedMerchant] = useState<any>(null)
+  const [selected, setSelected] = useState<any>(null)
 
-  useEffect(() => { loadMerchants() }, [])
+  useEffect(() => { load() }, [])
 
-  const loadMerchants = async () => {
+  const load = async () => {
     try {
       const { getAllMerchants } = await import('@/database/supabase-client')
       const data = await getAllMerchants()
       setMerchants(Array.isArray(data) ? data : [])
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
+    } catch (e) { console.error(e) }
+    finally { setLoading(false) }
   }
 
-  const handleAction = async (action: string, merchantId: string, plan?: string) => {
+  const action = async (type: string, id: string, plan?: string) => {
     const mod = await import('@/database/supabase-client')
-    switch (action) {
-      case 'approve': await mod.approveMerchant(merchantId); break
-      case 'suspend': await mod.suspendMerchant(merchantId); break
-      case 'delete':
-        if (confirm('⚠️ Supprimer ce commerçant ? Cette action est irréversible.')) {
-          await mod.deleteMerchant(merchantId)
-        }
-        break
-      case 'upgrade': await mod.changeMerchantPlan(merchantId, plan as any); break
-    }
-    loadMerchants()
-    setSelectedMerchant(null)
+    if (type === 'approve') await mod.approveMerchant(id)
+    if (type === 'suspend') await mod.suspendMerchant(id)
+    if (type === 'delete') { if (!confirm('Supprimer ce commerçant ?')) return; await mod.deleteMerchant(id) }
+    if (type === 'plan') await mod.changeMerchantPlan(id, plan as any)
+    load(); setSelected(null)
   }
 
-  const filteredMerchants = merchants.filter((m) => {
-    const matchSearch = !search || 
-      m.business_name?.toLowerCase().includes(search.toLowerCase()) ||
-      m.email?.toLowerCase().includes(search.toLowerCase()) ||
-      m.name?.toLowerCase().includes(search.toLowerCase())
-    const matchFilter = filter === 'all' || m.status === filter
-    return matchSearch && matchFilter
+  const filtered = merchants.filter(m => {
+    const s = !search || [m.business_name, m.email, m.name].some(v => v?.toLowerCase().includes(search.toLowerCase()))
+    const f = filter === 'all' || m.status === filter
+    return s && f
   })
 
-  const statusColors: Record<string, string> = {
-    active: 'bg-green-500/20 text-green-400',
-    pending: 'bg-amber-500/20 text-amber-400',
-    suspended: 'bg-red-500/20 text-red-400',
+  const counts = {
+    all: merchants.length,
+    active: merchants.filter(m => m.status === 'active').length,
+    pending: merchants.filter(m => m.status === 'pending').length,
+    suspended: merchants.filter(m => m.status === 'suspended').length,
   }
 
-  const planColors: Record<string, string> = {
-    starter: 'bg-gray-500/20 text-gray-400',
-    pro: 'bg-blue-500/20 text-blue-400',
-    premium: 'bg-purple-500/20 text-purple-400',
-  }
-
-  if (loading) {
-    return <div className="flex items-center justify-center h-64"><div className="text-4xl animate-spin">⏳</div></div>
-  }
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="w-5 h-5 border-2 border-white/10 border-t-white/60 rounded-full animate-spin" /></div>
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+      <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-extrabold">🏪 Commerçants</h2>
-          <p className="text-gray-500 text-sm">{merchants.length} commerçants au total</p>
+          <h1 className="text-2xl font-bold text-white">Commerçants</h1>
+          <p className="text-sm text-white/30 mt-0.5">{merchants.length} enregistrés</p>
         </div>
-        <div className="flex gap-3 w-full md:w-auto">
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="🔍 Rechercher..."
-            className="flex-1 md:w-64 px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-600 text-sm focus:ring-2 focus:ring-red-500 outline-none"
-          />
-          <select
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className="px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:ring-2 focus:ring-red-500 outline-none"
-          >
-            <option value="all" className="bg-gray-900">Tous</option>
-            <option value="active" className="bg-gray-900">Actifs</option>
-            <option value="pending" className="bg-gray-900">En attente</option>
-            <option value="suspended" className="bg-gray-900">Suspendus</option>
-          </select>
-        </div>
+        <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+          placeholder="Rechercher..." className="w-64 px-4 py-2 bg-white/[0.05] border border-white/[0.08] rounded-lg text-sm text-white placeholder-white/20 outline-none focus:border-white/20" />
       </div>
 
-      {/* Stats cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: 'Total', count: merchants.length, color: 'from-blue-500 to-cyan-500' },
-          { label: 'Actifs', count: merchants.filter(m => m.status === 'active').length, color: 'from-green-500 to-emerald-500' },
-          { label: 'En attente', count: merchants.filter(m => m.status === 'pending').length, color: 'from-amber-500 to-orange-500' },
-          { label: 'Suspendus', count: merchants.filter(m => m.status === 'suspended').length, color: 'from-red-500 to-rose-500' },
-        ].map((s, i) => (
-          <div key={i} className="bg-white/5 border border-white/5 rounded-xl p-4 text-center">
-            <div className={`text-3xl font-extrabold bg-gradient-to-r ${s.color} bg-clip-text text-transparent`}>{s.count}</div>
-            <div className="text-xs text-gray-500 mt-1">{s.label}</div>
-          </div>
+      {/* Filters */}
+      <div className="flex gap-1">
+        {[['all', 'Tous'], ['active', 'Actifs'], ['pending', 'En attente'], ['suspended', 'Suspendus']].map(([val, label]) => (
+          <button key={val} onClick={() => setFilter(val)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${filter === val ? 'bg-white text-black' : 'text-white/40 hover:text-white/70 hover:bg-white/[0.05]'}`}>
+            {label} <span className="ml-1 text-xs opacity-60">{(counts as any)[val]}</span>
+          </button>
         ))}
       </div>
 
       {/* Table */}
-      <div className="bg-white/5 border border-white/5 rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-white/5">
-                <th className="text-left px-6 py-4 text-xs font-bold text-gray-500 uppercase">Commerçant</th>
-                <th className="text-left px-6 py-4 text-xs font-bold text-gray-500 uppercase">Secteur</th>
-                <th className="text-left px-6 py-4 text-xs font-bold text-gray-500 uppercase">Plan</th>
-                <th className="text-left px-6 py-4 text-xs font-bold text-gray-500 uppercase">Statut</th>
-                <th className="text-left px-6 py-4 text-xs font-bold text-gray-500 uppercase">Inscription</th>
-                <th className="text-right px-6 py-4 text-xs font-bold text-gray-500 uppercase">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredMerchants.map((m: any) => (
-                <tr key={m.id} className="border-b border-white/5 hover:bg-white/5 transition">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-sm font-bold shrink-0">
-                        {(m.business_name || '?')[0].toUpperCase()}
-                      </div>
-                      <div>
-                        <p className="font-medium text-sm text-white">{m.business_name}</p>
-                        <p className="text-xs text-gray-500">{m.email}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-400">{m.sector || '—'}</td>
-                  <td className="px-6 py-4">
-                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${planColors[m.plan] || planColors.starter}`}>
-                      {m.plan || 'starter'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${statusColors[m.status] || statusColors.pending}`}>
-                      {m.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
-                    {new Date(m.created_at).toLocaleDateString('fr-FR')}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center justify-end gap-2">
-                      {m.status === 'pending' && (
-                        <button
-                          onClick={() => handleAction('approve', m.id)}
-                          className="px-3 py-1.5 bg-green-500/20 text-green-400 rounded-lg text-xs font-bold hover:bg-green-500/30 transition"
-                        >
-                          ✓ Valider
-                        </button>
-                      )}
-                      {m.status === 'active' && (
-                        <button
-                          onClick={() => handleAction('suspend', m.id)}
-                          className="px-3 py-1.5 bg-amber-500/20 text-amber-400 rounded-lg text-xs font-bold hover:bg-amber-500/30 transition"
-                        >
-                          ⏸ Suspendre
-                        </button>
-                      )}
-                      {m.status === 'suspended' && (
-                        <button
-                          onClick={() => handleAction('approve', m.id)}
-                          className="px-3 py-1.5 bg-green-500/20 text-green-400 rounded-lg text-xs font-bold hover:bg-green-500/30 transition"
-                        >
-                          ▶ Réactiver
-                        </button>
-                      )}
-                      <button
-                        onClick={() => setSelectedMerchant(m)}
-                        className="px-3 py-1.5 bg-white/10 text-gray-300 rounded-lg text-xs font-bold hover:bg-white/20 transition"
-                      >
-                        👁 Détails
-                      </button>
-                      <button
-                        onClick={() => handleAction('delete', m.id)}
-                        className="px-3 py-1.5 bg-red-500/10 text-red-400 rounded-lg text-xs font-bold hover:bg-red-500/20 transition"
-                      >
-                        🗑
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+      <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl overflow-hidden">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-white/[0.06]">
+              {['Commerçant', 'Secteur', 'Plan', 'Statut', 'Inscrit', ''].map((h, i) => (
+                <th key={i} className="text-left px-5 py-3 text-xs text-white/25 font-medium uppercase tracking-wider">{h}</th>
               ))}
-            </tbody>
-          </table>
-        </div>
-
-        {filteredMerchants.length === 0 && (
-          <div className="text-center py-12">
-            <div className="text-4xl mb-2">🔍</div>
-            <p className="text-gray-500">Aucun commerçant trouvé</p>
-          </div>
-        )}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/[0.04]">
+            {filtered.map((m: any) => (
+              <tr key={m.id} className="hover:bg-white/[0.02] transition">
+                <td className="px-5 py-3.5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-white/[0.08] rounded-lg flex items-center justify-center text-xs font-bold text-white/60 shrink-0">
+                      {(m.business_name || '?')[0].toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-white">{m.business_name}</p>
+                      <p className="text-xs text-white/30">{m.email}</p>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-5 py-3.5 text-sm text-white/40">{m.sector || '—'}</td>
+                <td className="px-5 py-3.5">
+                  <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${PLAN_STYLE[m.plan] || PLAN_STYLE.starter}`}>{m.plan || 'starter'}</span>
+                </td>
+                <td className="px-5 py-3.5">
+                  <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_STYLE[m.status] || STATUS_STYLE.pending}`}>{m.status}</span>
+                </td>
+                <td className="px-5 py-3.5 text-sm text-white/30">{new Date(m.created_at).toLocaleDateString('fr-FR')}</td>
+                <td className="px-5 py-3.5">
+                  <div className="flex items-center justify-end gap-2">
+                    {m.status === 'pending' && <button onClick={() => action('approve', m.id)} className="px-3 py-1.5 bg-emerald-500/15 text-emerald-400 rounded-lg text-xs hover:bg-emerald-500/25 transition">Valider</button>}
+                    {m.status === 'active' && <button onClick={() => action('suspend', m.id)} className="px-3 py-1.5 bg-amber-500/10 text-amber-400 rounded-lg text-xs hover:bg-amber-500/20 transition">Suspendre</button>}
+                    {m.status === 'suspended' && <button onClick={() => action('approve', m.id)} className="px-3 py-1.5 bg-emerald-500/15 text-emerald-400 rounded-lg text-xs hover:bg-emerald-500/25 transition">Réactiver</button>}
+                    <button onClick={() => setSelected(m)} className="px-3 py-1.5 bg-white/[0.06] text-white/50 rounded-lg text-xs hover:bg-white/10 transition">Détails</button>
+                    <button onClick={() => action('delete', m.id)} className="px-2 py-1.5 text-red-400/50 hover:text-red-400 hover:bg-red-500/10 rounded-lg text-xs transition">✕</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {filtered.length === 0 && <div className="py-16 text-center text-white/20 text-sm">Aucun commerçant trouvé</div>}
       </div>
 
       {/* Detail Modal */}
-      {selectedMerchant && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setSelectedMerchant(null)}>
-          <div className="bg-[#1a1a2e] border border-white/10 rounded-3xl p-8 max-w-lg w-full mx-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      {selected && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setSelected(null)}>
+          <div className="bg-[#111114] border border-white/10 rounded-2xl p-7 max-w-md w-full mx-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold">Détails commerçant</h3>
-              <button onClick={() => setSelectedMerchant(null)} className="text-gray-500 hover:text-white text-2xl">×</button>
+              <h3 className="text-lg font-semibold">Détails</h3>
+              <button onClick={() => setSelected(null)} className="text-white/30 hover:text-white/70 transition text-xl leading-none">×</button>
             </div>
-
             <div className="flex items-center gap-4 mb-6">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-2xl flex items-center justify-center text-2xl font-bold">
-                {(selectedMerchant.business_name || '?')[0].toUpperCase()}
+              <div className="w-12 h-12 bg-white/[0.08] rounded-xl flex items-center justify-center text-xl font-bold text-white/60">
+                {(selected.business_name || '?')[0].toUpperCase()}
               </div>
               <div>
-                <h4 className="text-lg font-bold">{selectedMerchant.business_name}</h4>
-                <p className="text-sm text-gray-500">{selectedMerchant.name}</p>
+                <p className="font-semibold text-white">{selected.business_name}</p>
+                <p className="text-sm text-white/40">{selected.name}</p>
               </div>
             </div>
-
             <div className="space-y-3 mb-6">
               {[
-                { label: 'Email', value: selectedMerchant.email },
-                { label: 'Téléphone', value: selectedMerchant.phone },
-                { label: 'Secteur', value: selectedMerchant.sector },
-                { label: 'Plan', value: selectedMerchant.plan },
-                { label: 'Statut', value: selectedMerchant.status },
-                { label: 'Inscrit le', value: new Date(selectedMerchant.created_at).toLocaleDateString('fr-FR') },
-                { label: 'Dernière connexion', value: selectedMerchant.last_login_at ? new Date(selectedMerchant.last_login_at).toLocaleDateString('fr-FR') : 'Jamais' },
-              ].map((item, i) => (
+                ['Email', selected.email],
+                ['Téléphone', selected.phone || '—'],
+                ['Secteur', selected.sector || '—'],
+                ['Plan', selected.plan],
+                ['Statut', selected.status],
+                ['Inscrit', new Date(selected.created_at).toLocaleDateString('fr-FR')],
+                ['Dernière connexion', selected.last_login_at ? new Date(selected.last_login_at).toLocaleDateString('fr-FR') : 'Jamais'],
+              ].map(([l, v], i) => (
                 <div key={i} className="flex justify-between text-sm">
-                  <span className="text-gray-500">{item.label}</span>
-                  <span className="text-white font-medium">{item.value || '—'}</span>
+                  <span className="text-white/30">{l}</span>
+                  <span className="text-white/80 font-medium">{v}</span>
                 </div>
               ))}
             </div>
-
-            <div className="grid grid-cols-3 gap-2">
-              <select
-                onChange={(e) => { if (e.target.value) handleAction('upgrade', selectedMerchant.id, e.target.value) }}
-                className="col-span-3 px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white text-sm outline-none"
-                defaultValue=""
-              >
-                <option value="" className="bg-gray-900">Changer le plan...</option>
-                <option value="starter" className="bg-gray-900">Starter</option>
-                <option value="pro" className="bg-gray-900">Pro</option>
-                <option value="premium" className="bg-gray-900">Premium</option>
-              </select>
+            <div className="space-y-2">
+              <p className="text-xs text-white/25 mb-2">Changer le plan</p>
+              <div className="grid grid-cols-3 gap-2">
+                {['starter', 'pro', 'premium'].map(p => (
+                  <button key={p} onClick={() => action('plan', selected.id, p)}
+                    className={`py-2 rounded-lg text-xs font-medium transition ${selected.plan === p ? 'bg-white text-black' : 'bg-white/[0.05] text-white/50 hover:bg-white/10'}`}>
+                    {p.charAt(0).toUpperCase() + p.slice(1)}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
