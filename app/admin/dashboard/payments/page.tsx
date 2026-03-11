@@ -12,7 +12,7 @@ export default function PaymentsPage() {
     try {
       const { getPendingPayments } = await import('@/database/supabase-client')
       const data = await getPendingPayments()
-      setPayments(data)
+      setPayments(Array.isArray(data) ? data : [])
     } catch (err) {
       console.error(err)
     } finally {
