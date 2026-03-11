@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import type { Locale } from '@/lib/i18n'
+import { translations } from '@/lib/i18n'
 
 export function LanguageSwitcher() {
   const [locale, setLocale] = useState<Locale>('fr')
@@ -24,11 +25,7 @@ export function LanguageSwitcher() {
       onClick={() => switchLocale(locale === 'fr' ? 'ar' : 'fr')}
       className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg transition text-sm font-medium"
     >
-      {locale === 'fr' ? (
-        <>🇩🇿 العربية</>
-      ) : (
-        <>🇫🇷 Français</>
-      )}
+      {locale === 'fr' ? '🇩🇿 العربية' : '🇫🇷 Français'}
     </button>
   )
 }
@@ -50,6 +47,9 @@ export function useLocale() {
 
 export function useTranslation() {
   const locale = useLocale()
-  const { translations } = require('@/lib/i18n')
-  return { t: translations[locale], locale, isRTL: locale === 'ar' }
+  return {
+    t: translations[locale],
+    locale,
+    isRTL: locale === 'ar'
+  }
 }
