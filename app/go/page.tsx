@@ -638,7 +638,7 @@ export default function GoPage() {
         </div>
       </section>
 
-      {/* ═══════ PRICING ═══════ */}
+ {/* ═══════ PRICING ═══════ */}
       <section
         id="pricing"
         ref={(el) => {
@@ -652,32 +652,36 @@ export default function GoPage() {
               💎 Tarifs — الأسعار
             </span>
             <h2 className="text-[clamp(2rem,4vw,3rem)] font-black tracking-tight mt-6 mb-3">
-              Un prix. Tout inclus.
+              Commencez gratuitement
             </h2>
-            <p className="text-gray-400 text-lg" dir="rtl">
-              سعر واحد. كلشي داخل.
+            <p className="text-gray-400 text-lg">
+              Pas d&apos;engagement. Évoluez quand vous êtes prêt.
             </p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-6 items-start">
-            {/* Free */}
-            <div className="bg-gray-50 rounded-3xl p-8 border border-gray-200">
-              <p className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-4">
-                Gratuit — مجاني
+            {/* Starter */}
+            <div className="bg-gray-50 rounded-3xl p-8 border border-gray-200 hover:shadow-xl transition-all duration-500 hover:-translate-y-1">
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">
+                Starter
               </p>
-              <div className="flex items-end gap-1 mb-6">
+              <p className="text-sm text-gray-500 mb-6">Pour découvrir</p>
+              <div className="flex items-end gap-1 mb-8">
                 <span className="text-5xl font-black">0</span>
-                <span className="text-gray-400 text-lg mb-1">DA/mois</span>
+                <span className="text-gray-400 text-base mb-1.5">DA</span>
+                <span className="text-gray-300 text-sm mb-1.5">/mois</span>
               </div>
-              <ul className="space-y-3 text-sm text-gray-600 mb-8">
+              <ul className="space-y-3.5 text-sm text-gray-600 mb-10">
                 {[
                   '1 carte de fidélité',
                   'Jusqu\'à 50 clients',
                   'QR Code',
                   'Dashboard basique',
                 ].map((f, i) => (
-                  <li key={i} className="flex items-center gap-2">
-                    <span className="text-emerald-500 text-xs">✓</span>
+                  <li key={i} className="flex items-center gap-2.5">
+                    <span className="w-5 h-5 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-emerald-600 text-[10px]">✓</span>
+                    </span>
                     {f}
                   </li>
                 ))}
@@ -686,33 +690,36 @@ export default function GoPage() {
                 onClick={() => router.push('/signup')}
                 className="w-full py-3.5 bg-white text-black font-bold rounded-xl border border-gray-200 hover:bg-gray-100 transition text-sm"
               >
-                Commencer gratuitement
+                Commencer
               </button>
             </div>
 
             {/* Pro */}
-            <div className="bg-black text-white rounded-3xl p-8 relative shadow-2xl shadow-black/20 scale-[1.02] border-2 border-indigo-500/30">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-indigo-600 text-white text-xs font-bold rounded-full">
-                الأكثر طلباً — Populaire
+            <div className="bg-black text-white rounded-3xl p-8 relative shadow-2xl shadow-black/20 md:scale-105 border-2 border-indigo-500/30 hover:shadow-3xl transition-all duration-500 hover:-translate-y-1">
+              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-5 py-1.5 bg-indigo-600 text-white text-[11px] font-bold rounded-full shadow-lg shadow-indigo-500/30">
+                ⭐ Populaire
               </div>
-              <p className="text-sm font-bold text-indigo-400 uppercase tracking-wide mb-4">
-                Pro — بروفيسيونال
+              <p className="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-1">
+                Pro
               </p>
-              <div className="flex items-end gap-1 mb-6">
-                <span className="text-5xl font-black">2,900</span>
-                <span className="text-white/40 text-lg mb-1">DA/mois</span>
+              <p className="text-sm text-white/50 mb-6">Commerces actifs</p>
+              <div className="flex items-end gap-1 mb-8">
+                <span className="text-5xl font-black">4 500</span>
+                <span className="text-white/40 text-base mb-1.5">DA</span>
+                <span className="text-white/25 text-sm mb-1.5">/mois</span>
               </div>
-              <ul className="space-y-3 text-sm text-white/70 mb-8">
+              <ul className="space-y-3.5 text-sm text-white/70 mb-10">
                 {[
-                  'Cartes illimitées',
+                  'Jusqu\'à 5 cartes',
                   'Clients illimités',
                   'Statistiques avancées',
-                  'Notifications SMS',
                   'Support prioritaire',
-                  'Personnalisation complète',
+                  'Personnalisation +',
                 ].map((f, i) => (
-                  <li key={i} className="flex items-center gap-2">
-                    <span className="text-indigo-400 text-xs">✓</span>
+                  <li key={i} className="flex items-center gap-2.5">
+                    <span className="w-5 h-5 bg-indigo-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-indigo-400 text-[10px]">✓</span>
+                    </span>
                     {f}
                   </li>
                 ))}
@@ -725,29 +732,35 @@ export default function GoPage() {
               </button>
             </div>
 
-            {/* Enterprise */}
-            <div className="bg-gray-50 rounded-3xl p-8 border border-gray-200">
-              <p className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-4">
-                Enterprise — مؤسسة
+            {/* Premium */}
+            <div className="bg-gray-50 rounded-3xl p-8 border border-gray-200 hover:shadow-xl transition-all duration-500 hover:-translate-y-1">
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">
+                Premium
               </p>
-              <div className="flex items-end gap-1 mb-6">
-                <span className="text-5xl font-black">Sur devis</span>
+              <p className="text-sm text-gray-500 mb-6">Entreprises</p>
+              <div className="flex items-end gap-1 mb-8">
+                <span className="text-5xl font-black">9 000</span>
+                <span className="text-gray-400 text-base mb-1.5">DA</span>
+                <span className="text-gray-300 text-sm mb-1.5">/mois</span>
               </div>
-              <ul className="space-y-3 text-sm text-gray-600 mb-8">
+              <ul className="space-y-3.5 text-sm text-gray-600 mb-10">
                 {[
-                  'Tout du plan Pro',
-                  'Multi-établissements',
+                  'Cartes illimitées',
+                  'Tout illimité',
                   'API & Intégrations',
-                  'Account Manager dédié',
+                  'Support dédié',
+                  'Multi-branches',
                 ].map((f, i) => (
-                  <li key={i} className="flex items-center gap-2">
-                    <span className="text-emerald-500 text-xs">✓</span>
+                  <li key={i} className="flex items-center gap-2.5">
+                    <span className="w-5 h-5 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-emerald-600 text-[10px]">✓</span>
+                    </span>
                     {f}
                   </li>
                 ))}
               </ul>
               <button className="w-full py-3.5 bg-white text-black font-bold rounded-xl border border-gray-200 hover:bg-gray-100 transition text-sm">
-                Nous contacter
+                Contacter
               </button>
             </div>
           </div>
