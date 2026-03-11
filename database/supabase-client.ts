@@ -46,7 +46,6 @@ function getSupabase(): SupabaseClient {
   return _supabase
 }
 
-// Export stable
 export const supabase = getSupabase()
 
 export function createServerClient() {
@@ -58,7 +57,7 @@ export function createServerClient() {
 }
 
 // ============================================
-// SAFE QUERY WRAPPER — Retry automatique
+// SAFE QUERY WRAPPER
 // ============================================
 
 // @ts-ignore
@@ -112,7 +111,6 @@ export async function loginMerchant(email: string, password: string) {
     if (merchant.status === 'pending') return { success: false as const, error: '⏳ Compte en attente de validation' }
     if (merchant.status === 'suspended') return { success: false as const, error: '🚫 Compte suspendu' }
 
-    // Update last login (non bloquant)
     supabase.from('merchants').update({ last_login_at: new Date().toISOString() }).eq('id', merchant.id).then(() => {})
 
     return { success: true as const, merchant, role: 'merchant' as const }
@@ -124,7 +122,6 @@ export async function loginMerchant(email: string, password: string) {
 
 export async function loginAdmin(email: string, password: string) {
   try {
-    // Méthode 1: Via RPC
     const { data: verified, error: rpcError } = await supabase.rpc('verify_admin_password', {
       p_email: email,
       p_password: password,
@@ -142,7 +139,6 @@ export async function loginAdmin(email: string, password: string) {
       }
     }
 
-    // Méthode 2: Fallback
     if (email === 'admin@fidali.dz' && password === 'admin123') {
       return {
         success: true as const,
@@ -198,6 +194,197 @@ export async function logout() {
   try {
     await supabase.auth.signOut()
   } catch {}
+}
+
+// ============================================
+// MERCHANT PROFILE — Complétion après signup
+// ============================================
+
+export async function getMerchantProfile(merchantId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('merchant_profiles')
+      .select('*')
+      .eq('merchant_id', merchantId)
+      .single()
+
+    if (error) {
+      // PGRST116 = row not found → pas de profil
+      if (error.code === 'PGRST116') return null
+      console.warn('getMerchantProfile error:', error.message)
+      return null
+    }
+
+    return data
+  } catch (err) {
+    console.error('getMerchantProfile error:', err)
+    return null
+  }
+}
+
+export async function createMerchantProfile(profile: {
+  merchant_id: string
+  email: string
+  full_name: string
+  phone: string
+  business_name: string
+  business_type: string
+  business_type_label: string
+  business_address: string
+  city: string
+}) {
+  try {
+    // Upsert dans merchant_profiles
+    const { data, error } = await supabase
+      .from('merchant_profiles')
+      .upsert(
+        {
+          ...profile,
+          status: 'pending',
+          created_at: new Date().toISOString(),
+        },
+        { onConflict: 'merchant_id' }
+      )
+      .select()
+      .single()
+
+    if (error) {
+      console.error('createMerchantProfile error:', error)
+      return { success: false as const, error: error.message }
+    }
+
+    // Aussi créer dans admin_requests pour notifier l'admin
+    const { error: reqError } = await supabase
+      .from('admin_requests')
+      .upsert(
+        {
+          merchant_id: profile.merchant_id,
+          email: profile.email,
+          full_name: profile.full_name,
+          phone: profile.phone,
+          business_name: profile.business_name,
+          business_type: profile.business_type,
+          business_type_label: profile.business_type_label,
+          business_address: profile.business_address,
+          city: profile.city,
+          type: 'new_merchant',
+          status: 'pending',
+          is_read: false,
+          created_at: new Date().toISOString(),
+        },
+        { onConflict: 'merchant_id' }
+      )
+
+    if (reqError) {
+      console.warn('admin_requests insert warning:', reqError.message)
+      // Non bloquant — le profil est quand même créé
+    }
+
+    return { success: true as const, profile: data }
+  } catch (err: any) {
+    console.error('createMerchantProfile error:', err)
+    return { success: false as const, error: err.message || 'Erreur inconnue' }
+  }
+}
+
+// Admin: Approuver / Refuser un profil commerçant
+export async function approveProfileRequest(merchantId: string) {
+  try {
+    // Mettre à jour merchant_profiles
+    await supabase
+      .from('merchant_profiles')
+      .update({
+        status: 'approved',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('merchant_id', merchantId)
+
+    // Mettre à jour admin_requests
+    await supabase
+      .from('admin_requests')
+      .update({
+        status: 'approved',
+        is_read: true,
+        processed_at: new Date().toISOString(),
+      })
+      .eq('merchant_id', merchantId)
+
+    // Aussi activer le merchant principal
+    await supabase
+      .from('merchants')
+      .update({
+        status: 'active',
+        validated_at: new Date().toISOString(),
+      })
+      .eq('id', merchantId)
+
+    return { success: true as const }
+  } catch (err: any) {
+    console.error('approveProfileRequest error:', err)
+    return { success: false as const, error: err.message }
+  }
+}
+
+export async function rejectProfileRequest(merchantId: string) {
+  try {
+    await supabase
+      .from('merchant_profiles')
+      .update({
+        status: 'rejected',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('merchant_id', merchantId)
+
+    await supabase
+      .from('admin_requests')
+      .update({
+        status: 'rejected',
+        is_read: true,
+        processed_at: new Date().toISOString(),
+      })
+      .eq('merchant_id', merchantId)
+
+    return { success: true as const }
+  } catch (err: any) {
+    console.error('rejectProfileRequest error:', err)
+    return { success: false as const, error: err.message }
+  }
+}
+
+export async function getAdminRequests(filter?: 'pending' | 'approved' | 'rejected' | 'all') {
+  try {
+    let query = supabase
+      .from('admin_requests')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (filter && filter !== 'all') {
+      query = query.eq('status', filter)
+    }
+
+    const { data, error } = await query
+
+    if (error) {
+      console.error('getAdminRequests error:', error)
+      return []
+    }
+
+    return data || []
+  } catch (err) {
+    console.error('getAdminRequests error:', err)
+    return []
+  }
+}
+
+export async function markRequestAsRead(merchantId: string) {
+  try {
+    await supabase
+      .from('admin_requests')
+      .update({ is_read: true })
+      .eq('merchant_id', merchantId)
+  } catch (err) {
+    console.error('markRequestAsRead error:', err)
+  }
 }
 
 // ============================================
@@ -319,7 +506,6 @@ export async function createPendingPresence(data: {
   clientPhone: string
 }) {
   try {
-    // Expirer les anciennes présences pending
     await supabase
       .from('pending_presences')
       .update({ status: 'expired', resolved_at: new Date().toISOString() })
@@ -549,7 +735,7 @@ export async function rejectPayment(paymentId: string) {
 }
 
 // ============================================
-// REALTIME — Noms de channels UNIQUES
+// REALTIME
 // ============================================
 
 let _channelCounter = 0
@@ -595,7 +781,6 @@ export function subscribeToPresenceStatus(presenceId: string, callback: (status:
     .subscribe()
 }
 
-// Channel pour le dashboard complet
 export function subscribeToDashboard(merchantId: string, callback: () => void) {
   return supabase
     .channel(uniqueChannel('dashboard'))
@@ -606,17 +791,16 @@ export function subscribeToDashboard(merchantId: string, callback: () => void) {
     .subscribe()
 }
 
-// Channel pour l'admin
 export function subscribeToAdmin(callback: () => void) {
   return supabase
     .channel(uniqueChannel('admin'))
     .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => callback())
     .on('postgres_changes', { event: '*', schema: 'public', table: 'merchants' }, () => callback())
     .on('postgres_changes', { event: '*', schema: 'public', table: 'payment_requests' }, () => callback())
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_requests' }, () => callback())
     .subscribe()
 }
 
-// Cleanup
 export function removeChannel(channel: any) {
   try {
     supabase.removeChannel(channel)
