@@ -296,7 +296,7 @@ export default function DashboardPage() {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white font-bold mx-auto mb-4 animate-pulse">F</div>
+<img src="/logo.png" alt="Fidali" className="w-12 h-12 rounded-2xl mx-auto mb-4 animate-pulse object-contain" />
           <div className="w-8 h-8 border-[3px] border-indigo-100 border-t-indigo-600 rounded-full animate-spin mx-auto mb-3" />
           <p className="text-slate-400 text-sm">Chargement...</p>
         </div>
