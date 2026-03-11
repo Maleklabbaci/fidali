@@ -2,10 +2,14 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Fidali — Carte de fidélité digitale',
-  description: 'Créez votre programme de fidélité digital en Algérie',
+export const metadata = {
+  title: 'Fidali',
+  description: 'Cartes de fidélité digitales',
+  icons: {
+    icon: '/logo.png',
+    apple: '/logo.png',
+  },
 }
-
 export default function RootLayout({
   children,
 }: {
