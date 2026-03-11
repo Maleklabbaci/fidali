@@ -618,4 +618,5 @@ export default function Home() {
       <style jsx global>{`html { scroll-behavior: smooth; } ::selection { background: rgba(59,130,246,0.15); }`}</style>
     </div>
   )
+  )
 }
