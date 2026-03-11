@@ -181,7 +181,11 @@ export default function ScanPage() {
         // Log activité
         await supabase.from('activities').insert({
           merchant_id: card.merchant_id,
+          card_id: card.id,
+          client_id: client.id,
+          client_card_id: newCC.id,
           type: 'join',
+          points_amount: 0,
           description: `👋 ${name.trim()} a rejoint ${card.business_name}`,
         })
       }
