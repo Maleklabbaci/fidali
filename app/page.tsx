@@ -3,136 +3,143 @@
 import { useRouter } from 'next/navigation'
 import { useState, useEffect, useRef, useCallback } from 'react'
 
-// ========== 3D CARD COMPONENT ==========
-function Card3D() {
+// ========== 3D CARD ==========
+function HeroCard() {
   const cardRef = useRef<HTMLDivElement>(null)
-  const [rotation, setRotation] = useState({ x: 0, y: 0 })
-  const [position, setPosition] = useState({ x: 0, y: 0 })
-  const [isHovered, setIsHovered] = useState(false)
+  const [rot, setRot] = useState({ x: 0, y: 0 })
+  const [pos, setPos] = useState({ x: 0, y: 0 })
+  const [hover, setHover] = useState(false)
   const [glare, setGlare] = useState({ x: 50, y: 50 })
+  const [points, setPoints] = useState(0)
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
+  // Animation des points
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setPoints((p) => (p >= 7 ? 7 : p + 1))
+    }, 800)
+    return () => clearInterval(timer)
+  }, [])
+
+  const handleMove = useCallback((e: MouseEvent) => {
     if (!cardRef.current) return
     const rect = cardRef.current.getBoundingClientRect()
-    const centerX = rect.left + rect.width / 2
-    const centerY = rect.top + rect.height / 2
-    const rotateX = ((e.clientY - centerY) / (rect.height / 2)) * -15
-    const rotateY = ((e.clientX - centerX) / (rect.width / 2)) * 15
-    const moveX = ((e.clientX - centerX) / (rect.width / 2)) * 10
-    const moveY = ((e.clientY - centerY) / (rect.height / 2)) * 10
-    const glareX = ((e.clientX - rect.left) / rect.width) * 100
-    const glareY = ((e.clientY - rect.top) / rect.height) * 100
-
-    setRotation({ x: rotateX, y: rotateY })
-    setPosition({ x: moveX, y: moveY })
-    setGlare({ x: glareX, y: glareY })
+    const cx = rect.left + rect.width / 2
+    const cy = rect.top + rect.height / 2
+    setRot({
+      x: ((e.clientY - cy) / (rect.height / 2)) * -12,
+      y: ((e.clientX - cx) / (rect.width / 2)) * 12,
+    })
+    setPos({
+      x: ((e.clientX - cx) / (rect.width / 2)) * 8,
+      y: ((e.clientY - cy) / (rect.height / 2)) * 8,
+    })
+    setGlare({
+      x: ((e.clientX - rect.left) / rect.width) * 100,
+      y: ((e.clientY - rect.top) / rect.height) * 100,
+    })
   }, [])
 
   useEffect(() => {
-    window.addEventListener('mousemove', handleMouseMove)
-    return () => window.removeEventListener('mousemove', handleMouseMove)
-  }, [handleMouseMove])
+    window.addEventListener('mousemove', handleMove)
+    return () => window.removeEventListener('mousemove', handleMove)
+  }, [handleMove])
 
   return (
-    <div className="perspective-[1500px] w-full flex justify-center" style={{ perspective: '1500px' }}>
+    <div style={{ perspective: '1200px' }} className="w-full flex justify-center lg:justify-end">
       <div
         ref={cardRef}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => { setIsHovered(false); setRotation({ x: 0, y: 0 }); setPosition({ x: 0, y: 0 }) }}
-        className="relative w-[380px] h-[240px] rounded-3xl cursor-pointer transition-all duration-200 ease-out"
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => { setHover(false); setRot({ x: 0, y: 0 }); setPos({ x: 0, y: 0 }) }}
+        className="relative cursor-pointer"
         style={{
-          transform: `
-            rotateX(${rotation.x}deg) 
-            rotateY(${rotation.y}deg) 
-            translateX(${position.x}px) 
-            translateY(${position.y}px)
-            scale(${isHovered ? 1.05 : 1})
-          `,
+          width: '420px',
+          height: '260px',
+          transform: `rotateX(${rot.x}deg) rotateY(${rot.y}deg) translateX(${pos.x}px) translateY(${pos.y}px) scale(${hover ? 1.03 : 1})`,
           transformStyle: 'preserve-3d',
+          transition: hover ? 'transform 0.1s ease-out' : 'transform 0.5s ease-out',
         }}
       >
-        {/* Card Background */}
-        <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 shadow-2xl overflow-hidden">
-          {/* Glare effect */}
-          <div
-            className="absolute inset-0 opacity-30 transition-opacity duration-300"
+        {/* Card body */}
+        <div className="absolute inset-0 rounded-[24px] overflow-hidden shadow-2xl"
+          style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #2d5a87 40%, #1a4a72 100%)' }}
+        >
+          {/* Glare */}
+          <div className="absolute inset-0 transition-opacity duration-200"
             style={{
-              background: `radial-gradient(circle at ${glare.x}% ${glare.y}%, rgba(255,255,255,0.8) 0%, transparent 60%)`,
-              opacity: isHovered ? 0.4 : 0,
+              background: `radial-gradient(circle at ${glare.x}% ${glare.y}%, rgba(255,255,255,0.25) 0%, transparent 55%)`,
+              opacity: hover ? 0.6 : 0,
             }}
           />
 
-          {/* Holographic pattern */}
-          <div
-            className="absolute inset-0 opacity-20"
+          {/* Holographic stripe */}
+          <div className="absolute inset-0 opacity-[0.08]"
             style={{
-              backgroundImage: `
-                linear-gradient(${rotation.y * 2}deg, 
-                  transparent 0%, 
-                  rgba(255,255,255,0.1) 25%, 
-                  rgba(255,255,255,0.3) 50%, 
-                  rgba(255,255,255,0.1) 75%, 
-                  transparent 100%
-                )
-              `,
+              backgroundImage: `linear-gradient(${rot.y * 3}deg, transparent 0%, rgba(255,255,255,0.3) 45%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0.3) 55%, transparent 100%)`,
             }}
           />
 
-          {/* Card content */}
-          <div className="relative z-10 p-7 h-full flex flex-col justify-between text-white">
+          {/* Subtle pattern */}
+          <div className="absolute inset-0 opacity-[0.04]"
+            style={{
+              backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(255,255,255,0.3) 1px, transparent 0)',
+              backgroundSize: '24px 24px',
+            }}
+          />
+
+          {/* Content */}
+          <div className="relative z-10 p-8 h-full flex flex-col justify-between text-white">
             <div className="flex items-start justify-between">
               <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-2xl" style={{ transform: 'translateZ(30px)' }}>☕</span>
-                  <h3 className="text-xl font-extrabold tracking-wide">Café El Baraka</h3>
+                <div className="flex items-center gap-2.5 mb-1">
+                  <div className="w-8 h-8 bg-white/15 rounded-lg flex items-center justify-center text-base backdrop-blur-sm">
+                    ☕
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold tracking-wide">Café El Baraka</h3>
+                    <p className="text-[11px] text-white/50 font-medium tracking-wider uppercase">Carte de fidélité</p>
+                  </div>
                 </div>
-                <p className="text-sm text-white/70">Carte de fidélité digitale</p>
               </div>
-              <div className="bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-bold">
-                ⭐ VIP
+              <div className="bg-white/10 backdrop-blur-sm border border-white/10 px-3 py-1.5 rounded-full">
+                <span className="text-xs font-semibold text-white/90">{points}/10</span>
               </div>
             </div>
 
-            {/* Points progress */}
             <div>
-              <div className="flex justify-between text-sm mb-2">
-                <span className="font-medium">Points de fidélité</span>
-                <span className="font-bold">7/10</span>
-              </div>
-              <div className="flex gap-1.5">
+              <div className="flex gap-[6px] mb-3">
                 {Array.from({ length: 10 }).map((_, i) => (
                   <div
                     key={i}
-                    className="flex-1 h-3 rounded-full transition-all duration-500"
+                    className="flex-1 h-[10px] rounded-full transition-all duration-500"
                     style={{
-                      background: i < 7
-                        ? `linear-gradient(135deg, #fff ${100 - i * 10}%, rgba(255,255,255,0.7))`
-                        : 'rgba(255,255,255,0.15)',
-                      boxShadow: i < 7 ? '0 0 8px rgba(255,255,255,0.3)' : 'none',
-                      transitionDelay: `${i * 50}ms`,
+                      background: i < points
+                        ? 'linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,255,255,0.7))'
+                        : 'rgba(255,255,255,0.1)',
+                      boxShadow: i < points ? '0 0 12px rgba(255,255,255,0.2)' : 'none',
+                      transitionDelay: `${i * 60}ms`,
                     }}
                   />
                 ))}
               </div>
-              <div className="flex justify-between mt-3">
-                <p className="text-sm text-white/80">🎁 10ème café offert !</p>
-                <p className="text-xs text-white/50">N° 4821</p>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-white/60 font-medium">10ème café offert</p>
+                <p className="text-[11px] text-white/30 font-mono">N° 4821</p>
               </div>
             </div>
           </div>
 
-          {/* Decorative circles */}
-          <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-xl" />
-          <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-white/10 rounded-full blur-xl" />
+          {/* Corner decorations */}
+          <div className="absolute -top-12 -right-12 w-36 h-36 bg-white/[0.04] rounded-full" />
+          <div className="absolute -bottom-8 -left-8 w-28 h-28 bg-white/[0.04] rounded-full" />
         </div>
 
-        {/* 3D Shadow */}
-        <div
-          className="absolute -bottom-4 left-[10%] right-[10%] h-8 rounded-full blur-2xl transition-all duration-200"
+        {/* Shadow */}
+        <div className="absolute -bottom-6 left-[8%] right-[8%] h-10 rounded-full blur-2xl"
           style={{
-            background: 'rgba(99, 102, 241, 0.4)',
-            transform: `translateX(${position.x * 0.5}px) scaleX(${isHovered ? 0.9 : 0.8})`,
-            opacity: isHovered ? 0.6 : 0.3,
+            background: 'rgba(30, 58, 95, 0.35)',
+            transform: `translateX(${pos.x * 0.4}px) scaleX(${hover ? 0.92 : 0.85})`,
+            opacity: hover ? 0.5 : 0.3,
+            transition: 'all 0.3s ease-out',
           }}
         />
       </div>
@@ -140,271 +147,248 @@ function Card3D() {
   )
 }
 
-// ========== FLOATING PARTICLES ==========
-function FloatingParticles() {
-  const particles = [
-    { emoji: '⭐', size: 'text-2xl', left: '10%', delay: '0s', duration: '6s' },
-    { emoji: '💳', size: 'text-3xl', left: '20%', delay: '1s', duration: '8s' },
-    { emoji: '🎁', size: 'text-2xl', left: '35%', delay: '2s', duration: '7s' },
-    { emoji: '✨', size: 'text-xl', left: '50%', delay: '0.5s', duration: '5s' },
-    { emoji: '🏪', size: 'text-2xl', left: '65%', delay: '3s', duration: '9s' },
-    { emoji: '📱', size: 'text-xl', left: '75%', delay: '1.5s', duration: '6s' },
-    { emoji: '🎯', size: 'text-2xl', left: '85%', delay: '2.5s', duration: '7s' },
-    { emoji: '💎', size: 'text-xl', left: '90%', delay: '0.8s', duration: '8s' },
-  ]
-
-  return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {particles.map((p, i) => (
-        <div
-          key={i}
-          className={`absolute ${p.size} opacity-20 animate-float`}
-          style={{
-            left: p.left,
-            animation: `float ${p.duration} ease-in-out infinite`,
-            animationDelay: p.delay,
-          }}
-        >
-          {p.emoji}
-        </div>
-      ))}
-    </div>
-  )
-}
-
-// ========== MOUSE FOLLOWER ==========
-function MouseFollower() {
-  const [pos, setPos] = useState({ x: 0, y: 0 })
-  const [visible, setVisible] = useState(false)
-
-  useEffect(() => {
-    const handleMove = (e: MouseEvent) => {
-      setPos({ x: e.clientX, y: e.clientY })
-      setVisible(true)
-    }
-    const handleLeave = () => setVisible(false)
-
-    window.addEventListener('mousemove', handleMove)
-    document.addEventListener('mouseleave', handleLeave)
-    return () => {
-      window.removeEventListener('mousemove', handleMove)
-      document.removeEventListener('mouseleave', handleLeave)
-    }
-  }, [])
-
-  return (
-    <>
-      {/* Outer glow */}
-      <div
-        className="fixed pointer-events-none z-50 mix-blend-screen transition-opacity duration-300"
-        style={{
-          left: pos.x - 150,
-          top: pos.y - 150,
-          width: 300,
-          height: 300,
-          background: 'radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%)',
-          opacity: visible ? 1 : 0,
-        }}
-      />
-      {/* Inner dot */}
-      <div
-        className="fixed pointer-events-none z-50 rounded-full transition-all duration-150 ease-out"
-        style={{
-          left: pos.x - 6,
-          top: pos.y - 6,
-          width: 12,
-          height: 12,
-          background: 'rgba(99, 102, 241, 0.5)',
-          boxShadow: '0 0 20px rgba(99, 102, 241, 0.3)',
-          opacity: visible ? 1 : 0,
-        }}
-      />
-    </>
-  )
-}
-
-// ========== ANIMATED COUNTER ==========
-function AnimatedCounter({ target, suffix = '' }: { target: number; suffix?: string }) {
-  const [count, setCount] = useState(0)
-  const ref = useRef<HTMLDivElement>(null)
+// ========== ANIMATED NUMBER ==========
+function AnimNum({ target, suffix = '' }: { target: number; suffix?: string }) {
+  const [val, setVal] = useState(0)
+  const ref = useRef<HTMLSpanElement>(null)
   const [started, setStarted] = useState(false)
 
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting && !started) setStarted(true) },
-      { threshold: 0.5 }
-    )
-    if (ref.current) observer.observe(ref.current)
-    return () => observer.disconnect()
-  }, [started])
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setStarted(true) }, { threshold: 0.5 })
+    if (ref.current) obs.observe(ref.current)
+    return () => obs.disconnect()
+  }, [])
 
   useEffect(() => {
     if (!started) return
-    const duration = 2000
-    const steps = 60
-    const increment = target / steps
-    let current = 0
+    let cur = 0
+    const inc = target / 50
     const timer = setInterval(() => {
-      current += increment
-      if (current >= target) { setCount(target); clearInterval(timer) }
-      else setCount(Math.floor(current))
-    }, duration / steps)
+      cur += inc
+      if (cur >= target) { setVal(target); clearInterval(timer) }
+      else setVal(Math.floor(cur))
+    }, 30)
     return () => clearInterval(timer)
   }, [started, target])
 
-  return <span ref={ref}>{count.toLocaleString()}{suffix}</span>
+  return <span ref={ref}>{val.toLocaleString()}{suffix}</span>
 }
-
-// ========== FEATURES ==========
-const FEATURES = [
-  { icon: '🎨', title: 'Carte personnalisée', desc: 'Couleurs, logo, récompense — votre carte à votre image.', color: 'from-pink-500 to-rose-500' },
-  { icon: '📲', title: 'QR Code intelligent', desc: 'Scannez, rejoignez, collectez. Simple comme bonjour.', color: 'from-blue-500 to-cyan-500' },
-  { icon: '⚡', title: 'Temps réel', desc: 'Validations instantanées, notifications en direct.', color: 'from-amber-500 to-orange-500' },
-  { icon: '📊', title: 'Analytics', desc: 'Suivez vos performances avec des stats détaillées.', color: 'from-green-500 to-emerald-500' },
-  { icon: '🎁', title: 'Récompenses auto', desc: 'Points max atteints = récompense débloquée automatiquement.', color: 'from-purple-500 to-violet-500' },
-  { icon: '🔒', title: 'Anti-fraude', desc: 'Validation par le commerçant uniquement. 100% sécurisé.', color: 'from-slate-600 to-gray-700' },
-]
-
-const TESTIMONIALS = [
-  { name: 'Karim B.', biz: 'Café El Yasmine', text: 'Mes clients reviennent 3x plus souvent. Fidali a tout changé !', avatar: '☕' },
-  { name: 'Amina R.', biz: 'Salon Bella', text: 'Interface magnifique. Je gère tout depuis mon téléphone.', avatar: '💇‍♀️' },
-  { name: 'Youcef M.', biz: 'Boulangerie Le Blé d\'Or', text: 'Fini les cartes papier perdues. C\'est le futur !', avatar: '🥖' },
-]
 
 // ========== MAIN PAGE ==========
 export default function Home() {
   const router = useRouter()
-  const [isVisible, setIsVisible] = useState(false)
+  const [visible, setVisible] = useState(false)
 
-  useEffect(() => { setIsVisible(true) }, [])
+  useEffect(() => { setVisible(true) }, [])
 
   return (
-    <div className="min-h-screen bg-[#0a0a1a] text-white overflow-hidden cursor-none md:cursor-none">
-      <MouseFollower />
+    <div className="min-h-screen bg-white text-gray-900 overflow-hidden">
 
       {/* ===== NAVBAR ===== */}
-      <nav className="fixed top-0 w-full z-40 bg-[#0a0a1a]/80 backdrop-blur-xl border-b border-white/5">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+      <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-xl border-b border-gray-100/80">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-2xl">🎯</span>
-            <span className="text-xl font-extrabold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">Fidali</span>
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
+              <span className="text-white text-sm font-bold">F</span>
+            </div>
+            <span className="text-lg font-bold text-gray-900">Fidali</span>
           </div>
+
           <div className="hidden md:flex items-center gap-8">
-            <a href="#features" className="text-sm text-gray-400 hover:text-white transition cursor-none">Fonctionnalités</a>
-            <a href="#how" className="text-sm text-gray-400 hover:text-white transition cursor-none">Comment ça marche</a>
-            <a href="#pricing" className="text-sm text-gray-400 hover:text-white transition cursor-none">Tarifs</a>
+            <a href="#features" className="text-sm text-gray-500 hover:text-gray-900 transition font-medium">Fonctionnalités</a>
+            <a href="#how" className="text-sm text-gray-500 hover:text-gray-900 transition font-medium">Fonctionnement</a>
+            <a href="#pricing" className="text-sm text-gray-500 hover:text-gray-900 transition font-medium">Tarifs</a>
           </div>
+
           <div className="flex items-center gap-3">
-            <button onClick={() => router.push('/login')} className="px-4 py-2 text-sm text-gray-300 hover:text-white transition cursor-none">
-              Connexion
+            <button onClick={() => router.push('/login')} className="text-sm font-medium text-gray-600 hover:text-gray-900 transition px-4 py-2">
+              Se connecter
             </button>
-            <button onClick={() => router.push('/signup')} className="px-5 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl hover:from-blue-500 hover:to-purple-500 transition shadow-lg shadow-purple-600/25 cursor-none">
-              Commencer gratuit
+            <button onClick={() => router.push('/signup')} className="text-sm font-semibold text-white bg-gray-900 hover:bg-gray-800 px-5 py-2.5 rounded-xl transition">
+              Commencer
             </button>
           </div>
         </div>
       </nav>
 
       {/* ===== HERO ===== */}
-      <section className="relative pt-32 pb-24 px-6 min-h-screen flex flex-col items-center justify-center">
-        <FloatingParticles />
+      <section className="relative pt-32 pb-24 px-6 overflow-hidden">
+        {/* Background elements */}
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-50 rounded-full blur-[120px] opacity-60 -z-10" />
+        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-indigo-50 rounded-full blur-[100px] opacity-40 -z-10" />
 
-        {/* Glowing orbs */}
-        <div className="absolute top-20 left-10 w-72 h-72 bg-blue-600/20 rounded-full blur-[120px]" />
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-600/20 rounded-full blur-[120px]" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[150px]" />
+        <div className="max-w-7xl mx-auto">
+          <div className={`grid lg:grid-cols-2 gap-16 items-center transition-all duration-1000 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+            {/* Left: Text */}
+            <div>
+              <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-1.5 rounded-full text-sm font-medium mb-8">
+                <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
+                Programme de fidélité digital
+              </div>
 
-        <div className={`relative z-10 max-w-6xl mx-auto transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 text-blue-300 px-5 py-2.5 rounded-full text-sm font-medium mb-8 backdrop-blur-sm">
-              <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-              Plateforme #1 de fidélité en Algérie
+              <h1 className="text-[3.5rem] lg:text-[4.2rem] font-extrabold leading-[1.05] tracking-tight text-gray-900 mb-6">
+                Fidélisez vos
+                <br />
+                clients,{' '}
+                <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                  simplement.
+                </span>
+              </h1>
+
+              <p className="text-lg text-gray-500 leading-relaxed mb-10 max-w-xl">
+                Remplacez les cartes papier par une solution digitale élégante.
+                Vos clients collectent des points en scannant un QR code.
+                Vous suivez tout depuis votre tableau de bord.
+              </p>
+
+              <div className="flex flex-col sm:flex-row gap-4 mb-12">
+                <button
+                  onClick={() => router.push('/signup')}
+                  className="group px-8 py-4 bg-gray-900 text-white rounded-2xl font-semibold text-base hover:bg-gray-800 transition-all shadow-xl shadow-gray-900/10 hover:shadow-gray-900/20"
+                >
+                  Créer mon programme
+                  <span className="inline-block ml-2 group-hover:translate-x-1 transition-transform">→</span>
+                </button>
+                <button
+                  onClick={() => router.push('/join')}
+                  className="px-8 py-4 bg-gray-50 text-gray-700 border border-gray-200 rounded-2xl font-semibold text-base hover:bg-gray-100 hover:border-gray-300 transition-all"
+                >
+                  Je suis client
+                </button>
+              </div>
+
+              {/* Social proof */}
+              <div className="flex items-center gap-6">
+                <div className="flex -space-x-2">
+                  {['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-amber-500'].map((c, i) => (
+                    <div key={i} className={`w-8 h-8 ${c} rounded-full border-2 border-white flex items-center justify-center text-white text-xs font-bold`}>
+                      {['K', 'A', 'Y', 'S'][i]}
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <div className="flex items-center gap-1 text-amber-500 text-sm">★★★★★</div>
+                  <p className="text-xs text-gray-400 mt-0.5">Utilisé par <strong className="text-gray-600">150+</strong> commerçants</p>
+                </div>
+              </div>
             </div>
 
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-extrabold mb-8 leading-[0.9]">
-              <span className="block text-white">La fidélité</span>
-              <span className="block mt-2 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-                réinventée.
-              </span>
-            </h1>
-
-            <p className="text-lg md:text-xl text-gray-400 mb-12 max-w-2xl mx-auto leading-relaxed">
-              Carte de fidélité <span className="text-white font-semibold">100% digitale</span>. 
-              Créez, partagez, fidélisez — en quelques clics. 
-              Vos clients n&apos;ont besoin que de leur téléphone.
-            </p>
-
-            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-20">
-              <button
-                onClick={() => router.push('/signup')}
-                className="group relative px-10 py-5 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl font-bold text-lg transition-all hover:shadow-2xl hover:shadow-purple-600/30 hover:-translate-y-1 overflow-hidden cursor-none"
-              >
-                <span className="relative z-10">Créer ma carte — C&apos;est gratuit →</span>
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 opacity-0 group-hover:opacity-100 transition" />
-              </button>
-              <button
-                onClick={() => router.push('/join')}
-                className="px-10 py-5 bg-white/5 border border-white/10 rounded-2xl font-bold text-lg hover:bg-white/10 transition backdrop-blur-sm cursor-none"
-              >
-                📱 Je suis client
-              </button>
+            {/* Right: 3D Card */}
+            <div className="hidden lg:block">
+              <HeroCard />
             </div>
           </div>
-
-          {/* 3D Card */}
-          <Card3D />
         </div>
+      </section>
 
-        {/* Scroll indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
-          <div className="w-6 h-10 border-2 border-white/20 rounded-full flex items-start justify-center p-1.5">
-            <div className="w-1.5 h-3 bg-white/40 rounded-full animate-pulse" />
+      {/* ===== LOGOS / TRUST ===== */}
+      <section className="py-12 px-6 border-y border-gray-100 bg-gray-50/50">
+        <div className="max-w-5xl mx-auto">
+          <p className="text-center text-xs text-gray-400 uppercase tracking-widest font-medium mb-8">Adapté à tous les secteurs</p>
+          <div className="flex justify-center items-center gap-12 flex-wrap">
+            {[
+              { emoji: '☕', label: 'Cafés' },
+              { emoji: '🍕', label: 'Restaurants' },
+              { emoji: '💇', label: 'Salons' },
+              { emoji: '🥖', label: 'Boulangeries' },
+              { emoji: '💊', label: 'Pharmacies' },
+              { emoji: '👕', label: 'Boutiques' },
+              { emoji: '🏋️', label: 'Sport' },
+            ].map((s, i) => (
+              <div key={i} className="flex items-center gap-2 text-gray-400 hover:text-gray-600 transition">
+                <span className="text-xl opacity-60">{s.emoji}</span>
+                <span className="text-sm font-medium">{s.label}</span>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* ===== STATS ===== */}
-      <section className="py-20 px-6 relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-blue-950/30 to-transparent" />
-        <div className="max-w-5xl mx-auto grid grid-cols-3 gap-8 relative z-10">
+      <section className="py-20 px-6">
+        <div className="max-w-5xl mx-auto grid grid-cols-3 gap-12">
           {[
-            { label: 'Commerçants actifs', value: 150, suffix: '+' },
-            { label: 'Cartes créées', value: 500, suffix: '+' },
-            { label: 'Clients fidélisés', value: 3000, suffix: '+' },
-          ].map((stat, i) => (
-            <div key={i} className="text-center group">
-              <div className="text-4xl md:text-6xl font-extrabold bg-gradient-to-r from-blue-300 to-purple-300 bg-clip-text text-transparent mb-2">
-                <AnimatedCounter target={stat.value} suffix={stat.suffix} />
+            { value: 150, suffix: '+', label: 'Commerçants actifs', sub: 'à travers l\'Algérie' },
+            { value: 3000, suffix: '+', label: 'Clients fidélisés', sub: 'et ça continue' },
+            { value: 98, suffix: '%', label: 'Satisfaction', sub: 'de nos utilisateurs' },
+          ].map((s, i) => (
+            <div key={i} className="text-center">
+              <div className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-2">
+                <AnimNum target={s.value} suffix={s.suffix} />
               </div>
-              <p className="text-sm text-gray-500 group-hover:text-gray-300 transition">{stat.label}</p>
+              <p className="text-sm font-medium text-gray-900">{s.label}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{s.sub}</p>
             </div>
           ))}
         </div>
       </section>
 
       {/* ===== FEATURES ===== */}
-      <section id="features" className="py-24 px-6">
+      <section id="features" className="py-24 px-6 bg-gray-50">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-extrabold mb-4">
-              Tout ce qu&apos;il faut pour
-              <span className="block bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                fidéliser vos clients
-              </span>
+          <div className="max-w-2xl mb-16">
+            <p className="text-sm font-semibold text-blue-600 mb-3">FONCTIONNALITÉS</p>
+            <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4">
+              Tout ce dont vous avez besoin pour fidéliser
             </h2>
+            <p className="text-lg text-gray-500">
+              Une plateforme complète, conçue pour les commerçants qui veulent passer au digital sans complexité.
+            </p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {FEATURES.map((f, i) => (
+            {[
+              {
+                icon: '🎨',
+                title: 'Carte personnalisable',
+                desc: 'Choisissez vos couleurs, votre récompense et vos règles de points. Votre carte, votre identité.',
+                tag: 'Design',
+              },
+              {
+                icon: '📱',
+                title: 'QR Code intelligent',
+                desc: 'Un simple scan suffit. Pas d\'application à installer. Fonctionne sur tous les téléphones.',
+                tag: 'Mobile',
+              },
+              {
+                icon: '✅',
+                title: 'Validation sécurisée',
+                desc: 'Chaque visite doit être confirmée par vous. Anti-fraude avec cooldown et limites quotidiennes.',
+                tag: 'Sécurité',
+              },
+              {
+                icon: '📊',
+                title: 'Tableau de bord',
+                desc: 'Suivez vos clients, points distribués et récompenses en temps réel depuis un dashboard clair.',
+                tag: 'Analytics',
+              },
+              {
+                icon: '🔔',
+                title: 'Notifications live',
+                desc: 'Recevez une alerte instantanée quand un client scanne votre QR code. Validez en un clic.',
+                tag: 'Temps réel',
+              },
+              {
+                icon: '🎁',
+                title: 'Récompenses automatiques',
+                desc: 'Quand un client atteint le maximum de points, la récompense se débloque automatiquement.',
+                tag: 'Automation',
+              },
+            ].map((f, i) => (
               <div
                 key={i}
-                className="group bg-white/5 border border-white/5 rounded-2xl p-8 hover:bg-white/10 hover:border-white/10 hover:-translate-y-2 transition-all duration-300"
+                className="group bg-white rounded-2xl p-7 border border-gray-100 hover:border-gray-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
               >
-                <div className={`w-14 h-14 bg-gradient-to-br ${f.color} rounded-2xl flex items-center justify-center text-2xl mb-5 group-hover:scale-110 group-hover:rotate-3 transition-transform`}>
-                  {f.icon}
+                <div className="flex items-center justify-between mb-5">
+                  <div className="w-12 h-12 bg-gray-50 group-hover:bg-blue-50 rounded-xl flex items-center justify-center text-2xl transition-colors">
+                    {f.icon}
+                  </div>
+                  <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider bg-gray-50 px-2.5 py-1 rounded-full">
+                    {f.tag}
+                  </span>
                 </div>
-                <h3 className="text-xl font-bold text-white mb-2">{f.title}</h3>
-                <p className="text-gray-400 leading-relaxed">{f.desc}</p>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">{f.title}</h3>
+                <p className="text-sm text-gray-500 leading-relaxed">{f.desc}</p>
               </div>
             ))}
           </div>
@@ -415,28 +399,122 @@ export default function Home() {
       <section id="how" className="py-24 px-6">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-extrabold mb-4">
-              Simple comme <span className="bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">1, 2, 3, 4</span>
+            <p className="text-sm font-semibold text-blue-600 mb-3">FONCTIONNEMENT</p>
+            <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4">
+              Opérationnel en 3 minutes
             </h2>
+            <p className="text-lg text-gray-500 max-w-xl mx-auto">
+              De l&apos;inscription à votre premier client fidélisé
+            </p>
           </div>
 
-          <div className="grid md:grid-cols-4 gap-6">
+          <div className="grid md:grid-cols-4 gap-8">
             {[
-              { n: '01', icon: '✍️', title: 'Inscrivez-vous', desc: 'Compte gratuit en 30 secondes' },
-              { n: '02', icon: '🎨', title: 'Créez votre carte', desc: 'Couleurs, points, récompense' },
-              { n: '03', icon: '📱', title: 'Partagez le QR', desc: 'Affichez-le dans votre commerce' },
-              { n: '04', icon: '🎉', title: 'Fidélisez !', desc: 'Points à chaque visite' },
+              { n: '01', title: 'Inscription', desc: 'Créez votre compte commerçant gratuitement.', icon: '✍️' },
+              { n: '02', title: 'Configuration', desc: 'Personnalisez votre carte et vos règles.', icon: '⚙️' },
+              { n: '03', title: 'Partage', desc: 'Affichez le QR code dans votre commerce.', icon: '📲' },
+              { n: '04', title: 'Fidélisation', desc: 'Vos clients gagnent des points à chaque visite.', icon: '🎯' },
             ].map((s, i) => (
-              <div key={i} className="relative text-center group">
-                {i < 3 && <div className="hidden md:block absolute top-8 left-[60%] w-[80%] h-px bg-gradient-to-r from-purple-500/50 to-transparent" />}
-                <div className="w-16 h-16 bg-white/10 border border-white/10 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4 group-hover:bg-white/20 group-hover:scale-110 transition-all relative z-10">
-                  {s.icon}
+              <div key={i} className="relative">
+                {i < 3 && (
+                  <div className="hidden md:block absolute top-10 left-[55%] w-[90%] h-px bg-gradient-to-r from-gray-200 to-transparent" />
+                )}
+                <div className="relative z-10">
+                  <div className="w-16 h-16 bg-white border-2 border-gray-100 rounded-2xl flex items-center justify-center text-2xl mb-4 shadow-sm">
+                    {s.icon}
+                  </div>
+                  <span className="text-xs font-bold text-blue-600 mb-1 block">{s.n}</span>
+                  <h3 className="text-base font-bold text-gray-900 mb-1">{s.title}</h3>
+                  <p className="text-sm text-gray-500">{s.desc}</p>
                 </div>
-                <div className="text-xs font-bold text-purple-400 mb-2">{s.n}</div>
-                <h3 className="text-lg font-bold mb-1">{s.title}</h3>
-                <p className="text-sm text-gray-500">{s.desc}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ===== FEATURE HIGHLIGHT ===== */}
+      <section className="py-24 px-6 bg-gray-50">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            {/* Left: Dashboard mockup */}
+            <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 space-y-4">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-3 h-3 rounded-full bg-red-400" />
+                <div className="w-3 h-3 rounded-full bg-yellow-400" />
+                <div className="w-3 h-3 rounded-full bg-green-400" />
+                <span className="text-xs text-gray-400 ml-2">dashboard.fidali.dz</span>
+              </div>
+              
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { label: 'Clients', value: '127', color: 'bg-blue-50 text-blue-700' },
+                  { label: 'Visites/j', value: '34', color: 'bg-green-50 text-green-700' },
+                  { label: 'Récompenses', value: '18', color: 'bg-purple-50 text-purple-700' },
+                ].map((k, i) => (
+                  <div key={i} className={`${k.color} rounded-xl p-3 text-center`}>
+                    <div className="text-xl font-extrabold">{k.value}</div>
+                    <div className="text-[10px] font-medium opacity-70">{k.label}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="space-y-2">
+                {[
+                  { name: 'Ahmed B.', pts: '8/10', pct: 80, time: '14:32' },
+                  { name: 'Sarah M.', pts: '5/10', pct: 50, time: '13:15' },
+                  { name: 'Youcef K.', pts: '10/10', pct: 100, time: '12:48' },
+                ].map((c, i) => (
+                  <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-xs text-white font-bold">
+                        {c.name[0]}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{c.name}</p>
+                        <p className="text-[10px] text-gray-400">{c.time}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full ${c.pct >= 100 ? 'bg-yellow-400' : 'bg-blue-500'}`} style={{ width: `${c.pct}%` }} />
+                      </div>
+                      <span className="text-xs font-bold text-gray-600 w-10 text-right">{c.pts}</span>
+                      {c.pct >= 100 && <span className="text-sm">🎁</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Right: Text */}
+            <div>
+              <p className="text-sm font-semibold text-blue-600 mb-3">TABLEAU DE BORD</p>
+              <h2 className="text-3xl font-extrabold text-gray-900 mb-4">
+                Tout sous contrôle, en temps réel
+              </h2>
+              <p className="text-gray-500 leading-relaxed mb-8">
+                Suivez chaque visite, chaque point distribué et chaque récompense depuis un dashboard intuitif. Recevez des notifications instantanées quand un client scanne votre QR code.
+              </p>
+
+              <div className="space-y-4">
+                {[
+                  { icon: '📊', title: 'Statistiques détaillées', desc: 'Visites, points, récompenses — tout en un coup d\'œil.' },
+                  { icon: '🔔', title: 'Alertes en temps réel', desc: 'Notification instantanée à chaque scan client.' },
+                  { icon: '🎁', title: 'Gestion des récompenses', desc: 'Un clic pour valider une visite ou offrir la récompense.' },
+                ].map((f, i) => (
+                  <div key={i} className="flex gap-4 p-4 rounded-xl hover:bg-white hover:shadow-sm transition-all">
+                    <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-xl shrink-0">
+                      {f.icon}
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-gray-900">{f.title}</h4>
+                      <p className="text-sm text-gray-500">{f.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -445,47 +523,86 @@ export default function Home() {
       <section id="pricing" className="py-24 px-6">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-extrabold mb-4">Tarifs <span className="bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">transparents</span></h2>
+            <p className="text-sm font-semibold text-blue-600 mb-3">TARIFS</p>
+            <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4">
+              Commencez gratuitement
+            </h2>
+            <p className="text-lg text-gray-500">
+              Pas d&apos;engagement. Évoluez quand vous êtes prêt.
+            </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-3 gap-6">
             {[
-              { plan: 'Starter', price: '0', period: 'Gratuit', features: ['1 carte', '50 clients', 'QR Code', 'Stats basiques'], hl: false },
-              { plan: 'Pro', price: '4 500', period: 'DA/mois', features: ['5 cartes', 'Clients illimités', 'Stats avancées', 'Support prioritaire', 'Personnalisation+'], hl: true, badge: '⭐ Populaire' },
-              { plan: 'Premium', price: '9 000', period: 'DA/mois', features: ['Cartes illimitées', 'Tout illimité', 'API', 'Support dédié', 'Multi-branches'], hl: false },
+              {
+                plan: 'Starter',
+                price: '0',
+                period: 'Gratuit',
+                desc: 'Pour découvrir',
+                features: ['1 carte de fidélité', '50 clients', 'QR Code', 'Dashboard basique'],
+                cta: 'Commencer',
+                highlight: false,
+              },
+              {
+                plan: 'Pro',
+                price: '4 500',
+                period: 'DA / mois',
+                desc: 'Pour les commerces actifs',
+                features: ['5 cartes de fidélité', 'Clients illimités', 'Statistiques avancées', 'Support prioritaire', 'Personnalisation complète'],
+                cta: 'Choisir Pro',
+                highlight: true,
+                badge: 'Populaire',
+              },
+              {
+                plan: 'Premium',
+                price: '9 000',
+                period: 'DA / mois',
+                desc: 'Pour les entreprises',
+                features: ['Cartes illimitées', 'Tout illimité', 'API & intégrations', 'Support dédié', 'Multi-points de vente'],
+                cta: 'Nous contacter',
+                highlight: false,
+              },
             ].map((t, i) => (
               <div
                 key={i}
-                className={`relative rounded-3xl p-8 transition-all duration-300 hover:-translate-y-2 ${
-                  t.hl
-                    ? 'bg-gradient-to-br from-blue-600 to-purple-700 shadow-2xl shadow-purple-600/20 scale-105 border border-purple-500/30'
-                    : 'bg-white/5 border border-white/10 hover:bg-white/10'
+                className={`relative rounded-2xl p-8 transition-all duration-300 hover:-translate-y-1 ${
+                  t.highlight
+                    ? 'bg-gray-900 text-white shadow-2xl shadow-gray-900/20 scale-[1.02]'
+                    : 'bg-white text-gray-900 border border-gray-200 hover:shadow-lg'
                 }`}
               >
                 {t.badge && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-amber-400 text-amber-900 text-xs font-bold px-4 py-1 rounded-full">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-xs font-bold px-4 py-1 rounded-full">
                     {t.badge}
                   </div>
                 )}
-                <h3 className="text-lg font-bold mb-4">{t.plan}</h3>
                 <div className="mb-6">
-                  <span className="text-5xl font-extrabold">{t.price}</span>
-                  <span className="text-sm ml-2 text-gray-400">{t.period}</span>
+                  <h3 className="text-lg font-bold mb-1">{t.plan}</h3>
+                  <p className={`text-sm ${t.highlight ? 'text-gray-400' : 'text-gray-500'}`}>{t.desc}</p>
+                </div>
+                <div className="mb-6">
+                  <span className="text-4xl font-extrabold">{t.price}</span>
+                  <span className={`text-sm ml-2 ${t.highlight ? 'text-gray-400' : 'text-gray-500'}`}>{t.period}</span>
                 </div>
                 <ul className="space-y-3 mb-8">
                   {t.features.map((f, j) => (
-                    <li key={j} className="flex items-center gap-2 text-sm text-gray-300">
-                      <span className="text-green-400">✓</span> {f}
+                    <li key={j} className={`flex items-center gap-2.5 text-sm ${t.highlight ? 'text-gray-300' : 'text-gray-600'}`}>
+                      <svg className={`w-4 h-4 shrink-0 ${t.highlight ? 'text-blue-400' : 'text-blue-600'}`} fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                      {f}
                     </li>
                   ))}
                 </ul>
                 <button
                   onClick={() => router.push('/signup')}
-                  className={`w-full py-3 rounded-xl font-bold transition cursor-none ${
-                    t.hl ? 'bg-white text-purple-700 hover:bg-gray-100' : 'bg-white/10 text-white hover:bg-white/20'
+                  className={`w-full py-3 rounded-xl font-semibold transition ${
+                    t.highlight
+                      ? 'bg-white text-gray-900 hover:bg-gray-100'
+                      : 'bg-gray-900 text-white hover:bg-gray-800'
                   }`}
                 >
-                  Choisir {t.plan}
+                  {t.cta}
                 </button>
               </div>
             ))}
@@ -494,21 +611,31 @@ export default function Home() {
       </section>
 
       {/* ===== TESTIMONIALS ===== */}
-      <section className="py-24 px-6">
+      <section className="py-24 px-6 bg-gray-50">
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-4xl font-extrabold text-center mb-16">
-            Ils <span className="bg-gradient-to-r from-pink-400 to-rose-400 bg-clip-text text-transparent">adorent</span> Fidali
-          </h2>
-          <div className="grid md:grid-cols-3 gap-8">
-            {TESTIMONIALS.map((t, i) => (
-              <div key={i} className="bg-white/5 border border-white/5 rounded-2xl p-8 hover:bg-white/10 transition">
-                <div className="flex gap-1 text-amber-400 mb-4">{'★★★★★'}</div>
-                <p className="text-gray-300 mb-6 leading-relaxed">&ldquo;{t.text}&rdquo;</p>
+          <div className="text-center mb-16">
+            <p className="text-sm font-semibold text-blue-600 mb-3">TÉMOIGNAGES</p>
+            <h2 className="text-3xl font-extrabold text-gray-900">Ce qu&apos;ils en disent</h2>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              { name: 'Karim B.', role: 'Café El Yasmine, Alger', text: 'Mes clients reviennent plus souvent. Le système de points les motive vraiment. Simple et efficace.', avatar: 'K' },
+              { name: 'Amina R.', role: 'Salon Bella, Oran', text: 'J\'ai remplacé mes cartes papier. Plus de cartes perdues, tout est digital. Mes clientes adorent.', avatar: 'A' },
+              { name: 'Youcef M.', role: 'Boulangerie Le Blé d\'Or', text: 'Le dashboard est très clair. Je vois en temps réel combien de clients reviennent. Excellent outil.', avatar: 'Y' },
+            ].map((t, i) => (
+              <div key={i} className="bg-white rounded-2xl p-7 border border-gray-100 hover:shadow-md transition-all">
+                <div className="flex items-center gap-1 text-amber-400 mb-4">
+                  {[...Array(5)].map((_, j) => <span key={j} className="text-sm">★</span>)}
+                </div>
+                <p className="text-gray-600 leading-relaxed mb-6 text-sm">&ldquo;{t.text}&rdquo;</p>
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center text-2xl">{t.avatar}</div>
+                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                    {t.avatar}
+                  </div>
                   <div>
-                    <p className="font-bold">{t.name}</p>
-                    <p className="text-sm text-gray-500">{t.biz}</p>
+                    <p className="text-sm font-bold text-gray-900">{t.name}</p>
+                    <p className="text-xs text-gray-500">{t.role}</p>
                   </div>
                 </div>
               </div>
@@ -519,79 +646,85 @@ export default function Home() {
 
       {/* ===== CTA ===== */}
       <section className="py-24 px-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="relative bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 rounded-3xl p-12 md:p-16 text-center overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
-            <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full blur-3xl" />
-            <div className="relative z-10">
-              <h2 className="text-3xl md:text-5xl font-extrabold mb-4">Prêt à commencer ?</h2>
-              <p className="text-xl text-white/80 mb-8 max-w-xl mx-auto">Inscription gratuite. Pas de carte bancaire.</p>
-              <button
-                onClick={() => router.push('/signup')}
-                className="px-12 py-5 bg-white text-purple-700 rounded-2xl font-extrabold text-lg hover:bg-gray-100 transition shadow-xl cursor-none"
-              >
-                Créer ma carte maintenant 🚀
-              </button>
-            </div>
+        <div className="max-w-3xl mx-auto text-center">
+          <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4">
+            Prêt à fidéliser vos clients ?
+          </h2>
+          <p className="text-lg text-gray-500 mb-10 max-w-xl mx-auto">
+            Inscription gratuite en 2 minutes. Aucune carte bancaire requise. Commencez aujourd&apos;hui.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button
+              onClick={() => router.push('/signup')}
+              className="group px-10 py-4 bg-gray-900 text-white rounded-2xl font-semibold text-base hover:bg-gray-800 transition-all shadow-xl shadow-gray-900/10"
+            >
+              Créer mon programme gratuit
+              <span className="inline-block ml-2 group-hover:translate-x-1 transition-transform">→</span>
+            </button>
+            <button
+              onClick={() => router.push('/join')}
+              className="px-10 py-4 bg-white text-gray-700 border border-gray-200 rounded-2xl font-semibold text-base hover:bg-gray-50 transition-all"
+            >
+              Rejoindre en tant que client
+            </button>
           </div>
         </div>
       </section>
 
       {/* ===== FOOTER ===== */}
-      <footer className="border-t border-white/5 pt-16 pb-8 px-6">
+      <footer className="border-t border-gray-100 bg-gray-50 pt-16 pb-8 px-6">
         <div className="max-w-6xl mx-auto">
           <div className="grid md:grid-cols-4 gap-12 mb-12">
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <span className="text-2xl">🎯</span>
-                <span className="text-xl font-extrabold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">Fidali</span>
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
+                  <span className="text-white text-sm font-bold">F</span>
+                </div>
+                <span className="text-lg font-bold text-gray-900">Fidali</span>
               </div>
-              <p className="text-gray-500 text-sm">La fidélité digitale #1 en Algérie 🇩🇿</p>
+              <p className="text-sm text-gray-500 leading-relaxed">
+                Programme de fidélité digital pour les commerçants en Algérie.
+              </p>
             </div>
             <div>
-              <h4 className="font-bold mb-4 text-gray-300">Produit</h4>
-              <ul className="space-y-2 text-sm text-gray-500">
-                <li><a href="#features" className="hover:text-white transition">Fonctionnalités</a></li>
-                <li><a href="#pricing" className="hover:text-white transition">Tarifs</a></li>
+              <h4 className="text-sm font-bold text-gray-900 mb-4">Produit</h4>
+              <ul className="space-y-2.5">
+                {['Fonctionnalités', 'Tarifs', 'FAQ'].map((l) => (
+                  <li key={l}><a href="#" className="text-sm text-gray-500 hover:text-gray-900 transition">{l}</a></li>
+                ))}
               </ul>
             </div>
             <div>
-              <h4 className="font-bold mb-4 text-gray-300">Accès</h4>
-              <ul className="space-y-2 text-sm text-gray-500">
-                <li><a href="/signup" className="hover:text-white transition">Créer un compte</a></li>
-                <li><a href="/login" className="hover:text-white transition">Connexion</a></li>
-                <li><a href="/join" className="hover:text-white transition">Client</a></li>
+              <h4 className="text-sm font-bold text-gray-900 mb-4">Accès</h4>
+              <ul className="space-y-2.5">
+                {[
+                  { label: 'Créer un compte', href: '/signup' },
+                  { label: 'Se connecter', href: '/login' },
+                  { label: 'Rejoindre', href: '/join' },
+                ].map((l) => (
+                  <li key={l.label}><a href={l.href} className="text-sm text-gray-500 hover:text-gray-900 transition">{l.label}</a></li>
+                ))}
               </ul>
             </div>
             <div>
-              <h4 className="font-bold mb-4 text-gray-300">Contact</h4>
-              <ul className="space-y-2 text-sm text-gray-500">
-                <li>📧 contact@fidali.dz</li>
-                <li>📱 0555 00 00 00</li>
+              <h4 className="text-sm font-bold text-gray-900 mb-4">Contact</h4>
+              <ul className="space-y-2.5 text-sm text-gray-500">
+                <li>contact@fidali.dz</li>
+                <li>0555 00 00 00</li>
+                <li>Alger, Algérie</li>
               </ul>
             </div>
           </div>
-          <div className="border-t border-white/5 pt-8 text-center text-sm text-gray-600">
-            © 2025 Fidali — Tous droits réservés
+          <div className="border-t border-gray-200 pt-8 text-center">
+            <p className="text-xs text-gray-400">© 2025 Fidali — Tous droits réservés</p>
           </div>
         </div>
       </footer>
 
-      {/* ===== ANIMATIONS CSS ===== */}
+      {/* ===== Smooth scroll ===== */}
       <style jsx global>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
-          10% { opacity: 0.2; }
-          90% { opacity: 0.2; }
-          100% { transform: translateY(-100px) rotate(360deg); opacity: 0; }
-        }
-        
         html { scroll-behavior: smooth; }
-        
-        ::selection {
-          background: rgba(99, 102, 241, 0.3);
-          color: white;
-        }
+        ::selection { background: rgba(59, 130, 246, 0.15); }
       `}</style>
     </div>
   )
