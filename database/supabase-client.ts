@@ -61,7 +61,7 @@ export function createServerClient() {
 // SAFE QUERY WRAPPER — Retry automatique
 // ============================================
 
-async function safeQuery<T>(fn: () => Promise<{ data: T | null; error: any }>): Promise<T | null> {
+async function safeQuery(fn: () => Promise<{ data: any; error: any }>): Promise<any> {
   let attempts = 0
   const maxAttempts = 3
 
@@ -71,7 +71,6 @@ async function safeQuery<T>(fn: () => Promise<{ data: T | null; error: any }>): 
       if (error) {
         console.warn(`⚠️ Query error (attempt ${attempts + 1}):`, error.message)
         if (error.message?.includes('JWT') || error.message?.includes('token')) {
-          // Token expiré, refresh
           await supabase.auth.refreshSession()
         }
         attempts++
