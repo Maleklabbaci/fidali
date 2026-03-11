@@ -49,11 +49,8 @@ export default function GoPage() {
           <div className="flex items-center gap-2.5">
             <img
               src="/logo.png"
-              alt="Fidali"
               className="w-9 h-9 rounded-xl object-contain"
             />
-            <span className="font-extrabold text-xl tracking-tight">
-              Fidali
             </span>
           </div>
           <div className="flex items-center gap-3">
