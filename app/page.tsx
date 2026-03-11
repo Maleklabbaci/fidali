@@ -573,6 +573,9 @@ export default function Home() {
             <button onClick={() => router.push('/join')} className="px-10 py-4 bg-white text-gray-700 border border-gray-200 rounded-2xl font-semibold hover:bg-gray-50 transition">
               Rejoindre en tant que client
             </button>
+            <button onClick={() => router.push('/go')} className="px-10 py-4 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-2xl font-semibold hover:bg-indigo-100 transition">
+  En savoir plus →
+</button>
           </div>
         </div>
       </section>
@@ -583,17 +586,18 @@ export default function Home() {
           <div className="grid md:grid-cols-4 gap-12 mb-12">
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center"><span className="text-white text-sm font-bold">F</span></div>
+                <img src="/logo.png" alt="Fidali" className="w-8 h-8 rounded-lg object-contain" />
                 <span className="text-lg font-bold text-gray-900">Fidali</span>
               </div>
               <p className="text-sm text-gray-500">Programme de fidélité digital pour les commerçants en Algérie.</p>
             </div>
             <div>
-              <h4 className="text-sm font-bold text-gray-900 mb-4">Produit</h4>
-              <ul className="space-y-2.5 text-sm text-gray-500">
-                <li><a href="#features" className="hover:text-gray-900 transition">Fonctionnalités</a></li>
-                <li><a href="#pricing" className="hover:text-gray-900 transition">Tarifs</a></li>
-              </ul>
+            <h4 className="text-sm font-bold text-gray-900 mb-4">Produit</h4>
+<ul className="space-y-2.5 text-sm text-gray-500">
+  <li><a href="#features" className="hover:text-gray-900 transition">Fonctionnalités</a></li>
+  <li><a href="#pricing" className="hover:text-gray-900 transition">Tarifs</a></li>
+  <li><a href="/go" className="hover:text-gray-900 transition">Découvrir Fidali →</a></li>
+</ul>
             </div>
             <div>
               <h4 className="text-sm font-bold text-gray-900 mb-4">Accès</h4>
