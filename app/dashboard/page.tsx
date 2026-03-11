@@ -149,16 +149,15 @@ export default function DashboardPage() {
           if (updateError) {
             console.error('Erreur update client_card:', updateError)
           }
-        }
+        
       }
 
       // Retirer de la liste
-      setPending((prev) => prev.filter((p) => p.id !== presenceId))
+            setPending((prev) => prev.filter((p) => p.id !== presenceId));
 
-      // Recharger les données
-      if (merchant) loadData(merchant.id)
+      if (merchant) loadData(merchant.id);
     } catch (err) {
-      console.error('Error:', err)
+  
     }
   }
 
