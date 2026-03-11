@@ -7,8 +7,9 @@ export async function exportDashboardPDF(data: {
   cards: any[]
   dateRange?: string
 }) {
-  const { jsPDF } = await import('jspdf')
-  const autoTable = (await import('jspdf-autotable')).default
+  const jsPDFModule = await import('jspdf')
+  const jsPDF = jsPDFModule.jsPDF || jsPDFModule.default
+  await import('jspdf-autotable')
 
   const doc = new jsPDF()
   const pageWidth = doc.internal.pageSize.getWidth()
@@ -36,11 +37,11 @@ export async function exportDashboardPDF(data: {
   const statsData = [
     ['Clients totaux', String(data.stats?.total_clients || 0)],
     ['Cartes actives', String(data.cards?.length || 0)],
-    ['Points distribués', String(data.stats?.total_points_distributed || data.stats?.total_active_points || 0)],
+    ['Points distribués', String(data.stats?.total_points_distributed || 0)],
     ['Récompenses données', String(data.stats?.total_rewards || 0)],
   ]
 
-  autoTable(doc, {
+  ;(doc as any).autoTable({
     startY: y,
     head: [['Métrique', 'Valeur']],
     body: statsData,
@@ -65,7 +66,7 @@ export async function exportDashboardPDF(data: {
       c.points_rule,
     ])
 
-    autoTable(doc, {
+    ;(doc as any).autoTable({
       startY: y,
       head: [['Commerce', 'Code', 'Points max', 'Récompense', 'Règle']],
       body: cardsTableData,
@@ -94,7 +95,7 @@ export async function exportDashboardPDF(data: {
       String(c.total_rewards_redeemed || 0),
     ])
 
-    autoTable(doc, {
+    ;(doc as any).autoTable({
       startY: y,
       head: [['Client', 'Téléphone', 'Points', 'Progression', 'Récompenses']],
       body: clientsTableData,
@@ -105,7 +106,7 @@ export async function exportDashboardPDF(data: {
     })
   }
 
-  // Footer on each page
+  // Footer
   const totalPages = doc.getNumberOfPages()
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i)
@@ -113,12 +114,12 @@ export async function exportDashboardPDF(data: {
     doc.setTextColor(150, 150, 150)
     doc.text(
       `Fidali — Rapport ${data.businessName} — Page ${i}/${totalPages}`,
-      pageWidth / 2, doc.internal.pageSize.getHeight() - 10,
+      pageWidth / 2,
+      doc.internal.pageSize.getHeight() - 10,
       { align: 'center' }
     )
   }
 
-  // Save
   const fileName = `fidali-rapport-${data.businessName.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().split('T')[0]}.pdf`
   doc.save(fileName)
 }
