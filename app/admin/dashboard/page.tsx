@@ -49,9 +49,9 @@ export default function AdminDashboard() {
         .order('created_at', { ascending: false })
 
       setOverview(ov as any)
-      setRecentMerchants(merchants)
-      setPendingPayments(payments)
-      setMessages(messagesData || [])
+setRecentMerchants(Array.isArray(merchants) ? merchants : [])
+setPendingPayments(Array.isArray(payments) ? payments : [])
+  setMessages(messagesData || [])
     } catch (err) {
       console.error(err)
     } finally {
