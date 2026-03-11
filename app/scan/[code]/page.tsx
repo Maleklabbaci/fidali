@@ -56,7 +56,7 @@ export default function ScanPage() {
       const { supabase } = await import('@/database/supabase-client')
       const { data: cardData } = await supabase
         .from('loyalty_cards')
-        .select('*, merchants(*)')
+        .select('*')
         .eq('code', cardCode)
         .eq('is_active', true)
         .single()
