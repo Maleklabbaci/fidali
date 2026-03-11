@@ -316,7 +316,7 @@ export default function DashboardPage() {
       <header className="bg-white border-b border-slate-200 px-5 md:px-8 py-4 sticky top-0 z-20">
         <div className="flex items-center justify-between max-w-[1300px] mx-auto">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center text-white text-sm font-bold shadow-md shadow-indigo-200">F</div>
+<img src="/logo.png" alt="Fidali" className="w-9 h-9 rounded-xl shadow-md shadow-indigo-200 object-contain" />
             <div>
               <h1 className="text-[15px] font-bold text-slate-900">{merchant?.business_name}</h1>
               <p className="text-[11px] text-slate-400 flex items-center gap-1.5">
