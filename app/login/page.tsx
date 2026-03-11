@@ -44,7 +44,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-[#f8f9fb] flex items-center justify-center px-4">
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white text-sm font-bold mx-auto mb-3">F</div>
+<img src="/logo.png" alt="Fidali" className="w-14 h-14 rounded-2xl object-contain mx-auto" />
           <h1 className="text-xl font-bold text-gray-900">Connexion</h1>
           <p className="text-gray-400 text-sm mt-1">Connectez-vous à votre espace commerçant</p>
         </div>
