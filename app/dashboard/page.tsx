@@ -27,8 +27,8 @@ export default function DashboardPage() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
   useEffect(() => {
-    const stored = localStorage.getItem('merchant')
-    if (!stored) { router.push('/login'); return }
+const stored = localStorage.getItem('merchant') || sessionStorage.getItem('merchant')
+  if (!stored) { router.push('/login'); return }
     const m = JSON.parse(stored)
     setMerchant(m)
     loadData(m.id)
@@ -180,15 +180,12 @@ export default function DashboardPage() {
     finally { setExportingPDF(false) }
   }
 
-  const handleLogout = () => { localStorage.removeItem('merchant'); router.push('/') }
-
-  const getCardURL = (code: string) => `${typeof window !== 'undefined' ? window.location.origin : ''}/scan/${code}`
-
-  const handleCopyLink = (code: string) => {
-    navigator.clipboard.writeText(getCardURL(code))
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
+  const handleLogout = () => {
+  localStorage.removeItem('merchant')
+  localStorage.removeItem('fidali_remember')
+  sessionStorage.removeItem('merchant')
+  router.push('/')
+}
 
   const handleShare = async (card: any) => {
     const url = getCardURL(card.code)
