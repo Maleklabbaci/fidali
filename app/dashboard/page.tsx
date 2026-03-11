@@ -25,6 +25,10 @@ export default function DashboardPage() {
   const [confirmDelete, setConfirmDelete] = useState<{ type: string; id: string; name: string } | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+  const [showContact, setShowContact] = useState(false)
+const [contactForm, setContactForm] = useState({ subject: '', message: '' })
+const [contactSending, setContactSending] = useState(false)
+const [contactSent, setContactSent] = useState(false)
 
   useEffect(() => {
     const stored = localStorage.getItem('merchant') || sessionStorage.getItem('merchant')
@@ -154,7 +158,23 @@ export default function DashboardPage() {
     sessionStorage.removeItem('merchant')
     router.push('/')
   }
-
+const handleSendMessage = async () => {
+  if (!contactForm.subject.trim() || !contactForm.message.trim()) return
+  setContactSending(true)
+  try {
+    const { supabase } = await import('@/database/supabase-client')
+    await supabase.from('messages').insert({
+      merchant_id: merchant?.id,
+      merchant_name: merchant?.business_name || merchant?.name,
+      merchant_email: merchant?.email,
+      subject: contactForm.subject.trim(),
+      message: contactForm.message.trim(),
+    })
+    setContactSent(true)
+    setContactForm({ subject: '', message: '' })
+  } catch (err) { console.error(err) }
+  finally { setContactSending(false) }
+}
   const getCardURL = (code: string) => `${typeof window !== 'undefined' ? window.location.origin : ''}/scan/${code}`
   const handleCopyLink = (code: string) => { navigator.clipboard.writeText(getCardURL(code)); setCopied(true); setTimeout(() => setCopied(false), 2000) }
   const handleShare = async (card: any) => {
