@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { LanguageSwitcher, useTranslation } from '@/components/LanguageSwitcher'
 import { ThemePicker } from '@/components/ThemePicker'
@@ -21,102 +21,97 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState('overview')
   const [showSettings, setShowSettings] = useState(false)
   const [exportingPDF, setExportingPDF] = useState(false)
+  const [selectedCard, setSelectedCard] = useState<any>(null)
+  const [refreshing, setRefreshing] = useState(false)
 
-  // Apply saved theme on load
   useEffect(() => {
     const savedTheme = loadTheme()
     applyTheme(getTheme(savedTheme))
   }, [])
 
-  // Load merchant data
   useEffect(() => {
     const stored = localStorage.getItem('merchant')
     if (!stored) { router.push('/login'); return }
     const m = JSON.parse(stored)
     setMerchant(m)
     loadData(m.id)
+
+    // Auto-refresh toutes les 30s
+    const interval = setInterval(() => loadData(m.id), 30000)
+    return () => clearInterval(interval)
   }, [router])
 
   const loadData = async (merchantId: string) => {
     try {
-      setLoading(true)
       const { supabase } = await import('@/database/supabase-client')
 
-      // Load cards — CORRIGÉ: is_active au lieu de active
-      const { data: cardsData, error: cardsError } = await supabase
+      const { data: cardsData } = await supabase
         .from('loyalty_cards')
         .select('*')
         .eq('merchant_id', merchantId)
         .eq('is_active', true)
-
-      console.log('Cards:', cardsData, 'Error:', cardsError)
+        .order('created_at', { ascending: false })
 
       const cardIds = (cardsData || []).map((c: any) => c.id)
 
-      // Load client_cards — CORRIGÉ: vérifier que cardIds n'est pas vide
       let clientCardsData: any[] = []
       if (cardIds.length > 0) {
-        const { data, error: clientError } = await supabase
+        const { data } = await supabase
           .from('client_cards')
           .select('*, clients(*), loyalty_cards(*)')
           .in('card_id', cardIds)
-
-        console.log('Client cards:', data, 'Error:', clientError)
         clientCardsData = data || []
       }
 
-      // Load pending presences
       let pendingData: any[] = []
       if (cardIds.length > 0) {
-        const { data, error: pendingError } = await supabase
+        const { data } = await supabase
           .from('pending_presences')
           .select('*, clients(*), loyalty_cards(*)')
           .in('card_id', cardIds)
           .eq('status', 'pending')
           .order('created_at', { ascending: false })
-
-        console.log('Pending:', data, 'Error:', pendingError)
         pendingData = data || []
       }
 
-      // Load activities
-      const { data: activitiesData, error: actError } = await supabase
+      const { data: activitiesData } = await supabase
         .from('activities')
         .select('*')
         .eq('merchant_id', merchantId)
         .order('created_at', { ascending: false })
-        .limit(20)
-
-      console.log('Activities:', activitiesData, 'Error:', actError)
+        .limit(30)
 
       setCards(cardsData || [])
       setClients(clientCardsData)
       setPending(pendingData)
       setActivities(activitiesData || [])
 
-      // Calculate stats
       const totalClients = new Set(clientCardsData.map((c: any) => c.client_id)).size
       const totalPoints = clientCardsData.reduce((sum: number, c: any) => sum + (c.points || 0), 0)
       const totalRewards = clientCardsData.reduce((sum: number, c: any) => sum + (c.total_rewards_redeemed || 0), 0)
 
       setStats({ total_clients: totalClients, total_points: totalPoints, total_rewards: totalRewards })
-
-      console.log('Stats:', { totalClients, totalPoints, totalRewards })
     } catch (err) {
       console.error('Error loading data:', err)
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }
 
-  // Validate / Reject presence
+  const handleRefresh = () => {
+    if (!merchant || refreshing) return
+    setRefreshing(true)
+    loadData(merchant.id)
+  }
+
   const handlePresence = async (presenceId: string, action: 'validated' | 'rejected') => {
     try {
       const { supabase } = await import('@/database/supabase-client')
 
       await supabase
         .from('pending_presences')
-        .update({ status: action, validated_at: new Date().toISOString() })
+        .update({ status: action, resolved_at: new Date().toISOString() })
         .eq('id', presenceId)
 
       if (action === 'validated') {
@@ -127,8 +122,9 @@ export default function DashboardPage() {
           )
           if (clientCard) {
             const card = cards.find((c) => c.id === presence.card_id)
-            const newPoints = Math.min((clientCard.points || 0) + 1, card?.max_points || 10)
-            const rewardEarned = newPoints >= (card?.max_points || 10)
+            const maxPts = card?.max_points || 10
+            const newPoints = Math.min((clientCard.points || 0) + (card?.points_per_visit || 1), maxPts)
+            const rewardEarned = newPoints >= maxPts
 
             await supabase
               .from('client_cards')
@@ -149,7 +145,6 @@ export default function DashboardPage() {
     }
   }
 
-  // ========== EXPORT PDF ==========
   const handleExportPDF = async () => {
     if (!merchant) return
     setExportingPDF(true)
@@ -164,194 +159,158 @@ export default function DashboardPage() {
       })
     } catch (err) {
       console.error('PDF export error:', err)
-      alert('Erreur lors de l\'export PDF')
     } finally {
       setExportingPDF(false)
     }
   }
 
-  // ========== LOGOUT ==========
   const handleLogout = () => {
     localStorage.removeItem('merchant')
     router.push('/')
   }
 
+  const timeAgo = (dateStr: string) => {
+    const now = new Date().getTime()
+    const date = new Date(dateStr).getTime()
+    const diff = Math.floor((now - date) / 1000)
+    if (diff < 60) return 'À l\'instant'
+    if (diff < 3600) return `Il y a ${Math.floor(diff / 60)} min`
+    if (diff < 86400) return `Il y a ${Math.floor(diff / 3600)}h`
+    if (diff < 604800) return `Il y a ${Math.floor(diff / 86400)}j`
+    return new Date(dateStr).toLocaleDateString('fr-FR')
+  }
+
+  const getActivityIcon = (type: string) => {
+    switch (type) {
+      case 'visit': case 'presence_validated': return { icon: '👣', bg: 'bg-blue-100', text: 'text-blue-600' }
+      case 'reward': case 'reward_redeemed': return { icon: '🎁', bg: 'bg-amber-100', text: 'text-amber-600' }
+      case 'new_client': case 'client_joined': return { icon: '👤', bg: 'bg-green-100', text: 'text-green-600' }
+      case 'presence_rejected': return { icon: '❌', bg: 'bg-red-100', text: 'text-red-600' }
+      case 'card_created': return { icon: '🃏', bg: 'bg-purple-100', text: 'text-purple-600' }
+      default: return { icon: '📌', bg: 'bg-gray-100', text: 'text-gray-600' }
+    }
+  }
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-500">{t.common_loading}</p>
+          <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4 animate-pulse">F</div>
+          <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-500 font-medium">{t.common_loading}</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50" dir={isRTL ? 'rtl' : 'ltr'}>
+
       {/* ========== HEADER ========== */}
-      <header className="bg-white shadow-sm px-4 md:px-6 py-4 sticky top-0 z-20">
+      <header className="bg-white/80 backdrop-blur-xl shadow-sm px-4 md:px-6 py-3 sticky top-0 z-20 border-b border-gray-100">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold text-lg">
-              F
-            </div>
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-blue-500/20">F</div>
             <div>
-              <h1 className="text-lg font-bold text-gray-900">
-                {merchant?.business_name || 'Fidali'}
-              </h1>
-              <p className="text-xs text-gray-500 capitalize">
-                Plan {merchant?.plan || 'starter'}
-              </p>
+              <h1 className="text-lg font-bold text-gray-900">{merchant?.business_name || 'Fidali'}</h1>
+              <div className="flex items-center gap-2">
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                  merchant?.plan === 'premium' ? 'bg-purple-100 text-purple-700' :
+                  merchant?.plan === 'pro' ? 'bg-blue-100 text-blue-700' :
+                  'bg-gray-100 text-gray-600'
+                }`}>
+                  {merchant?.plan === 'premium' ? '💎' : merchant?.plan === 'pro' ? '⭐' : '🆓'} {merchant?.plan || 'starter'}
+                </span>
+                <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                <span className="text-[10px] text-gray-400">En ligne</span>
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* 🌍 LANGUAGE SWITCHER */}
+          <div className="flex items-center gap-1.5">
+            <button onClick={handleRefresh} className={`p-2 hover:bg-gray-100 rounded-lg transition text-sm ${refreshing ? 'animate-spin' : ''}`} title="Rafraîchir">🔄</button>
             <LanguageSwitcher />
-
-            {/* ⚙️ SETTINGS */}
-            <button
-              onClick={() => setShowSettings(!showSettings)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition text-xl"
-              title="Paramètres"
-            >
-              ⚙️
+            <button onClick={() => setShowSettings(!showSettings)} className="p-2 hover:bg-gray-100 rounded-lg transition text-sm" title="Paramètres">⚙️</button>
+            <button onClick={handleExportPDF} disabled={exportingPDF} className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg transition text-xs font-bold disabled:opacity-50">
+              {exportingPDF ? '⏳' : '📊'} PDF
             </button>
-
-            {/* 📊 EXPORT PDF */}
-            <button
-              onClick={handleExportPDF}
-              disabled={exportingPDF}
-              className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 hover:bg-green-100 rounded-lg transition text-sm font-medium disabled:opacity-50"
-            >
-              {exportingPDF ? '⏳' : '📊'} {exportingPDF ? 'Export...' : 'Export PDF'}
-            </button>
-
-            {/* 💎 UPGRADE */}
             {merchant?.plan !== 'premium' && (
-              <button
-                onClick={() => router.push('/dashboard/upgrade')}
-                className="hidden md:flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg text-sm font-bold hover:opacity-90 transition"
-              >
-                💎 {t.dash_upgrade}
+              <button onClick={() => router.push('/dashboard/upgrade')} className="hidden md:flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg text-xs font-bold hover:opacity-90 transition shadow-md shadow-blue-500/20">
+                💎 Upgrade
               </button>
             )}
-
-            {/* 🚪 LOGOUT */}
-            <button
-              onClick={handleLogout}
-              className="p-2 hover:bg-red-50 rounded-lg transition text-xl"
-              title={t.dash_logout}
-            >
-              🚪
-            </button>
+            <button onClick={handleLogout} className="p-2 hover:bg-red-50 rounded-lg transition text-sm" title="Déconnexion">🚪</button>
           </div>
         </div>
       </header>
 
       {/* ========== SETTINGS PANEL ========== */}
       {showSettings && (
-        <div className="fixed inset-0 bg-black/50 z-30 flex justify-end" onClick={() => setShowSettings(false)}>
-          <div
-            className="w-full max-w-sm bg-white h-full shadow-2xl p-6 overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-6">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-30 flex justify-end" onClick={() => setShowSettings(false)}>
+          <div className="w-full max-w-sm bg-white h-full shadow-2xl p-6 overflow-y-auto animate-in slide-in-from-right" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-8">
               <h2 className="text-xl font-bold text-gray-900">⚙️ Paramètres</h2>
-              <button
-                onClick={() => setShowSettings(false)}
-                className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200"
-              >
-                ✕
-              </button>
+              <button onClick={() => setShowSettings(false)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition">✕</button>
             </div>
 
-            {/* 🎨 THEME PICKER */}
-            <div className="mb-8">
-              <ThemePicker />
-            </div>
+            <div className="space-y-8">
+              <div>
+                <ThemePicker />
+              </div>
 
-            {/* 🌍 LANGUE */}
-            <div className="mb-8">
-              <h3 className="text-sm font-bold text-gray-700 mb-3">🌍 Langue</h3>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    localStorage.setItem('fidali_locale', 'fr')
-                    window.location.reload()
-                  }}
-                  className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition ${
-                    locale === 'fr'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  🇫🇷 Français
-                </button>
-                <button
-                  onClick={() => {
-                    localStorage.setItem('fidali_locale', 'ar')
-                    window.location.reload()
-                  }}
-                  className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition ${
-                    locale === 'ar'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  🇩🇿 العربية
+              <div>
+                <h3 className="text-sm font-bold text-gray-700 mb-3">🌍 Langue</h3>
+                <div className="flex gap-2">
+                  <button onClick={() => { localStorage.setItem('fidali_locale', 'fr'); window.location.reload() }} className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition ${locale === 'fr' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>🇫🇷 Français</button>
+                  <button onClick={() => { localStorage.setItem('fidali_locale', 'ar'); window.location.reload() }} className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition ${locale === 'ar' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>🇩🇿 العربية</button>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-bold text-gray-700 mb-3">📊 Rapports</h3>
+                <button onClick={handleExportPDF} disabled={exportingPDF} className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition disabled:opacity-50 shadow-md">
+                  {exportingPDF ? '⏳ Génération...' : '📊 Télécharger rapport PDF'}
                 </button>
               </div>
-            </div>
 
-            {/* 📊 EXPORT PDF (mobile) */}
-            <div className="mb-8">
-              <h3 className="text-sm font-bold text-gray-700 mb-3">📊 Rapports</h3>
-              <button
-                onClick={handleExportPDF}
-                disabled={exportingPDF}
-                className="w-full py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition disabled:opacity-50"
-              >
-                {exportingPDF ? '⏳ Génération...' : '📊 Télécharger rapport PDF'}
-              </button>
-            </div>
+              {merchant?.plan !== 'premium' && (
+                <div>
+                  <h3 className="text-sm font-bold text-gray-700 mb-3">💎 Plan</h3>
+                  <button onClick={() => router.push('/dashboard/upgrade')} className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-bold hover:opacity-90 transition shadow-md">💎 Passer au plan supérieur</button>
+                </div>
+              )}
 
-            {/* 💎 UPGRADE (mobile) */}
-            {merchant?.plan !== 'premium' && (
-              <div className="mb-8">
-                <h3 className="text-sm font-bold text-gray-700 mb-3">💎 Plan</h3>
-                <button
-                  onClick={() => router.push('/dashboard/upgrade')}
-                  className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-bold hover:opacity-90 transition"
-                >
-                  💎 Passer au plan supérieur
-                </button>
+              <div>
+                <h3 className="text-sm font-bold text-gray-700 mb-3">👤 Compte</h3>
+                <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
+                  <div className="flex justify-between"><span className="text-gray-500">Nom</span><span className="font-medium text-gray-900">{merchant?.name}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Email</span><span className="font-medium text-gray-900">{merchant?.email}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Tél</span><span className="font-medium text-gray-900">{merchant?.phone}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Secteur</span><span className="font-medium text-gray-900">{merchant?.sector}</span></div>
+                </div>
               </div>
-            )}
+            </div>
           </div>
         </div>
       )}
 
       {/* ========== TABS ========== */}
-      <div className="bg-white border-b sticky top-[73px] z-10">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 flex gap-1 overflow-x-auto">
+      <div className="bg-white/80 backdrop-blur-xl border-b border-gray-100 sticky top-[65px] z-10">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 flex gap-1 overflow-x-auto scrollbar-hide">
           {[
-            { id: 'overview', label: `📊 ${t.dash_overview}`, },
-            { id: 'pending', label: `🔔 ${t.dash_pending} (${pending.length})`, },
-            { id: 'cards', label: `🃏 ${t.dash_my_cards}`, },
-            { id: 'clients', label: `👥 ${t.dash_my_clients}`, },
+            { id: 'overview', label: '📊 Vue d\'ensemble', count: 0 },
+            { id: 'pending', label: '🔔 Validations', count: pending.length },
+            { id: 'cards', label: '🃏 Mes cartes', count: cards.length },
+            { id: 'clients', label: '👥 Clients', count: stats.total_clients },
+            { id: 'activity', label: '📋 Activité', count: activities.length },
           ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition ${
-                activeTab === tab.id
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-all ${activeTab === tab.id ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
               {tab.label}
+              {tab.count > 0 && (
+                <span className={`ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                  tab.id === 'pending' && tab.count > 0 ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-gray-100 text-gray-500'
+                }`}>{tab.count}</span>
+              )}
             </button>
           ))}
         </div>
@@ -360,223 +319,333 @@ export default function DashboardPage() {
       {/* ========== MAIN CONTENT ========== */}
       <main className="max-w-7xl mx-auto px-4 md:px-6 py-6">
 
-        {/* ===== OVERVIEW TAB ===== */}
+        {/* ===== OVERVIEW ===== */}
         {activeTab === 'overview' && (
           <div className="space-y-6">
-            {/* Stats Grid */}
+
+            {/* Alerte validations */}
+            {pending.length > 0 && (
+              <div className="bg-gradient-to-r from-orange-500 to-amber-500 rounded-2xl p-5 text-white shadow-lg shadow-orange-500/20 cursor-pointer hover:shadow-xl transition" onClick={() => setActiveTab('pending')}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center text-2xl backdrop-blur-sm animate-bounce">🔔</div>
+                    <div>
+                      <h3 className="font-bold text-lg">{pending.length} visite{pending.length > 1 ? 's' : ''} en attente</h3>
+                      <p className="text-white/80 text-sm">Cliquez pour valider ou refuser</p>
+                    </div>
+                  </div>
+                  <span className="text-2xl">→</span>
+                </div>
+              </div>
+            )}
+
+            {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
-                { label: t.dash_clients, value: stats.total_clients, icon: '👥', color: 'bg-blue-50 text-blue-700' },
-                { label: t.dash_cards, value: cards.length, icon: '🃏', color: 'bg-purple-50 text-purple-700' },
-                { label: t.dash_points, value: stats.total_points, icon: '⭐', color: 'bg-amber-50 text-amber-700' },
-                { label: t.dash_rewards, value: stats.total_rewards, icon: '🎁', color: 'bg-green-50 text-green-700' },
+                { label: t.dash_clients, value: stats.total_clients, icon: '👥', gradient: 'from-blue-500 to-blue-600', light: 'bg-blue-50', change: '+12%' },
+                { label: t.dash_cards, value: cards.length, icon: '🃏', gradient: 'from-purple-500 to-purple-600', light: 'bg-purple-50', change: '' },
+                { label: t.dash_points, value: stats.total_points, icon: '⭐', gradient: 'from-amber-500 to-orange-500', light: 'bg-amber-50', change: '+24%' },
+                { label: t.dash_rewards, value: stats.total_rewards, icon: '🎁', gradient: 'from-emerald-500 to-green-600', light: 'bg-emerald-50', change: '+8%' },
               ].map((stat, i) => (
-                <div key={i} className="bg-white rounded-2xl p-5 shadow-sm">
-                  <div className={`w-10 h-10 ${stat.color} rounded-xl flex items-center justify-center text-lg mb-3`}>
-                    {stat.icon}
+                <div key={i} className="bg-white rounded-2xl p-5 shadow-sm hover:shadow-md transition-all border border-gray-100 group">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className={`w-11 h-11 bg-gradient-to-br ${stat.gradient} rounded-xl flex items-center justify-center text-lg shadow-sm group-hover:scale-110 transition-transform`}>{stat.icon}</div>
+                    {stat.change && <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">{stat.change}</span>}
                   </div>
-                  <p className="text-2xl font-extrabold text-gray-900">{stat.value}</p>
-                  <p className="text-sm text-gray-500">{stat.label}</p>
+                  <p className="text-3xl font-extrabold text-gray-900">{stat.value.toLocaleString()}</p>
+                  <p className="text-sm text-gray-400 mt-0.5">{stat.label}</p>
                 </div>
               ))}
             </div>
 
-            {/* Pending Alert */}
-            {pending.length > 0 && (
-              <div className="bg-orange-50 border border-orange-200 rounded-2xl p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-bold text-orange-800">
-                    🔔 {pending.length} {t.dash_pending}
-                  </h3>
-                  <button
-                    onClick={() => setActiveTab('pending')}
-                    className="text-sm text-orange-600 font-medium hover:underline"
-                  >
-                    Voir tout →
-                  </button>
-                </div>
-                {pending.slice(0, 3).map((p) => (
-                  <div key={p.id} className="flex items-center justify-between py-2 border-t border-orange-100">
-                    <div>
-                      <p className="font-medium text-gray-900 text-sm">{p.clients?.name}</p>
-                      <p className="text-xs text-gray-500">{p.loyalty_cards?.business_name}</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handlePresence(p.id, 'validated')}
-                        className="px-3 py-1 bg-green-600 text-white rounded-lg text-xs font-bold"
-                      >
-                        ✓ {t.dash_validate}
-                      </button>
-                      <button
-                        onClick={() => handlePresence(p.id, 'rejected')}
-                        className="px-3 py-1 bg-red-100 text-red-600 rounded-lg text-xs font-bold"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            {/* 2 colonnes : Cartes + Activité */}
+            <div className="grid lg:grid-cols-5 gap-6">
 
-            {/* Quick Actions */}
-            <div className="bg-white rounded-2xl p-5 shadow-sm">
-              <h3 className="font-bold text-gray-900 mb-4">{t.dash_quick_actions}</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <button
-                  onClick={() => router.push('/dashboard/create-card')}
-                  className="p-4 bg-blue-50 hover:bg-blue-100 rounded-xl text-center transition"
-                >
-                  <span className="text-2xl block mb-1">🃏</span>
-                  <span className="text-xs font-bold text-blue-700">{t.dash_create_card}</span>
-                </button>
-                <button
-                  onClick={handleExportPDF}
-                  disabled={exportingPDF}
-                  className="p-4 bg-green-50 hover:bg-green-100 rounded-xl text-center transition disabled:opacity-50"
-                >
-                  <span className="text-2xl block mb-1">📊</span>
-                  <span className="text-xs font-bold text-green-700">
-                    {exportingPDF ? 'Export...' : 'Export PDF'}
-                  </span>
-                </button>
-                <button
-                  onClick={() => setShowSettings(true)}
-                  className="p-4 bg-purple-50 hover:bg-purple-100 rounded-xl text-center transition"
-                >
-                  <span className="text-2xl block mb-1">🎨</span>
-                  <span className="text-xs font-bold text-purple-700">Thèmes</span>
-                </button>
-                <button
-                  onClick={() => router.push('/dashboard/upgrade')}
-                  className="p-4 bg-amber-50 hover:bg-amber-100 rounded-xl text-center transition"
-                >
-                  <span className="text-2xl block mb-1">💎</span>
-                  <span className="text-xs font-bold text-amber-700">{t.dash_upgrade}</span>
-                </button>
+              {/* Mes cartes — preview */}
+              <div className="lg:col-span-3 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-gray-900 text-lg">🃏 Mes cartes de fidélité</h3>
+                  <button onClick={() => setActiveTab('cards')} className="text-sm text-blue-600 font-medium hover:underline">Voir tout →</button>
+                </div>
+
+                {cards.length === 0 ? (
+                  <div className="bg-white rounded-2xl p-10 text-center shadow-sm border border-dashed border-gray-200">
+                    <p className="text-5xl mb-4">🃏</p>
+                    <p className="text-gray-900 font-bold mb-2">Aucune carte créée</p>
+                    <p className="text-gray-400 text-sm mb-6">Créez votre première carte de fidélité pour commencer</p>
+                    <button onClick={() => router.push('/dashboard/create-card')} className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-blue-500/20 hover:shadow-xl transition">+ Créer ma carte</button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {cards.map((card) => {
+                      const cardClients = clients.filter((c) => c.card_id === card.id)
+                      const totalPts = cardClients.reduce((s: number, c: any) => s + (c.points || 0), 0)
+                      const avgPts = cardClients.length > 0 ? Math.round(totalPts / cardClients.length * 10) / 10 : 0
+
+                      return (
+                        <div key={card.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all">
+                          {/* Mini carte fidélité */}
+                          <div className="p-5 rounded-t-2xl relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${card.color1 || '#1e3a5f'}, ${card.color2 || '#2d5a87'})` }}>
+                            <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(255,255,255,0.3) 1px, transparent 0)', backgroundSize: '20px 20px' }} />
+                            <div className="relative z-10 flex items-start justify-between text-white">
+                              <div>
+                                <h4 className="text-lg font-bold">{card.business_name}</h4>
+                                <p className="text-white/60 text-xs font-mono mt-0.5">{card.code}</p>
+                              </div>
+                              <div className="bg-white/15 backdrop-blur-sm px-3 py-1.5 rounded-full">
+                                <span className="text-xs font-bold">{card.max_points} pts</span>
+                              </div>
+                            </div>
+                            <div className="relative z-10 mt-4 flex gap-1">
+                              {Array.from({ length: Math.min(card.max_points, 15) }).map((_, i) => (
+                                <div key={i} className="flex-1 h-2 rounded-full" style={{ background: i < avgPts ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.15)' }} />
+                              ))}
+                            </div>
+                            <div className="relative z-10 flex items-center justify-between mt-3">
+                              <p className="text-white/70 text-xs">🎁 {card.reward}</p>
+                              <p className="text-white/50 text-[10px]">{card.points_rule}</p>
+                            </div>
+                          </div>
+
+                          {/* Stats carte */}
+                          <div className="p-4 grid grid-cols-3 gap-3">
+                            <div className="text-center">
+                              <p className="text-xl font-extrabold text-gray-900">{cardClients.length}</p>
+                              <p className="text-[11px] text-gray-400">Clients</p>
+                            </div>
+                            <div className="text-center border-x border-gray-100">
+                              <p className="text-xl font-extrabold text-gray-900">{totalPts}</p>
+                              <p className="text-[11px] text-gray-400">Points total</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-xl font-extrabold text-gray-900">{avgPts}</p>
+                              <p className="text-[11px] text-gray-400">Moy/client</p>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+
+                    <button onClick={() => router.push('/dashboard/create-card')} className="w-full py-4 border-2 border-dashed border-gray-200 rounded-2xl text-gray-400 hover:text-blue-600 hover:border-blue-300 transition font-medium text-sm">
+                      + Créer une nouvelle carte
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Activité récente */}
+              <div className="lg:col-span-2">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-gray-900 text-lg">📋 Activité récente</h3>
+                  <button onClick={() => setActiveTab('activity')} className="text-sm text-blue-600 font-medium hover:underline">Tout →</button>
+                </div>
+
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                  {activities.length === 0 ? (
+                    <div className="p-8 text-center">
+                      <p className="text-3xl mb-2">📋</p>
+                      <p className="text-gray-400 text-sm">Aucune activité</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-gray-50">
+                      {activities.slice(0, 8).map((a, i) => {
+                        const actStyle = getActivityIcon(a.type)
+                        return (
+                          <div key={i} className="flex items-start gap-3 p-4 hover:bg-gray-50 transition">
+                            <div className={`w-9 h-9 ${actStyle.bg} rounded-xl flex items-center justify-center text-sm flex-shrink-0`}>{actStyle.icon}</div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-gray-900 leading-snug">{a.description || a.type}</p>
+                              <p className="text-[11px] text-gray-400 mt-0.5">{timeAgo(a.created_at)}</p>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* Recent Activity */}
-            {activities.length > 0 && (
-              <div className="bg-white rounded-2xl p-5 shadow-sm">
-                <h3 className="font-bold text-gray-900 mb-4">{t.dash_activity}</h3>
-                <div className="space-y-3">
-                  {activities.slice(0, 10).map((a, i) => (
-                    <div key={i} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
-                      <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-sm">
-                        {a.type === 'visit' ? '👣' : a.type === 'reward' ? '🎁' : '📌'}
+            {/* Top clients */}
+            {clients.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-gray-900 text-lg">🏆 Top clients</h3>
+                  <button onClick={() => setActiveTab('clients')} className="text-sm text-blue-600 font-medium hover:underline">Voir tout →</button>
+                </div>
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                  {clients.sort((a: any, b: any) => (b.points || 0) - (a.points || 0)).slice(0, 5).map((cc, i) => {
+                    const maxPts = cc.loyalty_cards?.max_points || cc.max_points || 10
+                    const pct = Math.min(((cc.points || 0) / maxPts) * 100, 100)
+                    return (
+                      <div key={cc.id || i} className="flex items-center gap-4 p-4 border-b border-gray-50 last:border-0 hover:bg-gray-50 transition">
+                        <div className="flex items-center justify-center w-7 text-sm font-bold text-gray-300">#{i + 1}</div>
+                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm">
+                          {(cc.clients?.name || cc.client_name || '?')[0]?.toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-900 text-sm truncate">{cc.clients?.name || cc.client_name}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                              <div className={`h-full rounded-full transition-all ${pct >= 100 ? 'bg-gradient-to-r from-amber-400 to-yellow-500' : 'bg-gradient-to-r from-blue-500 to-blue-600'}`} style={{ width: `${pct}%` }} />
+                            </div>
+                            <span className="text-xs font-bold text-gray-500 whitespace-nowrap">{cc.points}/{maxPts}</span>
+                          </div>
+                        </div>
+                        {pct >= 100 && <span className="text-lg animate-bounce">🎁</span>}
                       </div>
-                      <div className="flex-1">
-                        <p className="text-sm text-gray-900">{a.description}</p>
-                        <p className="text-xs text-gray-400">
-                          {new Date(a.created_at).toLocaleDateString('fr-FR', {
-                            day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
-                          })}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             )}
+
+            {/* Actions rapides */}
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+              <h3 className="font-bold text-gray-900 mb-4">⚡ Actions rapides</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {[
+                  { icon: '🃏', label: 'Nouvelle carte', color: 'bg-blue-50 hover:bg-blue-100 text-blue-700', action: () => router.push('/dashboard/create-card') },
+                  { icon: '📊', label: 'Export PDF', color: 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700', action: handleExportPDF },
+                  { icon: '🎨', label: 'Thèmes', color: 'bg-purple-50 hover:bg-purple-100 text-purple-700', action: () => setShowSettings(true) },
+                  { icon: '💎', label: 'Upgrader', color: 'bg-amber-50 hover:bg-amber-100 text-amber-700', action: () => router.push('/dashboard/upgrade') },
+                ].map((act, i) => (
+                  <button key={i} onClick={act.action} className={`p-4 ${act.color} rounded-xl text-center transition-all hover:scale-105 hover:shadow-sm`}>
+                    <span className="text-2xl block mb-1">{act.icon}</span>
+                    <span className="text-xs font-bold">{act.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
         {/* ===== PENDING TAB ===== */}
         {activeTab === 'pending' && (
           <div className="space-y-4">
-            <h2 className="text-xl font-bold text-gray-900">🔔 {t.dash_pending}</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold text-gray-900">🔔 Visites en attente</h2>
+              <button onClick={handleRefresh} className="text-sm text-blue-600 font-medium hover:underline">🔄 Rafraîchir</button>
+            </div>
             {pending.length === 0 ? (
-              <div className="bg-white rounded-2xl p-10 text-center shadow-sm">
-                <p className="text-4xl mb-3">✅</p>
-                <p className="text-gray-500">Aucune visite en attente</p>
+              <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-gray-100">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">✅</div>
+                <p className="text-gray-900 font-bold mb-1">Tout est à jour !</p>
+                <p className="text-gray-400 text-sm">Aucune visite en attente de validation</p>
               </div>
             ) : (
-              pending.map((p) => (
-                <div key={p.id} className="bg-white rounded-2xl p-5 shadow-sm flex items-center justify-between">
-                  <div>
-                    <p className="font-bold text-gray-900">{p.clients?.name}</p>
-                    <p className="text-sm text-gray-500">{p.clients?.phone}</p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      {p.loyalty_cards?.business_name} • {new Date(p.created_at).toLocaleString('fr-FR')}
-                    </p>
+              <div className="space-y-3">
+                {pending.map((p) => (
+                  <div key={p.id} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-orange-400 to-amber-500 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-sm">
+                          {(p.clients?.name || p.client_name || '?')[0]?.toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="font-bold text-gray-900">{p.clients?.name || p.client_name}</p>
+                          <p className="text-sm text-gray-400">{p.clients?.phone || p.client_phone}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs text-gray-400">{p.loyalty_cards?.business_name}</span>
+                            <span className="text-gray-300">•</span>
+                            <span className="text-xs text-gray-400">{timeAgo(p.created_at)}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => handlePresence(p.id, 'validated')} className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl text-sm font-bold hover:shadow-lg hover:shadow-green-500/20 transition-all">✓ Valider</button>
+                        <button onClick={() => handlePresence(p.id, 'rejected')} className="px-5 py-2.5 bg-red-50 text-red-600 rounded-xl text-sm font-bold hover:bg-red-100 transition">✕ Refuser</button>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handlePresence(p.id, 'validated')}
-                      className="px-4 py-2 bg-green-600 text-white rounded-xl text-sm font-bold hover:bg-green-700"
-                    >
-                      ✓ {t.dash_validate}
-                    </button>
-                    <button
-                      onClick={() => handlePresence(p.id, 'rejected')}
-                      className="px-4 py-2 bg-red-100 text-red-600 rounded-xl text-sm font-bold hover:bg-red-200"
-                    >
-                      ✕ {t.dash_reject}
-                    </button>
-                  </div>
-                </div>
-              ))
+                ))}
+              </div>
             )}
           </div>
         )}
 
         {/* ===== CARDS TAB ===== */}
         {activeTab === 'cards' && (
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-gray-900">🃏 {t.dash_my_cards}</h2>
-              <button
-                onClick={() => router.push('/dashboard/create-card')}
-                className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700"
-              >
-                + {t.dash_create_card}
-              </button>
+              <h2 className="text-xl font-bold text-gray-900">🃏 Mes cartes de fidélité</h2>
+              <button onClick={() => router.push('/dashboard/create-card')} className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl text-sm font-bold shadow-md shadow-blue-500/20 hover:shadow-lg transition">+ Nouvelle carte</button>
             </div>
+
             {cards.length === 0 ? (
-              <div className="bg-white rounded-2xl p-10 text-center shadow-sm">
-                <p className="text-4xl mb-3">🃏</p>
-                <p className="text-gray-900 font-bold mb-1">{t.dash_no_cards}</p>
-                <p className="text-gray-500 text-sm mb-4">{t.dash_create_first}</p>
-                <button
-                  onClick={() => router.push('/dashboard/create-card')}
-                  className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold"
-                >
-                  + {t.dash_create_card}
-                </button>
+              <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-dashed border-gray-200">
+                <p className="text-5xl mb-4">🃏</p>
+                <p className="text-gray-900 font-bold text-lg mb-2">Créez votre première carte</p>
+                <p className="text-gray-400 text-sm mb-6">Personnalisez les couleurs, la récompense et les règles</p>
+                <button onClick={() => router.push('/dashboard/create-card')} className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-bold shadow-lg shadow-blue-500/20 hover:shadow-xl transition">🚀 Créer ma carte</button>
               </div>
             ) : (
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid md:grid-cols-2 gap-6">
                 {cards.map((card) => {
                   const cardClients = clients.filter((c) => c.card_id === card.id)
+                  const totalPts = cardClients.reduce((s: number, c: any) => s + (c.points || 0), 0)
+                  const totalRewards = cardClients.reduce((s: number, c: any) => s + (c.total_rewards_redeemed || 0), 0)
+
                   return (
-                    <div key={card.id} className="bg-white rounded-2xl p-5 shadow-sm">
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <h3 className="font-bold text-gray-900">{card.business_name}</h3>
-                          <p className="text-xs text-gray-400 font-mono">{card.code}</p>
+                    <div key={card.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-all group">
+                      {/* Carte visuelle */}
+                      <div className="p-6 relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${card.color1 || '#1e3a5f'}, ${card.color2 || '#2d5a87'})` }}>
+                        <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(255,255,255,0.3) 1px, transparent 0)', backgroundSize: '20px 20px' }} />
+                        <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/[0.04] rounded-full" />
+                        <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-white/[0.04] rounded-full" />
+
+                        <div className="relative z-10">
+                          <div className="flex items-start justify-between text-white mb-6">
+                            <div>
+                              <p className="text-[10px] text-white/40 uppercase tracking-widest font-medium mb-1">Carte de fidélité</p>
+                              <h3 className="text-xl font-bold">{card.business_name}</h3>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-xs text-white/50 font-mono">{card.code}</p>
+                              <div className="bg-white/15 backdrop-blur-sm px-3 py-1 rounded-full mt-1">
+                                <span className="text-xs font-bold">{card.max_points} pts max</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-[5px] mb-3">
+                            {Array.from({ length: Math.min(card.max_points, 15) }).map((_, i) => (
+                              <div key={i} className="flex-1 h-2.5 rounded-full bg-white/15" />
+                            ))}
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <p className="text-white/70 text-sm">🎁 {card.reward}</p>
+                            <p className="text-white/40 text-[10px]">{card.points_rule}</p>
+                          </div>
                         </div>
-                        <span className="px-2 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-bold">
-                          Actif
-                        </span>
                       </div>
-                      <div className="grid grid-cols-3 gap-3 mb-3">
-                        <div className="text-center p-2 bg-gray-50 rounded-xl">
-                          <p className="text-lg font-bold text-gray-900">{card.max_points}</p>
-                          <p className="text-xs text-gray-500">Points max</p>
+
+                      {/* Stats */}
+                      <div className="p-4">
+                        <div className="grid grid-cols-4 gap-2 text-center">
+                          <div className="p-2 bg-blue-50 rounded-xl">
+                            <p className="text-lg font-extrabold text-blue-700">{cardClients.length}</p>
+                            <p className="text-[10px] text-blue-500">Clients</p>
+                          </div>
+                          <div className="p-2 bg-amber-50 rounded-xl">
+                            <p className="text-lg font-extrabold text-amber-700">{totalPts}</p>
+                            <p className="text-[10px] text-amber-500">Points</p>
+                          </div>
+                          <div className="p-2 bg-green-50 rounded-xl">
+                            <p className="text-lg font-extrabold text-green-700">{totalRewards}</p>
+                            <p className="text-[10px] text-green-500">Récomp.</p>
+                          </div>
+                          <div className="p-2 bg-purple-50 rounded-xl">
+                            <p className="text-lg font-extrabold text-purple-700">{card.points_per_visit || 1}</p>
+                            <p className="text-[10px] text-purple-500">Pts/visite</p>
+                          </div>
                         </div>
-                        <div className="text-center p-2 bg-gray-50 rounded-xl">
-                          <p className="text-lg font-bold text-gray-900">{cardClients.length}</p>
-                          <p className="text-xs text-gray-500">Clients</p>
-                        </div>
-                        <div className="text-center p-2 bg-gray-50 rounded-xl">
-                          <p className="text-lg font-bold text-gray-900 truncate">{card.reward}</p>
-                          <p className="text-xs text-gray-500">Récompense</p>
-                        </div>
+
+                        {card.welcome_message && (
+                          <p className="text-xs text-gray-400 mt-3 italic text-center">&ldquo;{card.welcome_message}&rdquo;</p>
+                        )}
                       </div>
-                      <p className="text-xs text-gray-400">Règle : {card.points_rule}</p>
                     </div>
                   )
                 })}
@@ -588,54 +657,95 @@ export default function DashboardPage() {
         {/* ===== CLIENTS TAB ===== */}
         {activeTab === 'clients' && (
           <div className="space-y-4">
-            <h2 className="text-xl font-bold text-gray-900">👥 {t.dash_my_clients} ({stats.total_clients})</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold text-gray-900">👥 Tous les clients ({stats.total_clients})</h2>
+            </div>
             {clients.length === 0 ? (
-              <div className="bg-white rounded-2xl p-10 text-center shadow-sm">
-                <p className="text-4xl mb-3">👥</p>
-                <p className="text-gray-500">Aucun client pour le moment</p>
+              <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-gray-100">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">👥</div>
+                <p className="text-gray-900 font-bold mb-1">Aucun client</p>
+                <p className="text-gray-400 text-sm">Vos clients apparaîtront ici après leur premier scan</p>
               </div>
             ) : (
-              <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-                {clients.map((cc, i) => (
-                  <div
-                    key={cc.id || i}
-                    className="flex items-center justify-between p-4 border-b border-gray-50 last:border-0"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold">
-                        {(cc.clients?.name || cc.client_name || '?')[0]?.toUpperCase()}
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="grid grid-cols-12 gap-4 px-4 py-3 bg-gray-50 border-b border-gray-100 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                  <div className="col-span-5">Client</div>
+                  <div className="col-span-3">Carte</div>
+                  <div className="col-span-2">Points</div>
+                  <div className="col-span-2">Récomp.</div>
+                </div>
+                {clients.sort((a: any, b: any) => (b.points || 0) - (a.points || 0)).map((cc, i) => {
+                  const maxPts = cc.loyalty_cards?.max_points || cc.max_points || 10
+                  const pct = Math.min(((cc.points || 0) / maxPts) * 100, 100)
+                  return (
+                    <div key={cc.id || i} className="grid grid-cols-12 gap-4 items-center px-4 py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50 transition">
+                      <div className="col-span-5 flex items-center gap-3">
+                        <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-xs shadow-sm">
+                          {(cc.clients?.name || cc.client_name || '?')[0]?.toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-medium text-gray-900 text-sm truncate">{cc.clients?.name || cc.client_name}</p>
+                          <p className="text-[11px] text-gray-400 truncate">{cc.clients?.phone || cc.client_phone}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium text-gray-900 text-sm">
-                          {cc.clients?.name || cc.client_name}
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          {cc.clients?.phone || cc.client_phone}
-                        </p>
+                      <div className="col-span-3">
+                        <p className="text-xs font-medium text-gray-600 truncate">{cc.loyalty_cards?.business_name}</p>
+                      </div>
+                      <div className="col-span-2">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                            <div className={`h-full rounded-full ${pct >= 100 ? 'bg-amber-400' : 'bg-blue-500'}`} style={{ width: `${pct}%` }} />
+                          </div>
+                          <span className="text-xs font-bold text-gray-600 whitespace-nowrap">{cc.points}/{maxPts}</span>
+                        </div>
+                      </div>
+                      <div className="col-span-2 flex items-center gap-1">
+                        <span className="text-sm font-bold text-gray-900">{cc.total_rewards_redeemed || 0}</span>
+                        {pct >= 100 && <span className="text-sm">🎁</span>}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold text-gray-900">
-                        {cc.points}/{cc.loyalty_cards?.max_points || cc.max_points || '?'}
-                      </p>
-                      <div className="w-20 h-1.5 bg-gray-100 rounded-full mt-1">
-                        <div
-                          className="h-full bg-blue-600 rounded-full"
-                          style={{
-                            width: `${Math.min(
-                              ((cc.points || 0) / (cc.loyalty_cards?.max_points || cc.max_points || 10)) * 100,
-                              100
-                            )}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>
         )}
+
+        {/* ===== ACTIVITY TAB ===== */}
+        {activeTab === 'activity' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold text-gray-900">📋 Toute l&apos;activité</h2>
+              <button onClick={handleRefresh} className="text-sm text-blue-600 font-medium hover:underline">🔄 Rafraîchir</button>
+            </div>
+            {activities.length === 0 ? (
+              <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-gray-100">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">📋</div>
+                <p className="text-gray-900 font-bold mb-1">Pas encore d&apos;activité</p>
+                <p className="text-gray-400 text-sm">Les événements apparaîtront ici</p>
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-50">
+                {activities.map((a, i) => {
+                  const actStyle = getActivityIcon(a.type)
+                  return (
+                    <div key={i} className="flex items-start gap-4 p-4 hover:bg-gray-50 transition">
+                      <div className={`w-10 h-10 ${actStyle.bg} rounded-xl flex items-center justify-center text-base flex-shrink-0`}>{actStyle.icon}</div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-gray-900">{a.description || a.type}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[11px] text-gray-400">{timeAgo(a.created_at)}</span>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${actStyle.bg} ${actStyle.text}`}>{a.type}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
       </main>
     </div>
   )
