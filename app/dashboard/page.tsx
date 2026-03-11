@@ -178,27 +178,28 @@ export default function DashboardPage() {
     return new Date(d).toLocaleDateString('fr-FR')
   }
 
-  if (loading) {
-    const formatActivity = (a: any) => {
-  const type = a.type || ''
-  const desc = a.description || ''
+  const formatActivity = (a: any) => {
+    const type = a.type || ''
+    const desc = a.description || ''
 
-  const config: Record<string, { icon: string; color: string; bg: string; label: string }> = {
-    'join': { icon: '👋', color: 'text-blue-600', bg: 'bg-blue-50', label: 'Nouveau client' },
-    'pts': { icon: '⭐', color: 'text-amber-600', bg: 'bg-amber-50', label: 'Points ajoutés' },
-    'points': { icon: '⭐', color: 'text-amber-600', bg: 'bg-amber-50', label: 'Points ajoutés' },
-    'reward': { icon: '🎁', color: 'text-emerald-600', bg: 'bg-emerald-50', label: 'Récompense obtenue' },
-    'review': { icon: '💬', color: 'text-violet-600', bg: 'bg-violet-50', label: 'Nouvel avis' },
-    'validation': { icon: '✅', color: 'text-green-600', bg: 'bg-green-50', label: 'Visite validée' },
-    'rejected': { icon: '❌', color: 'text-red-600', bg: 'bg-red-50', label: 'Visite refusée' },
-    'card_created': { icon: '💳', color: 'text-indigo-600', bg: 'bg-indigo-50', label: 'Carte créée' },
-    'scan': { icon: '📱', color: 'text-cyan-600', bg: 'bg-cyan-50', label: 'Scan QR' },
+    const config: Record<string, { icon: string; color: string; bg: string; label: string }> = {
+      'join': { icon: '👋', color: 'text-blue-600', bg: 'bg-blue-50', label: 'Nouveau client' },
+      'pts': { icon: '⭐', color: 'text-amber-600', bg: 'bg-amber-50', label: 'Points ajoutés' },
+      'points': { icon: '⭐', color: 'text-amber-600', bg: 'bg-amber-50', label: 'Points ajoutés' },
+      'reward': { icon: '🎁', color: 'text-emerald-600', bg: 'bg-emerald-50', label: 'Récompense obtenue' },
+      'review': { icon: '💬', color: 'text-violet-600', bg: 'bg-violet-50', label: 'Nouvel avis' },
+      'validation': { icon: '✅', color: 'text-green-600', bg: 'bg-green-50', label: 'Visite validée' },
+      'rejected': { icon: '❌', color: 'text-red-600', bg: 'bg-red-50', label: 'Visite refusée' },
+      'card_created': { icon: '💳', color: 'text-indigo-600', bg: 'bg-indigo-50', label: 'Carte créée' },
+      'scan': { icon: '📱', color: 'text-cyan-600', bg: 'bg-cyan-50', label: 'Scan QR' },
+    }
+
+    const c = config[type] || { icon: '📋', color: 'text-slate-600', bg: 'bg-slate-50', label: type || 'Activité' }
+
+    return { ...c, description: desc || c.label }
   }
 
-  const c = config[type] || { icon: '📋', color: 'text-slate-600', bg: 'bg-slate-50', label: type || 'Activité' }
-
-  return { ...c, description: desc || c.label }
-}
+  if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
