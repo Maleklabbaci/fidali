@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 
 export default function ClientCardPage() {
   const params = useParams()
+  const router = useRouter()
   const phone = decodeURIComponent(params.phone as string)
 
   const [clientData, setClientData] = useState<any[]>([])
@@ -15,7 +16,6 @@ export default function ClientCardPage() {
   useEffect(() => {
     loadClientCards()
 
-    // Détecter si on peut installer la PWA
     const handler = (e: any) => {
       e.preventDefault()
       setDeferredPrompt(e)
@@ -202,6 +202,20 @@ export default function ClientCardPage() {
                   </div>
                 </div>
               </div>
+
+              {/* ⭐ Bouton Donner mon avis */}
+              <button
+                onClick={() => router.push(`/avis/${card.code}`)}
+                className="w-full mt-3 mx-auto py-3.5 rounded-2xl font-semibold text-sm flex items-center justify-center gap-2.5 transition-all active:scale-[0.98]"
+                style={{
+                  background: `linear-gradient(135deg, ${card.color1 || '#4f46e5'}22, ${card.color2 || '#7c3aed'}22)`,
+                  border: `1px solid ${card.color1 || '#4f46e5'}44`,
+                  color: 'rgba(255,255,255,0.85)',
+                }}
+              >
+                <span className="text-lg">⭐</span>
+                Donner mon avis sur {card.business_name}
+              </button>
             </div>
           )
         })}
