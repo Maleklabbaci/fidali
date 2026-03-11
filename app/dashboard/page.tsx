@@ -181,7 +181,6 @@ export default function DashboardPage() {
   const formatActivity = (a: any) => {
     const type = a.type || ''
     const desc = a.description || ''
-
     const config: Record<string, { icon: string; color: string; bg: string; label: string }> = {
       'join': { icon: '👋', color: 'text-blue-600', bg: 'bg-blue-50', label: 'Nouveau client' },
       'pts': { icon: '⭐', color: 'text-amber-600', bg: 'bg-amber-50', label: 'Points ajoutés' },
@@ -193,9 +192,7 @@ export default function DashboardPage() {
       'card_created': { icon: '💳', color: 'text-indigo-600', bg: 'bg-indigo-50', label: 'Carte créée' },
       'scan': { icon: '📱', color: 'text-cyan-600', bg: 'bg-cyan-50', label: 'Scan QR' },
     }
-
     const c = config[type] || { icon: '📋', color: 'text-slate-600', bg: 'bg-slate-50', label: type || 'Activité' }
-
     return { ...c, description: desc || c.label }
   }
 
@@ -383,10 +380,10 @@ export default function DashboardPage() {
             {/* Stats */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {[
-                { label: 'Clients actifs', value: stats.total_clients, icon: '👤', color: 'from-blue-500 to-indigo-500', shadow: 'shadow-blue-200', bg: 'bg-blue-50', text: 'text-blue-600' },
-                { label: 'Cartes actives', value: cards.length, icon: '💳', color: 'from-violet-500 to-purple-500', shadow: 'shadow-violet-200', bg: 'bg-violet-50', text: 'text-violet-600' },
-                { label: 'Points distribués', value: stats.total_points, icon: '⭐', color: 'from-amber-500 to-orange-500', shadow: 'shadow-amber-200', bg: 'bg-amber-50', text: 'text-amber-600' },
-                { label: 'Récompenses', value: stats.total_rewards, icon: '🎁', color: 'from-emerald-500 to-teal-500', shadow: 'shadow-emerald-200', bg: 'bg-emerald-50', text: 'text-emerald-600' },
+                { label: 'Clients actifs', value: stats.total_clients, icon: '👤', bg: 'bg-blue-50', text: 'text-blue-600' },
+                { label: 'Cartes actives', value: cards.length, icon: '💳', bg: 'bg-violet-50', text: 'text-violet-600' },
+                { label: 'Points distribués', value: stats.total_points, icon: '⭐', bg: 'bg-amber-50', text: 'text-amber-600' },
+                { label: 'Récompenses', value: stats.total_rewards, icon: '🎁', bg: 'bg-emerald-50', text: 'text-emerald-600' },
               ].map((s, i) => (
                 <div key={i} className="bg-white rounded-2xl border border-slate-100 p-5 hover:shadow-md transition">
                   <div className="flex items-center justify-between mb-3">
@@ -468,38 +465,39 @@ export default function DashboardPage() {
               </div>
 
               {/* Activité */}
-{/* Activité */}
-<div>
-  <div className="flex items-center justify-between mb-3">
-    <h3 className="text-sm font-bold text-slate-800">📋 Activité récente</h3>
-    <button onClick={() => setActiveTab('activity')} className="text-xs text-indigo-600 hover:underline font-medium">Tout →</button>
-  </div>
-  <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden">
-    {activities.length === 0 ? (
-      <p className="p-8 text-center text-xs text-slate-400">Aucune activité pour le moment</p>
-    ) : (
-      <div className="divide-y divide-slate-50">
-        {activities.slice(0, 10).map((a, i) => {
-          const f = formatActivity(a)
-          return (
-            <div key={i} className="px-4 py-3 hover:bg-slate-50/50 transition flex items-center gap-3">
-              <div className={`w-8 h-8 ${f.bg} rounded-lg flex items-center justify-center text-sm flex-shrink-0`}>
-                {f.icon}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-bold text-slate-800">📋 Activité récente</h3>
+                  <button onClick={() => setActiveTab('activity')} className="text-xs text-indigo-600 hover:underline font-medium">Tout →</button>
+                </div>
+                <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden">
+                  {activities.length === 0 ? (
+                    <p className="p-8 text-center text-xs text-slate-400">Aucune activité pour le moment</p>
+                  ) : (
+                    <div className="divide-y divide-slate-50">
+                      {activities.slice(0, 10).map((a, i) => {
+                        const f = formatActivity(a)
+                        return (
+                          <div key={i} className="px-4 py-3 hover:bg-slate-50/50 transition flex items-center gap-3">
+                            <div className={`w-8 h-8 ${f.bg} rounded-lg flex items-center justify-center text-sm flex-shrink-0`}>
+                              {f.icon}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs text-slate-700 truncate">{f.description}</p>
+                              <p className="text-[10px] text-slate-300 mt-0.5">{timeAgo(a.created_at)}</p>
+                            </div>
+                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${f.bg} ${f.color}`}>
+                              {f.label}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs text-slate-700 truncate">{f.description}</p>
-                <p className="text-[10px] text-slate-300 mt-0.5">{timeAgo(a.created_at)}</p>
-              </div>
-              <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${f.bg} ${f.color}`}>
-                {f.label}
-              </span>
             </div>
-          )
-        })}
-      </div>
-    )}
-  </div>
-</div>
+
             {/* Top clients */}
             {clients.length > 0 && (
               <div>
@@ -734,69 +732,74 @@ export default function DashboardPage() {
           </div>
         )}
 
-       {/* ===== ACTIVITY ===== */}
-{activeTab === 'activity' && (
-  <div className="space-y-4">
-    <div className="flex items-center justify-between">
-      <h2 className="text-sm font-bold text-slate-800">📋 Historique ({activities.length})</h2>
-      <button onClick={handleRefresh} className="text-xs text-indigo-600 hover:underline font-medium">Rafraîchir</button>
-    </div>
-
-    {activities.length === 0 ? (
-      <div className="bg-white border border-slate-100 rounded-2xl p-12 text-center">
-        <p className="text-3xl mb-3">📋</p>
-        <p className="text-slate-700 font-bold text-sm">Aucune activité</p>
-        <p className="text-slate-400 text-xs mt-1">L&apos;historique apparaîtra ici</p>
-      </div>
-    ) : (
-      <div className="space-y-2">
-        {activities.map((a, i) => {
-          const f = formatActivity(a)
-          const prevDate = i > 0 ? new Date(activities[i - 1].created_at).toDateString() : null
-          const currentDate = new Date(a.created_at).toDateString()
-          const showDate = i === 0 || currentDate !== prevDate
-
-          return (
-            <div key={i}>
-              {showDate && (
-                <div className="flex items-center gap-3 py-3">
-                  <div className="h-px bg-slate-200 flex-1" />
-                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-                    {new Date(a.created_at).toLocaleDateString('fr-FR', {
-                      weekday: 'long',
-                      day: 'numeric',
-                      month: 'long',
-                    })}
-                  </span>
-                  <div className="h-px bg-slate-200 flex-1" />
-                </div>
-              )}
-
-              <div className="bg-white border border-slate-100 rounded-2xl p-4 hover:shadow-md transition flex items-center gap-4">
-                <div className={`w-10 h-10 ${f.bg} rounded-xl flex items-center justify-center text-lg flex-shrink-0`}>
-                  {f.icon}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-slate-800 font-medium leading-snug">
-                    {f.description}
-                  </p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    {new Date(a.created_at).toLocaleTimeString('fr-FR', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                    {' · '}
-                    {timeAgo(a.created_at)}
-                  </p>
-                </div>
-                <span className={`text-[10px] font-bold px-2.5 py-1 rounded-lg flex-shrink-0 ${f.bg} ${f.color}`}>
-                  {f.label}
-                </span>
-              </div>
+        {/* ===== ACTIVITY ===== */}
+        {activeTab === 'activity' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-bold text-slate-800">📋 Historique ({activities.length})</h2>
+              <button onClick={handleRefresh} className="text-xs text-indigo-600 hover:underline font-medium">Rafraîchir</button>
             </div>
-          )
-        })}
-      </div>
-    )}
-  </div>
-)}
+
+            {activities.length === 0 ? (
+              <div className="bg-white border border-slate-100 rounded-2xl p-12 text-center">
+                <p className="text-3xl mb-3">📋</p>
+                <p className="text-slate-700 font-bold text-sm">Aucune activité</p>
+                <p className="text-slate-400 text-xs mt-1">L&apos;historique apparaîtra ici</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {activities.map((a, i) => {
+                  const f = formatActivity(a)
+                  const prevDate = i > 0 ? new Date(activities[i - 1].created_at).toDateString() : null
+                  const currentDate = new Date(a.created_at).toDateString()
+                  const showDate = i === 0 || currentDate !== prevDate
+
+                  return (
+                    <div key={i}>
+                      {showDate && (
+                        <div className="flex items-center gap-3 py-3">
+                          <div className="h-px bg-slate-200 flex-1" />
+                          <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                            {new Date(a.created_at).toLocaleDateString('fr-FR', {
+                              weekday: 'long',
+                              day: 'numeric',
+                              month: 'long',
+                            })}
+                          </span>
+                          <div className="h-px bg-slate-200 flex-1" />
+                        </div>
+                      )}
+
+                      <div className="bg-white border border-slate-100 rounded-2xl p-4 hover:shadow-md transition flex items-center gap-4">
+                        <div className={`w-10 h-10 ${f.bg} rounded-xl flex items-center justify-center text-lg flex-shrink-0`}>
+                          {f.icon}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-slate-800 font-medium leading-snug">
+                            {f.description}
+                          </p>
+                          <p className="text-[11px] text-slate-400 mt-0.5">
+                            {new Date(a.created_at).toLocaleTimeString('fr-FR', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                            {' · '}
+                            {timeAgo(a.created_at)}
+                          </p>
+                        </div>
+                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-lg flex-shrink-0 ${f.bg} ${f.color}`}>
+                          {f.label}
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+      </main>
+    </div>
+  )
+}
