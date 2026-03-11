@@ -112,6 +112,10 @@ export async function loginMerchant(email: string, password: string) {
 
     supabase.from('merchants').update({ last_login_at: new Date().toISOString() }).eq('id', merchant.id).then(() => {})
 
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('merchant', JSON.stringify(merchant))
+    }
+
     return { success: true as const, merchant, role: 'merchant' as const }
   } catch (err) {
     console.error('Login error:', err)
@@ -182,6 +186,18 @@ export async function signupMerchant(data: {
     })
 
     if (profileError) return { success: false as const, error: profileError.message }
+
+    // Récupérer le merchant créé et le sauvegarder en localStorage
+    const { data: merchantData } = await supabase
+      .from('merchants')
+      .select('*')
+      .eq('auth_user_id', authData.user.id)
+      .single()
+
+    if (merchantData) {
+      localStorage.setItem('merchant', JSON.stringify(merchantData))
+    }
+
     return { success: true as const }
   } catch (err) {
     console.error('Signup error:', err)
