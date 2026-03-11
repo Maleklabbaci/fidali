@@ -663,74 +663,70 @@ export async function requestUpgrade(merchantId: string, data: {
 }
 
 // ============================================
-// ADMIN OPERATIONS
+// ADMIN OPERATIONS — CORRIGÉ
 // ============================================
 
-export async function getAllMerchants(search?: string) {
-  if (search) {
-    const data = await safeQuery(() =>
-      supabase.from('merchants').select('*').or(`business_name.ilike.%${search}%,email.ilike.%${search}%,name.ilike.%${search}%`).order('created_at', { ascending: false })
-    )
-    return data || []
+export async function getPlatformOverview() {
+  const now = new Date()
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
+  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
+
+  try {
+    const [
+      merchants,
+      activeMerchants,
+      clients,
+      cards,
+      activitiesWeek,
+      activitiesToday,
+    ] = await Promise.all([
+      supabase.from('merchants').select('id', { count: 'exact', head: true }),
+      supabase.from('merchants').select('id', { count: 'exact', head: true }).eq('status', 'active'),
+      supabase.from('clients').select('id', { count: 'exact', head: true }),
+      supabase.from('loyalty_cards').select('id', { count: 'exact', head: true }),
+      supabase.from('activities').select('id', { count: 'exact', head: true }).gte('created_at', weekAgo),
+      supabase.from('activities').select('id', { count: 'exact', head: true }).gte('created_at', todayStart),
+    ])
+
+    return {
+      total_merchants: merchants.count ?? 0,
+      active_merchants: activeMerchants.count ?? 0,
+      total_clients: clients.count ?? 0,
+      total_cards: cards.count ?? 0,
+      activities_week: activitiesWeek.count ?? 0,
+      activities_today: activitiesToday.count ?? 0,
+    }
+  } catch (err) {
+    console.error('getPlatformOverview error:', err)
+    return {
+      total_merchants: 0,
+      active_merchants: 0,
+      total_clients: 0,
+      total_cards: 0,
+      activities_week: 0,
+      activities_today: 0,
+    }
   }
-  const data = await safeQuery(() =>
-    supabase.from('merchants').select('*').order('created_at', { ascending: false })
-  )
-  return data || []
 }
 
 export async function getPendingMerchants() {
   const data = await safeQuery(() =>
-    supabase.from('merchants').select('*').eq('status', 'pending').order('created_at', { ascending: false })
+    supabase
+      .from('merchants')
+      .select('*')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
   )
   return data || []
 }
 
-export async function approveMerchant(merchantId: string) {
-  try {
-    const { data, error } = await supabase.rpc('approve_merchant_full', { p_merchant_id: merchantId })
-    if (error) {
-      await supabase.from('merchants').update({ status: 'active', validated_at: new Date().toISOString() }).eq('id', merchantId)
-    }
-    return data
-  } catch {
-    await supabase.from('merchants').update({ status: 'active', validated_at: new Date().toISOString() }).eq('id', merchantId)
-  }
-}
-
-export async function suspendMerchant(merchantId: string) {
-  try {
-    const { data, error } = await supabase.rpc('suspend_merchant_full', { p_merchant_id: merchantId })
-    if (error) {
-      await supabase.from('merchants').update({ status: 'suspended' }).eq('id', merchantId)
-    }
-    return data
-  } catch {
-    await supabase.from('merchants').update({ status: 'suspended' }).eq('id', merchantId)
-  }
-}
-
-export async function changeMerchantPlan(merchantId: string, plan: string) {
-  await safeQuery(() =>
-    supabase.from('merchants').update({ plan, updated_at: new Date().toISOString() }).eq('id', merchantId)
-  )
-}
-
-export async function deleteMerchant(merchantId: string) {
-  await safeQuery(() =>
-    supabase.from('merchants').delete().eq('id', merchantId)
-  )
-}
-
-export async function getPlatformOverview() {
-  return await safeQuery(() =>
-    supabase.from('platform_overview').select('*').single()
-  )
-}
-
 export async function getPendingPayments() {
   const data = await safeQuery(() =>
-    supabase.from('pending_payments').select('*').eq('status', 'pending').order('created_at', { ascending: false })
+    supabase
+      .from('payment_requests')
+      .select('*')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
   )
   return data || []
 }
