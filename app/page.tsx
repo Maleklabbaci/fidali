@@ -214,9 +214,7 @@ export default function Home() {
       <nav className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-xl border-b border-gray-100/80">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
-              <span className="text-white text-sm font-bold">F</span>
-            </div>
+            <img src="/logo.png" alt="Fidali" className="w-9 h-9 rounded-xl object-contain" />
             <span className="text-lg font-bold text-gray-900">Fidali</span>
           </div>
           <div className="hidden md:flex items-center gap-8">
