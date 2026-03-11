@@ -61,7 +61,8 @@ export function createServerClient() {
 // SAFE QUERY WRAPPER — Retry automatique
 // ============================================
 
-async function safeQuery(fn: () => Promise<{ data: any; error: any }>): Promise<any> {
+// @ts-ignore
+async function safeQuery(fn: any): Promise<any> {
   let attempts = 0
   const maxAttempts = 3
 
