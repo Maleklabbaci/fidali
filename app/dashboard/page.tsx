@@ -502,7 +502,10 @@ export default function DashboardPage() {
                               <div className="relative z-10 text-white">
                                 <div className="flex justify-between items-start mb-3">
                                   <div>
-                                    <p className="text-[9px] text-white/40 uppercase tracking-[0.15em] font-semibold">Fidélité</p>
+                                    <div className="flex items-center gap-2">
+  <img src="/logo-white.png" alt="" className="w-5 h-5 object-contain opacity-60" />
+  <p className="text-[9px] text-white/40 uppercase tracking-[0.15em] font-semibold">Fidélité</p>
+</div>
                                     <h4 className="font-bold text-base">{card.business_name}</h4>
                                   </div>
                                   <span className="text-[11px] bg-white/20 px-2.5 py-1 rounded-lg font-bold">{card.max_points} pts</span>
