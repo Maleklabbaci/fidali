@@ -143,7 +143,18 @@ export function loadTheme(): string {
 
 export function applyTheme(theme: Theme) {
   const root = document.documentElement
+  root.setAttribute('data-theme', theme.id)
   Object.entries(theme.colors).forEach(([key, value]) => {
     root.style.setProperty(`--color-${key}`, value)
   })
+  
+  // Force meta theme-color pour mobile
+  let meta = document.querySelector('meta[name="theme-color"]')
+  if (!meta) {
+    meta = document.createElement('meta')
+    meta.setAttribute('name', 'theme-color')
+    document.head.appendChild(meta)
+  }
+  meta.setAttribute('content', theme.colors.primary)
+
 }
