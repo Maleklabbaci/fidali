@@ -108,7 +108,6 @@ export async function loginMerchant(email: string, password: string) {
     if (!merchantData) return { success: false as const, error: 'Profil commerçant introuvable' }
 
     const merchant = merchantData as any
-    if (merchant.status === 'pending') return { success: false as const, error: '⏳ Compte en attente de validation' }
     if (merchant.status === 'suspended') return { success: false as const, error: '🚫 Compte suspendu' }
 
     supabase.from('merchants').update({ last_login_at: new Date().toISOString() }).eq('id', merchant.id).then(() => {})
@@ -179,7 +178,7 @@ export async function signupMerchant(data: {
       sector: data.sector,
       phone: data.phone,
       plan: 'starter',
-      status: 'pending',
+      status: 'active',
     })
 
     if (profileError) return { success: false as const, error: profileError.message }
