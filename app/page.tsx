@@ -106,7 +106,10 @@ function HeroCard({ card, isActive }: { card: typeof SLIDES[0]['card']; isActive
                 <div className="w-8 h-8 bg-white/15 rounded-lg flex items-center justify-center text-base backdrop-blur-sm">{card.emoji}</div>
                 <div>
                   <h3 className="text-lg font-bold tracking-wide">{card.name.substring(2)}</h3>
-                  <p className="text-[11px] text-white/50 font-medium tracking-wider uppercase">Carte de fidélité</p>
+                 <div className="flex items-center gap-1.5">
+  <img src="/logo-white.png" alt="" className="w-4 h-4 object-contain opacity-50" />
+  <p className="text-[11px] text-white/50 font-medium tracking-wider uppercase">Carte de fidélité</p>
+</div>
                 </div>
               </div>
               <div className="bg-white/10 backdrop-blur-sm border border-white/10 px-3 py-1.5 rounded-full">
