@@ -26,9 +26,9 @@ export default function DashboardPage() {
   const [actionLoading, setActionLoading] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [showContact, setShowContact] = useState(false)
-const [contactForm, setContactForm] = useState({ subject: '', message: '' })
-const [contactSending, setContactSending] = useState(false)
-const [contactSent, setContactSent] = useState(false)
+  const [contactForm, setContactForm] = useState({ subject: '', message: '' })
+  const [contactSending, setContactSending] = useState(false)
+  const [contactSent, setContactSent] = useState(false)
 
   useEffect(() => {
     const stored = localStorage.getItem('merchant') || sessionStorage.getItem('merchant')
@@ -158,23 +158,25 @@ const [contactSent, setContactSent] = useState(false)
     sessionStorage.removeItem('merchant')
     router.push('/')
   }
-const handleSendMessage = async () => {
-  if (!contactForm.subject.trim() || !contactForm.message.trim()) return
-  setContactSending(true)
-  try {
-    const { supabase } = await import('@/database/supabase-client')
-    await supabase.from('messages').insert({
-      merchant_id: merchant?.id,
-      merchant_name: merchant?.business_name || merchant?.name,
-      merchant_email: merchant?.email,
-      subject: contactForm.subject.trim(),
-      message: contactForm.message.trim(),
-    })
-    setContactSent(true)
-    setContactForm({ subject: '', message: '' })
-  } catch (err) { console.error(err) }
-  finally { setContactSending(false) }
-}
+
+  const handleSendMessage = async () => {
+    if (!contactForm.subject.trim() || !contactForm.message.trim()) return
+    setContactSending(true)
+    try {
+      const { supabase } = await import('@/database/supabase-client')
+      await supabase.from('messages').insert({
+        merchant_id: merchant?.id,
+        merchant_name: merchant?.business_name || merchant?.name,
+        merchant_email: merchant?.email,
+        subject: contactForm.subject.trim(),
+        message: contactForm.message.trim(),
+      })
+      setContactSent(true)
+      setContactForm({ subject: '', message: '' })
+    } catch (err) { console.error(err) }
+    finally { setContactSending(false) }
+  }
+
   const getCardURL = (code: string) => `${typeof window !== 'undefined' ? window.location.origin : ''}/scan/${code}`
   const handleCopyLink = (code: string) => { navigator.clipboard.writeText(getCardURL(code)); setCopied(true); setTimeout(() => setCopied(false), 2000) }
   const handleShare = async (card: any) => {
@@ -231,14 +233,12 @@ const handleSendMessage = async () => {
   return (
     <div className="min-h-screen bg-slate-50">
 
-      {/* TOAST */}
       {toast && (
         <div className={`fixed top-5 right-5 z-50 px-5 py-3 rounded-xl shadow-lg text-sm font-medium ${toast.type === 'success' ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}`}>
           {toast.message}
         </div>
       )}
 
-      {/* HEADER */}
       <header className="bg-white border-b border-slate-200 px-5 md:px-8 py-4 sticky top-0 z-20">
         <div className="flex items-center justify-between max-w-[1300px] mx-auto">
           <div className="flex items-center gap-3">
@@ -258,11 +258,11 @@ const handleSendMessage = async () => {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
             </button>
             <button onClick={handleExportPDF} disabled={exportingPDF} className="hidden md:flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition disabled:opacity-50">
-              📄 {exportingPDF ? 'Export...' : 'Export PDF'}
+              {exportingPDF ? 'Export...' : 'Export PDF'}
             </button>
             {merchant?.plan !== 'premium' && (
               <button onClick={() => router.push('/dashboard/upgrade')} className="hidden md:flex px-3 py-1.5 text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg transition shadow-sm">
-                ✨ Upgrade
+                Upgrade
               </button>
             )}
             <button onClick={handleLogout} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition">
@@ -272,7 +272,6 @@ const handleSendMessage = async () => {
         </div>
       </header>
 
-      {/* TABS */}
       <div className="bg-white border-b border-slate-200 sticky top-[61px] z-10">
         <div className="max-w-[1300px] mx-auto px-5 md:px-8 flex gap-0 overflow-x-auto">
           {[
@@ -292,7 +291,6 @@ const handleSendMessage = async () => {
         </div>
       </div>
 
-      {/* MODALS */}
       {confirmDelete && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 flex items-center justify-center p-4" onClick={() => setConfirmDelete(null)}>
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -314,32 +312,32 @@ const handleSendMessage = async () => {
       {editCard && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 flex items-center justify-center p-4" onClick={() => setEditCard(null)}>
           <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-base font-bold text-slate-900 mb-1">✏️ Modifier la carte</h3>
+            <h3 className="text-base font-bold text-slate-900 mb-1">Modifier la carte</h3>
             <p className="text-sm text-slate-400 mb-5">{editCard.business_name} — {editCard.code}</p>
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-semibold text-slate-600 mb-1.5 block">🎁 Récompense</label>
+                <label className="text-xs font-semibold text-slate-600 mb-1.5 block">Récompense</label>
                 <input type="text" value={editForm.reward} onChange={(e) => setEditForm({ ...editForm, reward: e.target.value })} className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-slate-600 mb-1.5 block">⭐ Points max</label>
+                  <label className="text-xs font-semibold text-slate-600 mb-1.5 block">Points max</label>
                   <input type="number" value={editForm.max_points} onChange={(e) => setEditForm({ ...editForm, max_points: parseInt(e.target.value) || 0 })} className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-600 mb-1.5 block">📍 Points/visite</label>
+                  <label className="text-xs font-semibold text-slate-600 mb-1.5 block">Points/visite</label>
                   <input type="number" value={editForm.points_per_visit} onChange={(e) => setEditForm({ ...editForm, points_per_visit: parseInt(e.target.value) || 1 })} className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-600 mb-1.5 block">💬 Message de bienvenue</label>
+                <label className="text-xs font-semibold text-slate-600 mb-1.5 block">Message de bienvenue</label>
                 <input type="text" value={editForm.welcome_message} onChange={(e) => setEditForm({ ...editForm, welcome_message: e.target.value })} className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
             </div>
             <div className="flex gap-3 mt-6">
               <button onClick={() => setEditCard(null)} className="flex-1 py-2.5 text-sm font-medium text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200 transition">Annuler</button>
               <button onClick={handleEditCard} disabled={actionLoading} className="flex-1 py-2.5 text-sm font-medium text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition disabled:opacity-50">
-                {actionLoading ? 'Sauvegarde...' : '✓ Sauvegarder'}
+                {actionLoading ? 'Sauvegarde...' : 'Sauvegarder'}
               </button>
             </div>
           </div>
@@ -365,9 +363,9 @@ const handleSendMessage = async () => {
                     <p className="text-[11px] font-mono text-slate-500 text-center break-all">{getCardURL(card.code)}</p>
                   </div>
                   <div className="grid grid-cols-3 gap-2 mb-4">
-                    <button onClick={() => handleCopyLink(card.code)} className="py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-xl text-xs font-semibold transition">{copied ? '✓ Copié' : '📋 Copier'}</button>
-                    <button onClick={() => handleShare(card)} className="py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-xl text-xs font-semibold transition">📤 Partager</button>
-                    <button onClick={() => handlePrintQR(card)} className="py-2.5 bg-violet-50 hover:bg-violet-100 text-violet-600 rounded-xl text-xs font-semibold transition">🖨 Imprimer</button>
+                    <button onClick={() => handleCopyLink(card.code)} className="py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-xl text-xs font-semibold transition">{copied ? 'Copié !' : 'Copier'}</button>
+                    <button onClick={() => handleShare(card)} className="py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-xl text-xs font-semibold transition">Partager</button>
+                    <button onClick={() => handlePrintQR(card)} className="py-2.5 bg-violet-50 hover:bg-violet-100 text-violet-600 rounded-xl text-xs font-semibold transition">Imprimer</button>
                   </div>
                   <button onClick={() => setShowQR(null)} className="w-full py-2.5 text-sm text-slate-400 hover:text-slate-600 transition">Fermer</button>
                 </>
@@ -377,13 +375,10 @@ const handleSendMessage = async () => {
         </div>
       )}
 
-      {/* CONTENT */}
       <main className="max-w-[1300px] mx-auto px-5 md:px-8 py-6">
 
-        {/* ===== OVERVIEW ===== */}
         {activeTab === 'overview' && (
           <div className="space-y-6">
-
             {pending.length > 0 && (
               <div className="bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl p-4 flex items-center justify-between cursor-pointer hover:shadow-lg transition shadow-md shadow-amber-200" onClick={() => setActiveTab('pending')}>
                 <div className="flex items-center gap-3 text-white">
@@ -397,7 +392,6 @@ const handleSendMessage = async () => {
               </div>
             )}
 
-            {/* Stats */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {[
                 { label: 'Clients actifs', value: stats.total_clients, icon: '👤', bg: 'bg-blue-50', text: 'text-blue-600' },
@@ -406,23 +400,19 @@ const handleSendMessage = async () => {
                 { label: 'Récompenses', value: stats.total_rewards, icon: '🎁', bg: 'bg-emerald-50', text: 'text-emerald-600' },
               ].map((s, i) => (
                 <div key={i} className="bg-white rounded-2xl border border-slate-100 p-5 hover:shadow-md transition">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className={`w-10 h-10 ${s.bg} rounded-xl flex items-center justify-center text-lg`}>{s.icon}</div>
-                  </div>
+                  <div className={`w-10 h-10 ${s.bg} rounded-xl flex items-center justify-center text-lg mb-3`}>{s.icon}</div>
                   <p className={`text-3xl font-extrabold ${s.text}`}>{s.value.toLocaleString()}</p>
                   <p className="text-xs text-slate-400 mt-1">{s.label}</p>
                 </div>
               ))}
             </div>
 
-            {/* Cards + Activity */}
             <div className="grid lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-slate-800">💳 Mes cartes de fidélité</h3>
-                  <button onClick={() => setActiveTab('cards')} className="text-xs text-indigo-600 hover:underline font-medium">Voir tout →</button>
+                  <h3 className="text-sm font-bold text-slate-800">Mes cartes de fidélité</h3>
+                  <button onClick={() => setActiveTab('cards')} className="text-xs text-indigo-600 hover:underline font-medium">Voir tout</button>
                 </div>
-
                 {cards.length === 0 ? (
                   <div className="bg-white border-2 border-dashed border-slate-200 rounded-2xl p-10 text-center">
                     <p className="text-4xl mb-3">💳</p>
@@ -438,7 +428,6 @@ const handleSendMessage = async () => {
                         <div key={card.id} className="bg-white border border-slate-100 rounded-2xl overflow-hidden hover:shadow-md transition">
                           <div className="flex">
                             <div className="flex-1 p-5 relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${card.color1 || '#4f46e5'}, ${card.color2 || '#7c3aed'})` }}>
-                              <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.4) 1px, transparent 0)', backgroundSize: '16px 16px' }} />
                               <div className="relative z-10 text-white">
                                 <div className="flex justify-between items-start mb-3">
                                   <div>
@@ -472,8 +461,8 @@ const handleSendMessage = async () => {
                               <span><strong className="text-slate-700">{cc.reduce((s: number, c: any) => s + (c.points || 0), 0)}</strong> pts</span>
                             </div>
                             <div className="flex gap-1">
-                              <button onClick={() => openEditCard(card)} className="px-2.5 py-1 text-[10px] text-indigo-600 hover:bg-indigo-50 rounded-lg transition font-semibold">✏️ Modifier</button>
-                              <button onClick={() => setConfirmDelete({ type: 'card', id: card.id, name: card.business_name })} className="px-2.5 py-1 text-[10px] text-red-500 hover:bg-red-50 rounded-lg transition font-semibold">🗑 Supprimer</button>
+                              <button onClick={() => openEditCard(card)} className="px-2.5 py-1 text-[10px] text-indigo-600 hover:bg-indigo-50 rounded-lg transition font-semibold">Modifier</button>
+                              <button onClick={() => setConfirmDelete({ type: 'card', id: card.id, name: card.business_name })} className="px-2.5 py-1 text-[10px] text-red-500 hover:bg-red-50 rounded-lg transition font-semibold">Supprimer</button>
                             </div>
                           </div>
                         </div>
@@ -484,31 +473,26 @@ const handleSendMessage = async () => {
                 )}
               </div>
 
-              {/* Activité */}
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-bold text-slate-800">📋 Activité récente</h3>
-                  <button onClick={() => setActiveTab('activity')} className="text-xs text-indigo-600 hover:underline font-medium">Tout →</button>
+                  <h3 className="text-sm font-bold text-slate-800">Activité récente</h3>
+                  <button onClick={() => setActiveTab('activity')} className="text-xs text-indigo-600 hover:underline font-medium">Tout</button>
                 </div>
                 <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden">
                   {activities.length === 0 ? (
-                    <p className="p-8 text-center text-xs text-slate-400">Aucune activité pour le moment</p>
+                    <p className="p-8 text-center text-xs text-slate-400">Aucune activité</p>
                   ) : (
                     <div className="divide-y divide-slate-50">
                       {activities.slice(0, 10).map((a, i) => {
                         const f = formatActivity(a)
                         return (
                           <div key={i} className="px-4 py-3 hover:bg-slate-50/50 transition flex items-center gap-3">
-                            <div className={`w-8 h-8 ${f.bg} rounded-lg flex items-center justify-center text-sm flex-shrink-0`}>
-                              {f.icon}
-                            </div>
+                            <div className={`w-8 h-8 ${f.bg} rounded-lg flex items-center justify-center text-sm flex-shrink-0`}>{f.icon}</div>
                             <div className="flex-1 min-w-0">
                               <p className="text-xs text-slate-700 truncate">{f.description}</p>
                               <p className="text-[10px] text-slate-300 mt-0.5">{timeAgo(a.created_at)}</p>
                             </div>
-                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${f.bg} ${f.color}`}>
-                              {f.label}
-                            </span>
+                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${f.bg} ${f.color}`}>{f.label}</span>
                           </div>
                         )
                       })}
@@ -518,12 +502,11 @@ const handleSendMessage = async () => {
               </div>
             </div>
 
-            {/* Top clients */}
             {clients.length > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-bold text-slate-800">🏆 Meilleurs clients</h3>
-                  <button onClick={() => setActiveTab('clients')} className="text-xs text-indigo-600 hover:underline font-medium">Tous →</button>
+                  <h3 className="text-sm font-bold text-slate-800">Meilleurs clients</h3>
+                  <button onClick={() => setActiveTab('clients')} className="text-xs text-indigo-600 hover:underline font-medium">Tous</button>
                 </div>
                 <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden">
                   {[...clients].sort((a: any, b: any) => (b.points || 0) - (a.points || 0)).slice(0, 5).map((cc, i) => {
@@ -554,7 +537,6 @@ const handleSendMessage = async () => {
               </div>
             )}
 
-            {/* Quick actions */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
                 { icon: '💳', label: 'Nouvelle carte', bg: 'bg-indigo-50 hover:bg-indigo-100', text: 'text-indigo-600', action: () => router.push('/dashboard/create-card') },
@@ -571,11 +553,10 @@ const handleSendMessage = async () => {
           </div>
         )}
 
-        {/* ===== PENDING ===== */}
         {activeTab === 'pending' && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold text-slate-800">🔔 Visites en attente</h2>
+              <h2 className="text-sm font-bold text-slate-800">Visites en attente</h2>
               <button onClick={handleRefresh} className="text-xs text-indigo-600 hover:underline font-medium">Rafraîchir</button>
             </div>
             {pending.length === 0 ? (
@@ -598,8 +579,8 @@ const handleSendMessage = async () => {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => handlePresence(p.id, 'validated')} className="px-4 py-2 bg-emerald-500 text-white rounded-xl text-xs font-semibold hover:bg-emerald-600 transition shadow-sm shadow-emerald-200">✓ Confirmer</button>
-                      <button onClick={() => handlePresence(p.id, 'rejected')} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-semibold hover:bg-red-50 hover:text-red-500 transition">✕ Refuser</button>
+                      <button onClick={() => handlePresence(p.id, 'validated')} className="px-4 py-2 bg-emerald-500 text-white rounded-xl text-xs font-semibold hover:bg-emerald-600 transition shadow-sm shadow-emerald-200">Confirmer</button>
+                      <button onClick={() => handlePresence(p.id, 'rejected')} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-semibold hover:bg-red-50 hover:text-red-500 transition">Refuser</button>
                     </div>
                   </div>
                 </div>
@@ -608,19 +589,17 @@ const handleSendMessage = async () => {
           </div>
         )}
 
-        {/* ===== CARDS ===== */}
         {activeTab === 'cards' && (
           <div className="space-y-5">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold text-slate-800">💳 Mes cartes</h2>
+              <h2 className="text-sm font-bold text-slate-800">Mes cartes</h2>
               <button onClick={() => router.push('/dashboard/create-card')} className="px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-xl hover:bg-indigo-700 transition shadow-sm shadow-indigo-200">+ Nouvelle carte</button>
             </div>
             {cards.length === 0 ? (
               <div className="bg-white border-2 border-dashed border-slate-200 rounded-2xl p-12 text-center">
                 <p className="text-4xl mb-3">💳</p>
                 <p className="text-slate-800 font-bold text-base mb-1">Aucune carte</p>
-                <p className="text-slate-400 text-xs mb-5">Créez votre première carte de fidélité</p>
-                <button onClick={() => router.push('/dashboard/create-card')} className="px-6 py-2.5 bg-indigo-600 text-white text-xs font-semibold rounded-xl hover:bg-indigo-700 transition">Créer une carte</button>
+                <button onClick={() => router.push('/dashboard/create-card')} className="px-6 py-2.5 bg-indigo-600 text-white text-xs font-semibold rounded-xl hover:bg-indigo-700 transition mt-4">Créer une carte</button>
               </div>
             ) : (
               <div className="grid md:grid-cols-2 gap-5">
@@ -631,8 +610,6 @@ const handleSendMessage = async () => {
                   return (
                     <div key={card.id} className="bg-white border border-slate-100 rounded-2xl overflow-hidden hover:shadow-lg transition">
                       <div className="p-6 relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${card.color1 || '#4f46e5'}, ${card.color2 || '#7c3aed'})` }}>
-                        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.4) 1px, transparent 0)', backgroundSize: '16px 16px' }} />
-                        <div className="absolute -top-8 -right-8 w-28 h-28 bg-white/[0.05] rounded-full" />
                         <div className="relative z-10 text-white">
                           <div className="flex justify-between items-start mb-5">
                             <div>
@@ -671,14 +648,9 @@ const handleSendMessage = async () => {
                             ))}
                           </div>
                         </div>
-                        <div className="grid grid-cols-3 gap-2 mb-3">
-                          <button onClick={() => handleCopyLink(card.code)} className="py-2 bg-slate-50 hover:bg-slate-100 rounded-xl text-xs font-semibold text-slate-600 transition">{copied ? '✓ Copié' : '📋 Copier'}</button>
-                          <button onClick={() => handleShare(card)} className="py-2 bg-slate-50 hover:bg-slate-100 rounded-xl text-xs font-semibold text-slate-600 transition">📤 Partager</button>
-                          <button onClick={() => handlePrintQR(card)} className="py-2 bg-slate-50 hover:bg-slate-100 rounded-xl text-xs font-semibold text-slate-600 transition">🖨 Imprimer</button>
-                        </div>
                         <div className="flex gap-2 pt-3 border-t border-slate-100">
-                          <button onClick={() => openEditCard(card)} className="flex-1 py-2 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 rounded-xl transition">✏️ Modifier</button>
-                          <button onClick={() => setConfirmDelete({ type: 'card', id: card.id, name: card.business_name })} className="flex-1 py-2 text-xs font-semibold text-red-500 hover:bg-red-50 rounded-xl transition">🗑 Supprimer</button>
+                          <button onClick={() => openEditCard(card)} className="flex-1 py-2 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 rounded-xl transition">Modifier</button>
+                          <button onClick={() => setConfirmDelete({ type: 'card', id: card.id, name: card.business_name })} className="flex-1 py-2 text-xs font-semibold text-red-500 hover:bg-red-50 rounded-xl transition">Supprimer</button>
                         </div>
                       </div>
                     </div>
@@ -689,15 +661,13 @@ const handleSendMessage = async () => {
           </div>
         )}
 
-        {/* ===== CLIENTS ===== */}
         {activeTab === 'clients' && (
           <div className="space-y-4">
-            <h2 className="text-sm font-bold text-slate-800">👤 Clients ({stats.total_clients})</h2>
+            <h2 className="text-sm font-bold text-slate-800">Clients ({stats.total_clients})</h2>
             {clients.length === 0 ? (
               <div className="bg-white border border-slate-100 rounded-2xl p-12 text-center">
                 <p className="text-3xl mb-3">👤</p>
                 <p className="text-slate-700 font-bold text-sm">Aucun client</p>
-                <p className="text-slate-400 text-xs mt-1">Vos clients apparaîtront ici</p>
               </div>
             ) : (
               <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden">
@@ -752,19 +722,16 @@ const handleSendMessage = async () => {
           </div>
         )}
 
-        {/* ===== ACTIVITY ===== */}
         {activeTab === 'activity' && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold text-slate-800">📋 Historique ({activities.length})</h2>
+              <h2 className="text-sm font-bold text-slate-800">Historique ({activities.length})</h2>
               <button onClick={handleRefresh} className="text-xs text-indigo-600 hover:underline font-medium">Rafraîchir</button>
             </div>
-
             {activities.length === 0 ? (
               <div className="bg-white border border-slate-100 rounded-2xl p-12 text-center">
                 <p className="text-3xl mb-3">📋</p>
                 <p className="text-slate-700 font-bold text-sm">Aucune activité</p>
-                <p className="text-slate-400 text-xs mt-1">L&apos;historique apparaîtra ici</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -773,43 +740,26 @@ const handleSendMessage = async () => {
                   const prevDate = i > 0 ? new Date(activities[i - 1].created_at).toDateString() : null
                   const currentDate = new Date(a.created_at).toDateString()
                   const showDate = i === 0 || currentDate !== prevDate
-
                   return (
                     <div key={i}>
                       {showDate && (
                         <div className="flex items-center gap-3 py-3">
                           <div className="h-px bg-slate-200 flex-1" />
                           <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-                            {new Date(a.created_at).toLocaleDateString('fr-FR', {
-                              weekday: 'long',
-                              day: 'numeric',
-                              month: 'long',
-                            })}
+                            {new Date(a.created_at).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
                           </span>
                           <div className="h-px bg-slate-200 flex-1" />
                         </div>
                       )}
-
                       <div className="bg-white border border-slate-100 rounded-2xl p-4 hover:shadow-md transition flex items-center gap-4">
-                        <div className={`w-10 h-10 ${f.bg} rounded-xl flex items-center justify-center text-lg flex-shrink-0`}>
-                          {f.icon}
-                        </div>
+                        <div className={`w-10 h-10 ${f.bg} rounded-xl flex items-center justify-center text-lg flex-shrink-0`}>{f.icon}</div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm text-slate-800 font-medium leading-snug">
-                            {f.description}
-                          </p>
+                          <p className="text-sm text-slate-800 font-medium leading-snug">{f.description}</p>
                           <p className="text-[11px] text-slate-400 mt-0.5">
-                            {new Date(a.created_at).toLocaleTimeString('fr-FR', {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                            {' · '}
-                            {timeAgo(a.created_at)}
+                            {new Date(a.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} · {timeAgo(a.created_at)}
                           </p>
                         </div>
-                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-lg flex-shrink-0 ${f.bg} ${f.color}`}>
-                          {f.label}
-                        </span>
+                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-lg flex-shrink-0 ${f.bg} ${f.color}`}>{f.label}</span>
                       </div>
                     </div>
                   )
@@ -820,156 +770,84 @@ const handleSendMessage = async () => {
         )}
 
       </main>
-          {/* ===== BULLE CONTACT ADMIN ===== */}
-      {(() => {
-        const [showContact, setShowContact] = useState(false)
-        const [contactForm, setContactForm] = useState({ subject: '', message: '' })
-        const [contactSending, setContactSending] = useState(false)
-        const [contactSent, setContactSent] = useState(false)
 
-        const handleSendMessage = async () => {
-          if (!contactForm.subject.trim() || !contactForm.message.trim()) return
-          setContactSending(true)
-          try {
-            const { supabase } = await import('@/database/supabase-client')
-            await supabase.from('messages').insert({
-              merchant_id: merchant?.id,
-              merchant_name: merchant?.business_name || merchant?.name,
-              merchant_email: merchant?.email,
-              subject: contactForm.subject.trim(),
-              message: contactForm.message.trim(),
-            })
-            setContactSent(true)
-            setContactForm({ subject: '', message: '' })
-          } catch (err) {
-            console.error(err)
-          } finally {
-            setContactSending(false)
-          }
-        }
+      {/* BULLE CONTACT */}
+      <button onClick={() => { setShowContact(true); setContactSent(false) }} className="fixed bottom-6 right-6 z-30 w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg shadow-indigo-300 flex items-center justify-center transition-all hover:scale-110 active:scale-95">
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+      </button>
 
-        return (
-          <>
-            {/* Bulle flottante */}
-            <button
-              onClick={() => { setShowContact(true); setContactSent(false) }}
-              className="fixed bottom-6 right-6 z-30 w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg shadow-indigo-300 flex items-center justify-center transition-all hover:scale-110 active:scale-95"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
-            </button>
-
-            {/* Petit label */}
-            <div className="fixed bottom-[88px] right-6 z-30 bg-slate-800 text-white text-[10px] font-medium px-3 py-1.5 rounded-lg shadow-lg pointer-events-none opacity-0 hover:opacity-100 transition">
-              Besoin d&apos;aide ?
-            </div>
-
-            {/* Modal contact */}
-            {showContact && (
-              <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4" onClick={() => setShowContact(false)}>
-                <div className="bg-white rounded-2xl sm:rounded-2xl w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
-
-                  {contactSent ? (
-                    <div className="p-8 text-center">
-                      <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg className="w-8 h-8 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                      <h3 className="text-lg font-bold text-slate-900 mb-1">Message envoyé !</h3>
-                      <p className="text-sm text-slate-400 mb-6">Nous vous répondrons dans les plus brefs délais</p>
-                      <button onClick={() => setShowContact(false)} className="px-6 py-2.5 bg-slate-100 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-200 transition">
-                        Fermer
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="p-6 border-b border-slate-100">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
-                              <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                              </svg>
-                            </div>
-                            <div>
-                              <h3 className="text-base font-bold text-slate-900">Contactez-nous</h3>
-                              <p className="text-xs text-slate-400">Support Fidali</p>
-                            </div>
-                          </div>
-                          <button onClick={() => setShowContact(false)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="p-6 space-y-4">
-                        <div>
-                          <label className="text-xs font-semibold text-slate-600 mb-1.5 block">Sujet</label>
-                          <select
-                            value={contactForm.subject}
-                            onChange={(e) => setContactForm({ ...contactForm, subject: e.target.value })}
-                            className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition bg-white"
-                          >
-                            <option value="">Choisir un sujet...</option>
-                            <option value="Problème technique">🔧 Problème technique</option>
-                            <option value="Question sur mon abonnement">💰 Question sur mon abonnement</option>
-                            <option value="Demande de fonctionnalité">💡 Demande de fonctionnalité</option>
-                            <option value="Signaler un bug">🐛 Signaler un bug</option>
-                            <option value="Aide utilisation">❓ Aide utilisation</option>
-                            <option value="Autre">📋 Autre</option>
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="text-xs font-semibold text-slate-600 mb-1.5 block">Votre message</label>
-                          <textarea
-                            value={contactForm.message}
-                            onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
-                            placeholder="Décrivez votre problème ou question..."
-                            rows={4}
-                            maxLength={1000}
-                            className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition resize-none"
-                          />
-                          <p className="text-[10px] text-slate-300 text-right mt-1">{contactForm.message.length}/1000</p>
-                        </div>
-
-                        <div className="bg-slate-50 rounded-xl p-3 flex items-center gap-3">
-                          <span className="text-lg">👤</span>
-                          <div>
-                            <p className="text-xs font-semibold text-slate-700">{merchant?.business_name}</p>
-                            <p className="text-[10px] text-slate-400">{merchant?.email}</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="p-6 pt-0">
-                        <button
-                          onClick={handleSendMessage}
-                          disabled={contactSending || !contactForm.subject || !contactForm.message.trim()}
-                          className="w-full py-3.5 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition disabled:opacity-40 disabled:cursor-not-allowed shadow-md shadow-indigo-200 text-sm"
-                        >
-                          {contactSending ? (
-                            <span className="flex items-center justify-center gap-2">
-                              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                              Envoi...
-                            </span>
-                          ) : (
-                            '📤 Envoyer le message'
-                          )}
-                        </button>
-                      </div>
-                    </>
-                  )}
+      {showContact && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4" onClick={() => setShowContact(false)}>
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            {contactSent ? (
+              <div className="p-8 text-center">
+                <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
                 </div>
+                <h3 className="text-lg font-bold text-slate-900 mb-1">Message envoyé !</h3>
+                <p className="text-sm text-slate-400 mb-6">Nous vous répondrons rapidement</p>
+                <button onClick={() => setShowContact(false)} className="px-6 py-2.5 bg-slate-100 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-200 transition">Fermer</button>
               </div>
+            ) : (
+              <>
+                <div className="p-6 border-b border-slate-100">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
+                        <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                      </div>
+                      <div>
+                        <h3 className="text-base font-bold text-slate-900">Contactez-nous</h3>
+                        <p className="text-xs text-slate-400">Support Fidali</p>
+                      </div>
+                    </div>
+                    <button onClick={() => setShowContact(false)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  </div>
+                </div>
+                <div className="p-6 space-y-4">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600 mb-1.5 block">Sujet</label>
+                    <select value={contactForm.subject} onChange={(e) => setContactForm({ ...contactForm, subject: e.target.value })} className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+                      <option value="">Choisir un sujet...</option>
+                      <option value="Problème technique">Problème technique</option>
+                      <option value="Question abonnement">Question abonnement</option>
+                      <option value="Demande fonctionnalité">Demande fonctionnalité</option>
+                      <option value="Signaler un bug">Signaler un bug</option>
+                      <option value="Aide utilisation">Aide utilisation</option>
+                      <option value="Autre">Autre</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600 mb-1.5 block">Message</label>
+                    <textarea value={contactForm.message} onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })} placeholder="Décrivez votre problème..." rows={4} maxLength={1000} className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none" />
+                    <p className="text-[10px] text-slate-300 text-right mt-1">{contactForm.message.length}/1000</p>
+                  </div>
+                  <div className="bg-slate-50 rounded-xl p-3 flex items-center gap-3">
+                    <span className="text-lg">👤</span>
+                    <div>
+                      <p className="text-xs font-semibold text-slate-700">{merchant?.business_name}</p>
+                      <p className="text-[10px] text-slate-400">{merchant?.email}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-6 pt-0">
+                  <button onClick={handleSendMessage} disabled={contactSending || !contactForm.subject || !contactForm.message.trim()} className="w-full py-3.5 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition disabled:opacity-40 shadow-md shadow-indigo-200 text-sm">
+                    {contactSending ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Envoi...
+                      </span>
+                    ) : 'Envoyer le message'}
+                  </button>
+                </div>
+              </>
             )}
-          </>
-        )
-      })()}
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
