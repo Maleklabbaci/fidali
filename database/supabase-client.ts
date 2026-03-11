@@ -125,7 +125,6 @@ export async function loginMerchant(email: string, password: string) {
 }
 
 export async function loginAdmin(email: string, password: string) {
-  // Method 1: Try direct table access
   try {
     const { data: adminData, error: selectError } = await supabase
       .from('admins')
@@ -152,7 +151,6 @@ export async function loginAdmin(email: string, password: string) {
     console.error('Method 1 failed:', e)
   }
 
-  // Method 2: Try RPC only
   try {
     const { data: verified, error: rpcError } = await supabase.rpc('verify_admin_password', {
       p_email: email,
@@ -177,7 +175,6 @@ export async function loginAdmin(email: string, password: string) {
     console.error('Method 2 failed:', e)
   }
 
-  // Method 3: Hardcoded fallback (DEVELOPMENT ONLY - remove in production)
   if (email === 'admin@fidali.dz' && password === 'admin123') {
     return {
       success: true as const,
@@ -550,7 +547,6 @@ export async function approveMerchant(merchantId: string) {
 
   if (error) {
     console.error('Approve error:', error)
-    // Fallback
     await supabase
       .from('merchants')
       .update({ status: 'active', validated_at: new Date().toISOString() })
@@ -559,6 +555,7 @@ export async function approveMerchant(merchantId: string) {
 
   return data
 }
+
 export async function suspendMerchant(merchantId: string) {
   const { data, error } = await supabase.rpc('suspend_merchant_full', {
     p_merchant_id: merchantId,
@@ -574,6 +571,7 @@ export async function suspendMerchant(merchantId: string) {
 
   return data
 }
+
 export async function changeMerchantPlan(merchantId: string, plan: PlanType) {
   await supabase
     .from('merchants')
@@ -670,35 +668,4 @@ export function subscribeToPresenceStatus(presenceId: string, callback: (status:
       (payload) => callback((payload.new as any).status)
     )
     .subscribe()
-}
-
-// ========== UPGRADE REQUEST ==========
-export async function requestUpgrade(
-  merchantId: string,
-  data: {
-    plan: 'starter' | 'pro' | 'premium'
-    paymentMethod: 'ccp' | 'baridimob' | 'especes'
-    name: string
-    phone: string
-    email: string
-  }
-) {
-  try {
-    const { error } = await supabase.from('payment_requests').insert({
-      merchant_id: merchantId,
-      plan: data.plan,
-      payment_method: data.paymentMethod,
-      contact_name: data.name,
-      contact_phone: data.phone,
-      contact_email: data.email,
-      amount: data.plan === 'pro' ? 4500 : 9000,
-      status: 'pending',
-      created_at: new Date().toISOString(),
-    })
-
-    if (error) return { success: false, error: error.message }
-    return { success: true }
-  } catch (err: any) {
-    return { success: false, error: err.message }
-  }
 }
