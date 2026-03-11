@@ -5,502 +5,631 @@ import { useRouter } from 'next/navigation'
 
 export default function GoPage() {
   const router = useRouter()
-  const [step, setStep] = useState(0)
-  const [navHide, setNavHide] = useState(false)
-  const refs = useRef<(HTMLDivElement | null)[]>([])
-  const lastY = useRef(0)
+  const [navScrolled, setNavScrolled] = useState(false)
+  const [visibleSections, setVisibleSections] = useState<Set<string>>(new Set())
+  const sectionRefs = useRef<(HTMLElement | null)[]>([])
 
   useEffect(() => {
+    const onScroll = () => setNavScrolled(window.scrollY > 40)
+    window.addEventListener('scroll', onScroll, { passive: true })
+
     const obs = new IntersectionObserver(
       (entries) => {
         entries.forEach((e) => {
-          if (e.isIntersecting) setStep(Number(e.target.getAttribute('data-i')))
+          if (e.isIntersecting) {
+            setVisibleSections((prev) => new Set([...prev, e.target.id]))
+          }
         })
       },
-      { rootMargin: '-35% 0px -35% 0px' }
+      { threshold: 0.15 }
     )
-    refs.current.forEach((r) => r && obs.observe(r))
-    const onScroll = () => {
-      const y = window.scrollY
-      setNavHide(y > 80 && y > lastY.current)
-      lastY.current = y
+    sectionRefs.current.forEach((r) => r && obs.observe(r))
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      obs.disconnect()
     }
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => { obs.disconnect(); window.removeEventListener('scroll', onScroll) }
   }, [])
 
-  const STEPS = [
-    {
-      bFR: 'Fidali', bAR: 'الحل',
-      tFR: 'Vos clients reviennent. Naturellement.',
-      tAR: 'زبائنك يرجعولك. بطبيعة الحال.',
-      dFR: 'Une carte de fidélité digitale sur le téléphone de vos clients. Impossible à perdre.',
-      dAR: 'بطاقة ولاء رقمية في هواتف زبائنك. مستحيل تضيع.',
-    },
-    {
-      bFR: 'Étape 1', bAR: 'الخطوة 1',
-      tFR: 'Le client scanne votre QR code.',
-      tAR: 'الزبون يمسح الكود تاعك.',
-      dFR: "Pas d'application à télécharger. Il scanne avec l'appareil photo.",
-      dAR: 'بدون تحميل تطبيق. يمسح بكاميرا الهاتف و خلاص.',
-    },
-    {
-      bFR: 'Étape 2', bAR: 'الخطوة 2',
-      tFR: 'Vous validez, il gagne un point.',
-      tAR: 'تأكد أنت، يربح نقطة.',
-      dFR: 'Un clic de votre part. Le client voit ses points monter en direct.',
-      dAR: 'ضغطة واحدة منك. الزبون يشوف نقاطه تزيد مباشرة.',
-    },
-    {
-      bFR: 'Étape 3', bAR: 'الخطوة 3',
-      tFR: 'La récompense se débloque.',
-      tAR: 'المكافأة تفتح.',
-      dFR: 'Carte remplie = récompense. Il a une raison parfaite de revenir.',
-      dAR: 'البطاقة تتعمر = مكافأة. عنده سبب يرجعلك.',
-    },
-    {
-      bFR: 'Pour tous', bAR: 'للجميع',
-      tFR: 'Votre commerce. Votre carte.',
-      tAR: 'تجارتك. بطاقتك.',
-      dFR: "Café, resto, salon, boulangerie — Fidali s'adapte.",
-      dAR: 'مقهى، مطعم، صالون، مخبزة — Fidali تتكيف معاك.',
-    },
-  ]
-
-  const BIZ = [
-    { name: 'Café du Centre', emoji: '☕', reward: 'قهوة مجانية', bg: '#1e293b', pts: 5, max: 8 },
-    { name: 'Pizza Roma', emoji: '🍕', reward: 'بيتزا مجانية', bg: '#991b1b', pts: 7, max: 10 },
-    { name: 'Salon Belle', emoji: '💇', reward: 'بروشينغ', bg: '#7e22ce', pts: 3, max: 6 },
-    { name: 'Boulangerie Épi', emoji: '🥖', reward: 'خبزة مجانية', bg: '#92400e', pts: 4, max: 5 },
-  ]
-
-  const phoneRotate = [
-    'rotateY(-8deg) rotateX(4deg)',
-    'rotateY(5deg) rotateX(0deg)',
-    'rotateY(-5deg) rotateX(3deg)',
-    'rotateY(8deg) rotateX(6deg) translateY(-8px)',
-    'rotateY(0deg) rotateX(2deg)',
-  ][step]
-
-  /* ========== SCREENS ========== */
-
-  const Screen0 = () => (
-    <div className="pt-[38px] px-3 h-full">
-      <div className="flex justify-between items-center mb-3">
-        <div>
-          <p className="text-[8px] text-gray-400">مرحبا 👋</p>
-          <p className="text-[13px] font-bold">Mohamed</p>
-        </div>
-        <div className="w-7 h-7 bg-indigo-100 rounded-full flex items-center justify-center">
-          <span className="text-indigo-600 text-[9px] font-bold">M</span>
-        </div>
-      </div>
-      <div className="rounded-[14px] p-3.5 bg-gray-900 text-white relative overflow-hidden">
-        <div className="absolute -top-5 -right-5 w-14 h-14 bg-white/[0.03] rounded-full" />
-        <p className="text-[7px] text-gray-500 uppercase tracking-widest">ولاء — Fidélité</p>
-        <p className="text-[12px] font-bold mt-0.5 mb-3">Café du Centre ☕</p>
-        <div className="flex gap-[3px] mb-2">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="flex-1 h-[5px] rounded-full" style={{ background: i < 4 ? '#fff' : 'rgba(255,255,255,0.08)' }} />
-          ))}
-        </div>
-        <div className="flex justify-between text-[8px]">
-          <span className="text-gray-500">4/8 نقاط</span>
-          <span className="text-yellow-400">🎁 قهوة مجانية</span>
-        </div>
-      </div>
-      <div className="grid grid-cols-3 gap-1.5 mt-2">
-        {[{ v: '4', l: 'نقاط', icon: '⭐', c: '#6366f1' }, { v: '1', l: 'مكافأة', icon: '🎁', c: '#10b981' }, { v: '50%', l: 'تقدم', icon: '📊', c: '#f59e0b' }].map((s, i) => (
-          <div key={i} className="bg-white rounded-xl p-1.5 text-center shadow-sm border border-gray-100">
-            <span className="text-[8px]">{s.icon}</span>
-            <p className="text-[11px] font-bold" style={{ color: s.c }}>{s.v}</p>
-            <p className="text-[6px] text-gray-400">{s.l}</p>
-          </div>
-        ))}
-      </div>
-      <div className="mt-2 bg-indigo-600 rounded-xl py-2 text-center">
-        <p className="text-white text-[9px] font-semibold">📷 امسح الكود — Scanner</p>
-      </div>
-      <div className="mt-2">
-        <p className="text-[6px] text-gray-400 font-medium mb-1">النشاط الأخير</p>
-        {['اليوم', 'أمس', 'منذ 3 أيام'].map((d, i) => (
-          <div key={i} className="flex items-center justify-between py-1 border-b border-gray-50 last:border-0">
-            <div className="flex items-center gap-1">
-              <div className="w-4 h-4 bg-orange-50 rounded-full flex items-center justify-center"><span className="text-[5px]">☕</span></div>
-              <div>
-                <p className="text-[7px] font-medium">Café du Centre</p>
-                <p className="text-[5px] text-gray-400">{d}</p>
-              </div>
-            </div>
-            <span className="text-[6px] font-bold text-emerald-600 bg-emerald-50 px-1 py-0.5 rounded-full">+1</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-
-  const Screen1 = () => (
-    <div className="h-full bg-[#0a0a0a] relative">
-      <img src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=400&q=50" alt="" className="absolute inset-0 w-full h-full object-cover opacity-25" />
-      <div className="absolute inset-0 flex items-center justify-center p-12">
-        <div className="w-full aspect-square relative">
-          <div className="absolute top-0 left-0 w-6 h-6 border-t-[3px] border-l-[3px] border-white rounded-tl" />
-          <div className="absolute top-0 right-0 w-6 h-6 border-t-[3px] border-r-[3px] border-white rounded-tr" />
-          <div className="absolute bottom-0 left-0 w-6 h-6 border-b-[3px] border-l-[3px] border-white rounded-bl" />
-          <div className="absolute bottom-0 right-0 w-6 h-6 border-b-[3px] border-r-[3px] border-white rounded-br" />
-          <div className="absolute top-1/2 left-1 right-1 h-[2px] bg-red-500 shadow-[0_0_10px_red] animate-pulse rounded-full" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-10 h-10 border-2 border-white/20 rounded-lg flex items-center justify-center">
-              <svg className="w-5 h-5 text-white/30" fill="currentColor" viewBox="0 0 24 24"><path d="M3 11h8V3H3v8zm2-6h4v4H5V5zm8-2v8h8V3h-8zm6 6h-4V5h4v4zM3 21h8v-8H3v8zm2-6h4v4H5v-4zm8 0h2v2h-2zm2 2h2v2h-2zm-2 2h2v2h-2zm4-4h2v2h-2zm2 2h2v2h-2zm-2 2h2v2h-2zm-4 0h2v2h-2zm4 0h2v2h-2z" /></svg>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div className="absolute top-12 left-3 z-20">
-        <div className="w-6 h-6 bg-white/20 backdrop-blur rounded-full flex items-center justify-center"><span className="text-white text-[9px]">✕</span></div>
-      </div>
-      <div className="absolute bottom-12 inset-x-0 text-center z-20">
-        <p className="text-white text-[11px] font-semibold mb-0.5">امسح الـ QR Code</p>
-        <p className="text-white/40 text-[8px]">Placez le code dans le cadre</p>
-      </div>
-    </div>
-  )
-
-  const Screen2 = () => (
-    <div className="pt-[38px] px-3 h-full">
-      <div className="text-center mt-4 mb-3">
-        <div className="w-14 h-14 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-2 shadow-lg shadow-emerald-100/50">
-          <span className="text-2xl">🎉</span>
-        </div>
-        <p className="text-[15px] font-extrabold">+1 نقطة!</p>
-        <p className="text-[9px] text-gray-400">Point ajouté avec succès</p>
-      </div>
-      <div className="rounded-[14px] p-3 bg-gray-900 text-white">
-        <p className="text-[11px] font-bold mb-2.5">Café du Centre ☕</p>
-        <div className="flex gap-[3px] mb-2">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="flex-1 h-[5px] rounded-full transition-all duration-700" style={{
-              background: i < 5 ? 'linear-gradient(90deg,#22c55e,#16a34a)' : 'rgba(255,255,255,0.08)',
-              boxShadow: i === 4 ? '0 0 8px rgba(34,197,94,0.4)' : 'none',
-            }} />
-          ))}
-        </div>
-        <div className="flex justify-between text-[8px]">
-          <span className="text-emerald-400 font-bold">5/8 ✓</span>
-          <span className="text-yellow-400">🎁 باقي 3</span>
-        </div>
-      </div>
-      <div className="mt-2 bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 text-center">
-        <p className="text-emerald-700 text-[9px] font-semibold">تقدم ممتاز! 🚀</p>
-        <p className="text-emerald-600/50 text-[7px] mt-0.5">Encore 3 visites pour la récompense</p>
-      </div>
-      <div className="mt-2 bg-white rounded-xl p-2 border border-gray-100 shadow-sm flex items-center gap-2">
-        <div className="w-7 h-7 bg-gray-100 rounded-lg flex items-center justify-center text-xs">☕</div>
-        <div className="flex-1">
-          <p className="text-[9px] font-bold">Café du Centre</p>
-          <p className="text-[7px] text-gray-400">Rue Didouche, Alger</p>
-        </div>
-        <div className="text-right">
-          <p className="text-[8px] font-bold text-indigo-600">62%</p>
-          <p className="text-[6px] text-gray-400">complété</p>
-        </div>
-      </div>
-      <div className="mt-2 bg-black rounded-xl py-2 text-center">
-        <p className="text-white text-[8px] font-semibold">رجوع — Retour</p>
-      </div>
-    </div>
-  )
-
-  const Screen3 = () => (
-    <div className="pt-[38px] px-3 h-full">
-      <div className="text-center mt-3 mb-3">
-        <div className="relative w-14 h-14 mx-auto mb-2">
-          <div className="absolute inset-0 bg-yellow-400/20 rounded-full animate-ping" />
-          <div className="relative w-14 h-14 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center shadow-xl shadow-yellow-200">
-            <span className="text-2xl">🏆</span>
-          </div>
-        </div>
-        <p className="text-[16px] font-black">مبروك! 🎊</p>
-        <p className="text-[9px] text-gray-400">Félicitations !</p>
-      </div>
-      <div className="rounded-[14px] bg-gradient-to-br from-yellow-400 to-orange-500 p-3.5 text-center shadow-lg">
-        <p className="text-white/60 text-[7px] uppercase tracking-widest">مكافأة — Récompense</p>
-        <p className="text-white text-[15px] font-black mt-0.5 mb-1">☕ قهوة مجانية</p>
-        <p className="text-white/50 text-[8px]">Café offert — Montrez au comptoir</p>
-        <div className="mt-2.5 bg-white/20 backdrop-blur rounded-lg py-1 px-3 inline-block">
-          <p className="text-white text-[8px] font-mono font-bold tracking-wider">CAFE-2024-XK9</p>
-        </div>
-      </div>
-      <div className="mt-2 flex gap-1.5">
-        {[{ i: '📸', l: 'مشاركة' }, { i: '📋', l: 'نسخ' }, { i: '⭐', l: 'تقييم' }].map((a, i) => (
-          <div key={i} className="flex-1 bg-white rounded-xl p-2 text-center shadow-sm border border-gray-100">
-            <span className="text-[11px]">{a.i}</span>
-            <p className="text-[6px] text-gray-500 mt-0.5">{a.l}</p>
-          </div>
-        ))}
-      </div>
-      <div className="mt-2 bg-gray-50 rounded-xl p-2 border border-gray-100 text-center">
-        <p className="text-[7px] text-gray-400">صالح حتى — Valable jusqu&apos;au</p>
-        <p className="text-[10px] font-bold text-gray-700">15 Février 2025</p>
-      </div>
-    </div>
-  )
-
-  const Screen4 = () => (
-    <div className="pt-[38px] px-3 h-full">
-      <div className="flex justify-between items-center mb-2">
-        <div>
-          <p className="text-[7px] text-gray-400">اكتشف</p>
-          <p className="text-[12px] font-bold">بطاقاتي — Mes cartes</p>
-        </div>
-        <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center"><span className="text-[8px]">🔍</span></div>
-      </div>
-      <div className="space-y-1.5">
-        {BIZ.map((b, i) => (
-          <div key={i} className="rounded-[12px] p-2.5 text-white relative overflow-hidden" style={{ background: b.bg }}>
-            <div className="absolute -top-3 -right-3 w-10 h-10 bg-white/5 rounded-full" />
-            <div className="relative z-10">
-              <div className="flex justify-between items-center mb-1.5">
-                <p className="font-bold text-[9px]">{b.emoji} {b.name}</p>
-                <span className="text-[7px] bg-white/15 px-1.5 py-[2px] rounded-full font-bold">{b.pts}/{b.max}</span>
-              </div>
-              <div className="flex gap-[2px] mb-1">
-                {Array.from({ length: b.max }).map((_, j) => (
-                  <div key={j} className="flex-1 h-[3px] rounded-full" style={{ background: j < b.pts ? '#fbbf24' : 'rgba(255,255,255,0.1)' }} />
-                ))}
-              </div>
-              <p className="text-[6px] text-white/40">🎁 {b.reward}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="mt-2 border-2 border-dashed border-gray-200 rounded-[12px] p-2.5 text-center">
-        <span className="text-gray-300 text-sm">+</span>
-        <p className="text-[7px] text-gray-400">أضف بطاقة — Ajouter</p>
-      </div>
-    </div>
-  )
-
-  const SCREENS = [Screen0, Screen1, Screen2, Screen3, Screen4]
-
-  /* ========== PHONE COMPONENT ========== */
-  const Phone3D = () => (
-    <div style={{ perspective: '1500px' }}>
-      <div className="transition-all duration-[1200ms]" style={{
-        transform: phoneRotate,
-        transitionTimingFunction: 'cubic-bezier(0.16,1,0.3,1)',
-      }}>
-        <div className="w-[240px] h-[490px] rounded-[42px] p-[10px] relative" style={{
-          background: 'linear-gradient(145deg, #1d1d1f, #2d2d30)',
-          boxShadow: '0 40px 80px rgba(0,0,0,0.2), inset 0 0 0 1px rgba(255,255,255,0.08)',
-        }}>
-          <div className="absolute -left-[2px] top-[85px] w-[2px] h-[22px] bg-[#3a3a3a] rounded-l" />
-          <div className="absolute -left-[2px] top-[118px] w-[2px] h-[38px] bg-[#3a3a3a] rounded-l" />
-          <div className="absolute -left-[2px] top-[166px] w-[2px] h-[38px] bg-[#3a3a3a] rounded-l" />
-          <div className="absolute -right-[2px] top-[125px] w-[2px] h-[50px] bg-[#3a3a3a] rounded-r" />
-
-          <div className="w-full h-full bg-[#f5f5f7] rounded-[34px] overflow-hidden relative">
-            <div className="absolute top-[8px] left-1/2 -translate-x-1/2 w-[72px] h-[22px] bg-black rounded-full z-40" />
-            <div className="absolute top-[10px] inset-x-0 flex justify-between px-5 z-30">
-              <span className="text-[9px] font-semibold">9:41</span>
-              <div className="flex items-center gap-[2px]">
-                {[3, 4, 5, 7].map((h, j) => <div key={j} className="w-[2px] bg-black rounded-sm" style={{ height: h }} />)}
-                <div className="w-[14px] h-[7px] border border-black rounded-[2px] ml-1 relative">
-                  <div className="absolute inset-[1px] right-[2px] bg-black rounded-[0.5px]" />
-                </div>
-              </div>
-            </div>
-
-            {SCREENS.map((Screen, i) => (
-              <div key={i} className={`absolute inset-0 transition-all duration-500 ${step === i ? 'opacity-100 z-20' : 'opacity-0 z-0 translate-y-2'}`}>
-                <Screen />
-              </div>
-            ))}
-
-            <div className="absolute bottom-[3px] left-1/2 -translate-x-1/2 w-[70px] h-[3px] bg-black/15 rounded-full z-50" />
-          </div>
-        </div>
-        <div className="absolute -bottom-3 left-[15%] right-[15%] h-6 bg-black/5 rounded-full blur-2xl" />
-      </div>
-    </div>
-  )
+  const anim = (id: string) =>
+    visibleSections.has(id)
+      ? 'opacity-100 translate-y-0'
+      : 'opacity-0 translate-y-10'
 
   return (
-    <div className="bg-white text-gray-900 antialiased">
-
-      {/* ====== NAV ====== */}
-      <nav className={`fixed top-0 inset-x-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-100 transition-transform duration-300 ${navHide ? '-translate-y-full' : ''}`}>
-        <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <img src="/logo.png" alt="Fidali" className="w-8 h-8 rounded-xl object-contain" />
-            <span className="font-bold text-lg tracking-tight">Fidali</span>
+    <div className="bg-white text-gray-900 antialiased overflow-x-hidden">
+      {/* ═══════ NAV ═══════ */}
+      <nav
+        className={`fixed top-0 inset-x-0 z-50 transition-all duration-500 ${
+          navScrolled
+            ? 'bg-white/80 backdrop-blur-2xl shadow-sm border-b border-gray-100'
+            : 'bg-transparent'
+        }`}
+      >
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <img
+              src="/logo.png"
+              alt="Fidali"
+              className="w-9 h-9 rounded-xl object-contain"
+            />
+            <span className="font-extrabold text-xl tracking-tight">
+              Fidali
+            </span>
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={() => router.push('/login')} className="text-sm text-gray-500 hover:text-black transition font-medium">Connexion</button>
-            <button onClick={() => router.push('/signup')} className="text-sm bg-black text-white font-semibold px-5 py-2 rounded-xl hover:bg-gray-800 transition shadow-sm">Commencer</button>
+            <button
+              onClick={() => router.push('/login')}
+              className="hidden sm:block text-sm text-gray-500 hover:text-black transition font-medium"
+            >
+              Connexion
+            </button>
+            <button
+              onClick={() => router.push('/signup')}
+              className="text-sm bg-black text-white font-bold px-6 py-2.5 rounded-full hover:bg-gray-800 transition shadow-lg shadow-black/10 hover:shadow-xl hover:-translate-y-0.5"
+            >
+              Commencer →
+            </button>
           </div>
         </div>
       </nav>
 
-      {/* ====== MAIN SECTION ====== */}
-      <section className="pt-14">
-        <div className="max-w-7xl mx-auto px-6 lg:flex">
+      {/* ═══════ HERO ═══════ */}
+      <section className="relative min-h-screen flex items-center overflow-hidden">
+        {/* Background image */}
+        <div className="absolute inset-0">
+          <img
+            src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=1920&q=80"
+            alt=""
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-black/30" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+        </div>
 
-          {/* ---- LEFT: Text qui scroll ---- */}
-          <div className="w-full lg:w-[55%] lg:pr-20">
-
-            {/* Mobile : phone affiché une fois en haut */}
-            <div className="lg:hidden flex justify-center pt-10 pb-4" style={{ height: 490 * 0.72 + 40 }}>
-              <div style={{ transform: 'scale(0.72)', transformOrigin: 'top center' }}>
-                <Phone3D />
-              </div>
+        <div className="relative z-10 max-w-7xl mx-auto px-6 py-32 w-full">
+          <div className="max-w-2xl">
+            <div className="flex items-center gap-3 mb-6">
+              <span className="px-4 py-1.5 bg-white/10 backdrop-blur text-white text-xs font-bold rounded-full border border-white/20">
+                🚀 برنامج ولاء رقمي
+              </span>
+              <span className="px-4 py-1.5 bg-indigo-500/20 backdrop-blur text-indigo-300 text-xs font-bold rounded-full border border-indigo-400/20">
+                Nouveau
+              </span>
             </div>
 
-            {/* Steps scrollants */}
-            {STEPS.map((s, i) => (
-              <div
-                key={i}
-                data-i={i}
-                ref={el => { refs.current[i] = el }}
-                className={`min-h-[60vh] lg:min-h-screen flex items-center transition-opacity duration-500 ${step === i ? 'opacity-100' : 'opacity-20'}`}
+            <h1 className="text-[clamp(2.5rem,6vw,5rem)] font-black text-white leading-[0.95] tracking-tight mb-4">
+              Vos clients{' '}
+              <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">
+                reviennent
+              </span>
+              .
+              <br />
+              <span className="text-white/40">Naturellement.</span>
+            </h1>
+
+            <p
+              className="text-xl text-white/50 mb-2 font-light max-w-lg"
+              dir="rtl"
+            >
+              زبائنك يرجعولك. بطبيعة الحال.
+            </p>
+
+            <p className="text-lg text-white/60 leading-relaxed max-w-lg mb-10">
+              Créez votre carte de fidélité digitale en 2 minutes. Vos clients
+              la gardent sur leur téléphone — impossible à perdre.
+            </p>
+
+            <div className="flex flex-wrap gap-4">
+              <button
+                onClick={() => router.push('/signup')}
+                className="group px-8 py-4 bg-white text-black font-bold rounded-full text-base shadow-2xl shadow-white/20 hover:shadow-white/30 hover:-translate-y-1 transition-all"
               >
-                <div className="w-full py-12 lg:py-0">
-                  {/* Badges */}
-                  <div className="flex items-center gap-2 mb-4">
-                    <span className="px-3 py-1 bg-indigo-50 text-indigo-600 text-[11px] font-bold rounded-full uppercase tracking-wide">{s.bFR}</span>
-                    <span className="px-3 py-1 bg-gray-100 text-gray-500 text-[11px] font-bold rounded-full" dir="rtl">{s.bAR}</span>
-                  </div>
+                Créer ma carte gratuitement
+                <span className="inline-block ml-2 group-hover:translate-x-1.5 transition-transform">
+                  →
+                </span>
+              </button>
+              <button className="px-8 py-4 bg-white/10 backdrop-blur text-white font-semibold rounded-full border border-white/20 hover:bg-white/20 transition text-base">
+                Voir la démo
+              </button>
+            </div>
 
-                  {/* Titles */}
-                  <h2 className="text-[clamp(1.6rem,3vw,2.5rem)] font-extrabold tracking-tight leading-[1.1] mb-2">{s.tFR}</h2>
-                  <h3 className="text-[clamp(1.1rem,2vw,1.6rem)] font-bold text-gray-300 leading-[1.2] mb-5" dir="rtl">{s.tAR}</h3>
-
-                  {/* Descriptions */}
-                  <p className="text-[15px] text-gray-500 leading-relaxed mb-1.5 max-w-md">{s.dFR}</p>
-                  <p className="text-[14px] text-gray-400 leading-relaxed max-w-md" dir="rtl">{s.dAR}</p>
-
-                  {/* CTA sur la première étape */}
-                  {i === 0 && (
-                    <div className="mt-8">
-                      <button onClick={() => router.push('/signup')} className="group px-7 py-3.5 bg-black hover:bg-gray-800 text-white font-bold rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all text-[14px]">
-                        Créer ma carte — أنشئ بطاقتي
-                        <span className="inline-block ml-2 group-hover:translate-x-1 transition-transform">→</span>
-                      </button>
-                      <p className="mt-3 text-xs text-gray-400">✓ Gratuit (مجاني) · ✓ 2 min · ✓ Sans engagement</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
+            <div className="flex items-center gap-6 mt-8 text-sm text-white/40">
+              <span className="flex items-center gap-1.5">
+                <svg
+                  className="w-4 h-4 text-emerald-400"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                Gratuit
+              </span>
+              <span className="flex items-center gap-1.5">
+                <svg
+                  className="w-4 h-4 text-emerald-400"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                Sans application
+              </span>
+              <span className="flex items-center gap-1.5">
+                <svg
+                  className="w-4 h-4 text-emerald-400"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                2 minutes
+              </span>
+            </div>
           </div>
+        </div>
 
-          {/* ---- RIGHT: Phone sticky (desktop only) ---- */}
-          <div className="hidden lg:block w-[45%]">
-            <div className="sticky top-0 h-screen flex items-center justify-center">
-              <div className="relative">
-
-                {/* Grande carte flottante derrière (step 0 uniquement) */}
-                <div className={`absolute z-0 w-[280px] h-[170px] rounded-[20px] p-5 shadow-2xl transition-all duration-[1000ms] ${
-                  step === 0
-                    ? 'opacity-100 -translate-y-14 translate-x-10 rotate-[10deg]'
-                    : 'opacity-0 translate-y-0 translate-x-0 rotate-0 scale-75'
-                }`} style={{
-                  background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
-                  transitionTimingFunction: 'cubic-bezier(0.16,1,0.3,1)',
-                }}>
-                  <div className="absolute inset-0 rounded-[20px] opacity-[0.06]" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '14px 14px' }} />
-                  <div className="relative z-10 text-white h-full flex flex-col justify-between">
-                    <div>
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <img src="/logo.png" alt="" className="w-4 h-4 rounded opacity-70" />
-                        <span className="text-[8px] text-white/40 uppercase tracking-[0.15em]">Fidélité</span>
-                      </div>
-                      <p className="font-bold text-[14px]">Café du Centre ☕</p>
+        {/* Floating phone mockup on right (desktop) */}
+        <div className="hidden lg:block absolute right-12 xl:right-24 top-1/2 -translate-y-1/2 z-10">
+          <div className="relative">
+            <div
+              className="w-[280px] h-[560px] rounded-[3rem] p-3 relative"
+              style={{
+                background: 'linear-gradient(145deg, #1d1d1f, #2d2d30)',
+                boxShadow:
+                  '0 50px 100px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.1)',
+                transform: 'rotateY(-12deg) rotateX(3deg)',
+              }}
+            >
+              <div className="w-full h-full bg-white rounded-[2.3rem] overflow-hidden relative">
+                <img
+                  src="https://images.unsplash.com/photo-1556742111-a301076d9d18?w=400&q=80"
+                  alt=""
+                  className="absolute inset-0 w-full h-full object-cover opacity-20"
+                />
+                <div className="relative z-10 p-5 pt-12 h-full flex flex-col">
+                  <div className="text-center mb-4">
+                    <div className="w-14 h-14 bg-indigo-100 rounded-2xl flex items-center justify-center mx-auto mb-2">
+                      <span className="text-2xl">☕</span>
                     </div>
-                    <div className="flex gap-1">
+                    <p className="font-extrabold text-sm">Café du Centre</p>
+                    <p className="text-[10px] text-gray-400">
+                      بطاقة الولاء — Fidélité
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 rounded-2xl p-4 mb-3">
+                    <div className="flex gap-1.5 mb-2">
                       {Array.from({ length: 8 }).map((_, i) => (
-                        <div key={i} className="flex-1 h-[6px] rounded-full" style={{ background: i < 5 ? '#fbbf24' : 'rgba(255,255,255,0.15)' }} />
+                        <div
+                          key={i}
+                          className="flex-1 h-2 rounded-full"
+                          style={{
+                            background:
+                              i < 5
+                                ? 'linear-gradient(90deg,#6366f1,#8b5cf6)'
+                                : '#e5e7eb',
+                          }}
+                        />
                       ))}
                     </div>
-                  </div>
-                </div>
-
-                {/* Phone */}
-                <div className="relative z-10">
-                  <Phone3D />
-                </div>
-
-                {/* Floating : +1 point (step 2) */}
-                <div className={`absolute z-30 -right-6 top-10 bg-white rounded-xl shadow-xl border border-gray-100 p-2 transition-all duration-700 ${step === 2 ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-6'}`}>
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-6 h-6 bg-emerald-100 rounded-full flex items-center justify-center"><span className="text-[10px]">✅</span></div>
-                    <div>
-                      <p className="text-[9px] font-bold text-emerald-600">+1 نقطة!</p>
-                      <p className="text-[7px] text-gray-400">Point validé</p>
+                    <div className="flex justify-between text-[10px]">
+                      <span className="font-bold text-indigo-600">
+                        5/8 نقاط
+                      </span>
+                      <span className="text-gray-400">🎁 قهوة مجانية</span>
                     </div>
                   </div>
-                </div>
-
-                {/* Floating : reward (step 3) */}
-                <div className={`absolute z-30 -left-10 bottom-24 bg-white rounded-xl shadow-xl border border-gray-100 p-2 transition-all duration-700 ${step === 3 ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-6'}`}>
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-6 h-6 bg-yellow-100 rounded-full flex items-center justify-center"><span className="text-[10px]">🏆</span></div>
-                    <div>
-                      <p className="text-[9px] font-bold text-yellow-600">مبروك!</p>
-                      <p className="text-[7px] text-gray-400">Récompense</p>
-                    </div>
+                  <div className="bg-indigo-600 rounded-xl py-3 text-center mt-auto mb-8">
+                    <p className="text-white text-xs font-bold">
+                      📷 امسح الكود — Scanner
+                    </p>
                   </div>
                 </div>
-
               </div>
             </div>
+            {/* Glow */}
+            <div className="absolute -bottom-8 left-[10%] right-[10%] h-16 bg-indigo-500/20 rounded-full blur-3xl" />
           </div>
         </div>
       </section>
 
-      {/* ====== STATS ====== */}
-      <section className="py-16 bg-black text-white">
-        <div className="max-w-5xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-          {[
-            { v: '500+', ar: 'تاجر', fr: 'Commerçants' },
-            { v: '15K+', ar: 'زبون', fr: 'Clients' },
-            { v: '+40%', ar: 'نسبة رجوع', fr: 'Retour' },
-            { v: '2 min', ar: 'للبداية', fr: 'Setup' },
-          ].map((s, i) => (
-            <div key={i}>
-              <p className="text-[clamp(2rem,4vw,3.5rem)] font-black tracking-tight">{s.v}</p>
-              <p className="text-sm text-white/50 font-medium mt-1">{s.ar}</p>
-              <p className="text-xs text-white/25">{s.fr}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ====== TESTIMONIALS ====== */}
-      <section className="py-20 px-6 bg-gray-50">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-12">
-            <p className="text-[11px] uppercase tracking-[0.3em] text-indigo-500 font-semibold mb-2">شهادات — Témoignages</p>
-            <h2 className="text-[clamp(1.5rem,3vw,2.5rem)] font-extrabold tracking-tight">واش قالو عنّا</h2>
-            <p className="text-gray-400 mt-1 text-sm">Ce qu&apos;ils disent de nous.</p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-5">
+      {/* ═══════ TRUSTED BY ═══════ */}
+      <section className="py-12 bg-gray-50 border-y border-gray-100">
+        <div className="max-w-5xl mx-auto px-6 text-center">
+          <p className="text-xs uppercase tracking-[0.3em] text-gray-400 font-semibold mb-6">
+            +500 commerçants nous font confiance — يثقو فينا
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-4 opacity-40">
             {[
-              { name: 'كريم ب.', role: 'Café Central, الجزائر', ar: '40% من زبائني ولاو يرجعو أكثر.', fr: '40% de mes clients reviennent plus souvent.', color: 'from-indigo-500 to-violet-500' },
-              { name: 'سارة م.', role: 'Salon Belle, وهران', ar: 'الزبونات يحبو يشوفو التقدم تاعهم.', fr: 'Mes clientes adorent leur progression.', color: 'from-pink-500 to-rose-500' },
-              { name: 'يوسف أ.', role: 'Pizza Roma, قسنطينة', ar: 'حطيتها في 3 دقائق. +25% دخل.', fr: 'Setup en 3 min. CA +25%.', color: 'from-amber-500 to-orange-500' },
-            ].map((t, i) => (
-              <div key={i} className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 hover:shadow-lg transition">
-                <div className="flex gap-0.5 mb-3">{Array.from({ length: 5 }).map((_, j) => <span key={j} className="text-sm">⭐</span>)}</div>
-                <p className="text-[13px] text-gray-700 leading-[1.8] mb-1" dir="rtl">&ldquo;{t.ar}&rdquo;</p>
-                <p className="text-[12px] text-gray-400 italic mb-4">&ldquo;{t.fr}&rdquo;</p>
-                <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 bg-gradient-to-br ${t.color} rounded-full flex items-center justify-center`}>
-                    <span className="text-white text-xs font-bold">{t.name[0]}</span>
+              'Café Central',
+              'Pizza Roma',
+              'Salon Belle',
+              'Boulangerie Épi',
+              'Resto El Bahia',
+              'Snack Express',
+            ].map((n, i) => (
+              <span key={i} className="text-lg font-bold text-gray-600">
+                {n}
+              </span>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════ HOW IT WORKS ═══════ */}
+      <section
+        id="how"
+        ref={(el) => {
+          sectionRefs.current[0] = el
+        }}
+        className={`py-24 px-6 transition-all duration-1000 ${anim('how')}`}
+      >
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <span className="px-4 py-1.5 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-full">
+              Comment ça marche — كيفاش تخدم
+            </span>
+            <h2 className="text-[clamp(2rem,4vw,3.5rem)] font-black tracking-tight mt-6 mb-3">
+              3 étapes. C&apos;est tout.
+            </h2>
+            <p className="text-gray-400 text-lg max-w-xl mx-auto" dir="rtl">
+              ثلاث خطوات بسيطة و تبدأ تجمع زبائنك.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              {
+                step: '01',
+                img: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=600&q=80',
+                titleFR: 'Le client scanne votre QR',
+                titleAR: 'الزبون يمسح الكود تاعك',
+                descFR:
+                  'Pas d\'app à télécharger. Juste l\'appareil photo.',
+                descAR: 'بدون تحميل. غير بالكاميرا.',
+                icon: '📱',
+              },
+              {
+                step: '02',
+                img: 'https://images.unsplash.com/photo-1556741533-411cf82e4e2d?w=600&q=80',
+                titleFR: 'Vous validez, il gagne un point',
+                titleAR: 'تأكد أنت، يربح نقطة',
+                descFR: 'Un seul clic. Le client voit ses points monter.',
+                descAR: 'ضغطة وحدة. يشوف نقاطه تزيد.',
+                icon: '✅',
+              },
+              {
+                step: '03',
+                img: 'https://images.unsplash.com/photo-1551836022-deb4988cc6c0?w=600&q=80',
+                titleFR: 'La récompense se débloque',
+                titleAR: 'المكافأة تفتح',
+                descFR:
+                  'Carte remplie = récompense. Raison parfaite de revenir.',
+                descAR: 'البطاقة تتعمر = مكافأة. يرجعلك.',
+                icon: '🎁',
+              },
+            ].map((s, i) => (
+              <div
+                key={i}
+                className="group relative bg-white rounded-3xl overflow-hidden border border-gray-100 hover:border-gray-200 shadow-sm hover:shadow-2xl transition-all duration-500 hover:-translate-y-2"
+              >
+                <div className="relative h-56 overflow-hidden">
+                  <img
+                    src={s.img}
+                    alt=""
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                  <div className="absolute top-4 left-4">
+                    <span className="w-10 h-10 bg-white/20 backdrop-blur-xl rounded-full flex items-center justify-center text-white text-xs font-black border border-white/30">
+                      {s.step}
+                    </span>
                   </div>
+                  <div className="absolute bottom-4 right-4 text-3xl">
+                    {s.icon}
+                  </div>
+                </div>
+                <div className="p-6">
+                  <h3 className="text-lg font-extrabold mb-1">{s.titleFR}</h3>
+                  <p
+                    className="text-sm text-gray-400 font-medium mb-3"
+                    dir="rtl"
+                  >
+                    {s.titleAR}
+                  </p>
+                  <p className="text-sm text-gray-500 leading-relaxed">
+                    {s.descFR}
+                  </p>
+                  <p
+                    className="text-xs text-gray-400 mt-1 leading-relaxed"
+                    dir="rtl"
+                  >
+                    {s.descAR}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════ SHOWCASE SPLIT ═══════ */}
+      <section
+        id="showcase"
+        ref={(el) => {
+          sectionRefs.current[1] = el
+        }}
+        className={`transition-all duration-1000 ${anim('showcase')}`}
+      >
+        {/* Row 1 */}
+        <div className="grid lg:grid-cols-2">
+          <div className="relative h-[400px] lg:h-[600px] overflow-hidden">
+            <img
+              src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=900&q=80"
+              alt="Café"
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/50 to-transparent" />
+          </div>
+          <div className="flex items-center p-10 lg:p-20 bg-gray-950 text-white">
+            <div>
+              <span className="text-indigo-400 text-xs font-bold uppercase tracking-[0.2em]">
+                Pour les cafés ☕
+              </span>
+              <h2 className="text-[clamp(1.8rem,3vw,3rem)] font-black mt-4 mb-4 leading-[1.1]">
+                Chaque café les rapproche d&apos;une récompense.
+              </h2>
+              <p className="text-lg text-white/40 mb-3 leading-relaxed" dir="rtl">
+                كل قهوة تقربهم من المكافأة.
+              </p>
+              <p className="text-white/50 leading-relaxed mb-8 max-w-md">
+                Vos habitués accumulent des points à chaque visite. Au bout de
+                8 cafés, le 9ème est offert. Simple et irrésistible.
+              </p>
+              <button
+                onClick={() => router.push('/signup')}
+                className="px-8 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-full transition shadow-lg shadow-indigo-500/30"
+              >
+                Essayer pour mon café →
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Row 2 */}
+        <div className="grid lg:grid-cols-2">
+          <div className="flex items-center p-10 lg:p-20 bg-white order-2 lg:order-1">
+            <div>
+              <span className="text-rose-500 text-xs font-bold uppercase tracking-[0.2em]">
+                Pour les restaurants 🍕
+              </span>
+              <h2 className="text-[clamp(1.8rem,3vw,3rem)] font-black mt-4 mb-4 leading-[1.1]">
+                Transformez les curieux en habitués.
+              </h2>
+              <p className="text-lg text-gray-300 mb-3 leading-relaxed" dir="rtl">
+                حوّل الزبائن الجداد لزبائن دائمين.
+              </p>
+              <p className="text-gray-500 leading-relaxed mb-8 max-w-md">
+                Un client satisfait revient. Un client fidélisé ramène ses amis.
+                En moyenne, +40% de retour avec Fidali.
+              </p>
+              <button
+                onClick={() => router.push('/signup')}
+                className="px-8 py-3.5 bg-black hover:bg-gray-800 text-white font-bold rounded-full transition shadow-lg shadow-black/10"
+              >
+                Essayer pour mon resto →
+              </button>
+            </div>
+          </div>
+          <div className="relative h-[400px] lg:h-[600px] overflow-hidden order-1 lg:order-2">
+            <img
+              src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=900&q=80"
+              alt="Restaurant"
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-l from-black/30 to-transparent" />
+          </div>
+        </div>
+
+        {/* Row 3 */}
+        <div className="grid lg:grid-cols-2">
+          <div className="relative h-[400px] lg:h-[600px] overflow-hidden">
+            <img
+              src="https://images.unsplash.com/photo-1560066984-138dadb4c035?w=900&q=80"
+              alt="Salon"
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/40 to-transparent" />
+          </div>
+          <div className="flex items-center p-10 lg:p-20 bg-violet-950 text-white">
+            <div>
+              <span className="text-violet-400 text-xs font-bold uppercase tracking-[0.2em]">
+                Pour les salons 💇
+              </span>
+              <h2 className="text-[clamp(1.8rem,3vw,3rem)] font-black mt-4 mb-4 leading-[1.1]">
+                Elles reviennent, encore et encore.
+              </h2>
+              <p className="text-lg text-white/40 mb-3 leading-relaxed" dir="rtl">
+                يرجعو عندك مرة و مرة.
+              </p>
+              <p className="text-white/50 leading-relaxed mb-8 max-w-md">
+                Brushing, coupe, soin — chaque service rapproche vos clientes
+                d&apos;un soin offert. Elles adorent voir leur progression.
+              </p>
+              <button
+                onClick={() => router.push('/signup')}
+                className="px-8 py-3.5 bg-violet-600 hover:bg-violet-500 text-white font-bold rounded-full transition shadow-lg shadow-violet-500/30"
+              >
+                Essayer pour mon salon →
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════ STATS ═══════ */}
+      <section
+        id="stats"
+        ref={(el) => {
+          sectionRefs.current[2] = el
+        }}
+        className={`py-24 bg-black text-white relative overflow-hidden transition-all duration-1000 ${anim('stats')}`}
+      >
+        <div className="absolute inset-0">
+          <img
+            src="https://images.unsplash.com/photo-1557804506-669a67965ba0?w=1920&q=60"
+            alt=""
+            className="w-full h-full object-cover opacity-10"
+          />
+        </div>
+        <div className="relative z-10 max-w-6xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-[clamp(2rem,4vw,3.5rem)] font-black tracking-tight">
+              Les chiffres parlent.
+            </h2>
+            <p className="text-white/30 text-lg mt-2" dir="rtl">
+              الأرقام تتكلم.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+            {[
+              {
+                v: '500+',
+                ar: 'تاجر',
+                fr: 'Commerçants',
+                icon: '🏪',
+              },
+              {
+                v: '15K+',
+                ar: 'زبون نشط',
+                fr: 'Clients actifs',
+                icon: '👥',
+              },
+              {
+                v: '+40%',
+                ar: 'نسبة الرجوع',
+                fr: 'Taux de retour',
+                icon: '📈',
+              },
+              {
+                v: '2 min',
+                ar: 'للتسجيل',
+                fr: 'Pour commencer',
+                icon: '⚡',
+              },
+            ].map((s, i) => (
+              <div
+                key={i}
+                className="text-center p-6 bg-white/5 backdrop-blur rounded-3xl border border-white/10"
+              >
+                <span className="text-3xl mb-3 block">{s.icon}</span>
+                <p className="text-[clamp(2rem,5vw,3.5rem)] font-black tracking-tight bg-gradient-to-b from-white to-white/50 bg-clip-text text-transparent">
+                  {s.v}
+                </p>
+                <p className="text-sm text-white/60 font-medium mt-1">
+                  {s.fr}
+                </p>
+                <p className="text-xs text-white/30" dir="rtl">
+                  {s.ar}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════ TESTIMONIALS ═══════ */}
+      <section
+        id="reviews"
+        ref={(el) => {
+          sectionRefs.current[3] = el
+        }}
+        className={`py-24 px-6 bg-gray-50 transition-all duration-1000 ${anim('reviews')}`}
+      >
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <span className="px-4 py-1.5 bg-yellow-50 text-yellow-700 text-xs font-bold rounded-full">
+              ⭐ Témoignages — شهادات
+            </span>
+            <h2 className="text-[clamp(2rem,4vw,3rem)] font-black tracking-tight mt-6 mb-3">
+              Ils ont choisi Fidali.
+            </h2>
+            <p className="text-gray-400 text-lg" dir="rtl">
+              اختارو Fidali و ما ندموش.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              {
+                name: 'كريم بلقاسمي',
+                role: 'Café Central, Alger',
+                img: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&q=80',
+                ar: '40% من زبائني ولاو يرجعو أكثر بفضل Fidali. الكارت الرقمية غيرت كلشي.',
+                fr: '40% de mes clients reviennent plus souvent grâce à Fidali.',
+                gradient: 'from-blue-500 to-indigo-600',
+              },
+              {
+                name: 'سارة مرابط',
+                role: 'Salon Belle, Oran',
+                img: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80',
+                ar: 'زبوناتي يحبو يشوفو التقدم تاعهم. نسبة الرجوع تضاعفت.',
+                fr: 'Mes clientes adorent voir leur progression. Le retour a doublé.',
+                gradient: 'from-pink-500 to-rose-600',
+              },
+              {
+                name: 'يوسف عمراني',
+                role: 'Pizza Roma, Constantine',
+                img: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&q=80',
+                ar: 'حطيتها في 3 دقائق. الدخل زاد 25% في شهر.',
+                fr: 'Setup en 3 min. Le CA a augmenté de 25% en un mois.',
+                gradient: 'from-amber-500 to-orange-600',
+              },
+            ].map((t, i) => (
+              <div
+                key={i}
+                className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 hover:shadow-xl transition-all duration-500 hover:-translate-y-1 relative overflow-hidden"
+              >
+                <div
+                  className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${t.gradient}`}
+                />
+                <div className="flex gap-0.5 mb-5">
+                  {Array.from({ length: 5 }).map((_, j) => (
+                    <span key={j} className="text-yellow-400 text-lg">
+                      ★
+                    </span>
+                  ))}
+                </div>
+                <p
+                  className="text-sm text-gray-700 leading-[2] mb-2"
+                  dir="rtl"
+                >
+                  &ldquo;{t.ar}&rdquo;
+                </p>
+                <p className="text-xs text-gray-400 italic mb-6">
+                  &ldquo;{t.fr}&rdquo;
+                </p>
+                <div className="flex items-center gap-3">
+                  <img
+                    src={t.img}
+                    alt=""
+                    className="w-12 h-12 rounded-full object-cover"
+                  />
                   <div>
-                    <p className="text-sm font-bold">{t.name}</p>
-                    <p className="text-[11px] text-gray-400">{t.role}</p>
+                    <p className="font-bold text-sm">{t.name}</p>
+                    <p className="text-xs text-gray-400">{t.role}</p>
                   </div>
                 </div>
               </div>
@@ -509,34 +638,245 @@ export default function GoPage() {
         </div>
       </section>
 
-      {/* ====== CTA FINAL ====== */}
-      <section className="py-24 px-6 bg-white">
-        <div className="max-w-2xl mx-auto text-center">
-          <img src="/logo.png" alt="Fidali" className="w-14 h-14 rounded-2xl mx-auto mb-6 shadow-lg object-contain" />
-          <h2 className="text-[clamp(1.8rem,4vw,3rem)] font-extrabold tracking-tight leading-[1.1] mb-2">مستعد تحافظ على زبائنك؟</h2>
-          <p className="text-lg text-gray-400 font-light mb-3">Prêt à fidéliser vos clients ?</p>
-          <p className="text-gray-400 text-sm mb-8">أنشئ بطاقتك الآن. مجاناً — Créez votre carte. Gratuitement.</p>
-          <button onClick={() => router.push('/signup')} className="group px-10 py-5 bg-black hover:bg-gray-800 text-white font-bold rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all text-[15px]">
-            ابدأ الآن — Commencer
-            <span className="inline-block ml-2 group-hover:translate-x-1 transition-transform">→</span>
-          </button>
-          <div className="flex items-center justify-center gap-5 mt-5 text-xs text-gray-400">
+      {/* ═══════ PRICING ═══════ */}
+      <section
+        id="pricing"
+        ref={(el) => {
+          sectionRefs.current[4] = el
+        }}
+        className={`py-24 px-6 bg-white transition-all duration-1000 ${anim('pricing')}`}
+      >
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-16">
+            <span className="px-4 py-1.5 bg-emerald-50 text-emerald-600 text-xs font-bold rounded-full">
+              💎 Tarifs — الأسعار
+            </span>
+            <h2 className="text-[clamp(2rem,4vw,3rem)] font-black tracking-tight mt-6 mb-3">
+              Un prix. Tout inclus.
+            </h2>
+            <p className="text-gray-400 text-lg" dir="rtl">
+              سعر واحد. كلشي داخل.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6 items-start">
+            {/* Free */}
+            <div className="bg-gray-50 rounded-3xl p-8 border border-gray-200">
+              <p className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-4">
+                Gratuit — مجاني
+              </p>
+              <div className="flex items-end gap-1 mb-6">
+                <span className="text-5xl font-black">0</span>
+                <span className="text-gray-400 text-lg mb-1">DA/mois</span>
+              </div>
+              <ul className="space-y-3 text-sm text-gray-600 mb-8">
+                {[
+                  '1 carte de fidélité',
+                  'Jusqu\'à 50 clients',
+                  'QR Code',
+                  'Dashboard basique',
+                ].map((f, i) => (
+                  <li key={i} className="flex items-center gap-2">
+                    <span className="text-emerald-500 text-xs">✓</span>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={() => router.push('/signup')}
+                className="w-full py-3.5 bg-white text-black font-bold rounded-xl border border-gray-200 hover:bg-gray-100 transition text-sm"
+              >
+                Commencer gratuitement
+              </button>
+            </div>
+
+            {/* Pro */}
+            <div className="bg-black text-white rounded-3xl p-8 relative shadow-2xl shadow-black/20 scale-[1.02] border-2 border-indigo-500/30">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-indigo-600 text-white text-xs font-bold rounded-full">
+                الأكثر طلباً — Populaire
+              </div>
+              <p className="text-sm font-bold text-indigo-400 uppercase tracking-wide mb-4">
+                Pro — بروفيسيونال
+              </p>
+              <div className="flex items-end gap-1 mb-6">
+                <span className="text-5xl font-black">2,900</span>
+                <span className="text-white/40 text-lg mb-1">DA/mois</span>
+              </div>
+              <ul className="space-y-3 text-sm text-white/70 mb-8">
+                {[
+                  'Cartes illimitées',
+                  'Clients illimités',
+                  'Statistiques avancées',
+                  'Notifications SMS',
+                  'Support prioritaire',
+                  'Personnalisation complète',
+                ].map((f, i) => (
+                  <li key={i} className="flex items-center gap-2">
+                    <span className="text-indigo-400 text-xs">✓</span>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={() => router.push('/signup')}
+                className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition text-sm shadow-lg shadow-indigo-500/30"
+              >
+                Choisir Pro →
+              </button>
+            </div>
+
+            {/* Enterprise */}
+            <div className="bg-gray-50 rounded-3xl p-8 border border-gray-200">
+              <p className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-4">
+                Enterprise — مؤسسة
+              </p>
+              <div className="flex items-end gap-1 mb-6">
+                <span className="text-5xl font-black">Sur devis</span>
+              </div>
+              <ul className="space-y-3 text-sm text-gray-600 mb-8">
+                {[
+                  'Tout du plan Pro',
+                  'Multi-établissements',
+                  'API & Intégrations',
+                  'Account Manager dédié',
+                ].map((f, i) => (
+                  <li key={i} className="flex items-center gap-2">
+                    <span className="text-emerald-500 text-xs">✓</span>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <button className="w-full py-3.5 bg-white text-black font-bold rounded-xl border border-gray-200 hover:bg-gray-100 transition text-sm">
+                Nous contacter
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════ FINAL CTA ═══════ */}
+      <section className="relative py-32 px-6 overflow-hidden">
+        <div className="absolute inset-0">
+          <img
+            src="https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=1920&q=70"
+            alt=""
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-black/70" />
+        </div>
+
+        <div className="relative z-10 max-w-3xl mx-auto text-center text-white">
+          <img
+            src="/logo.png"
+            alt="Fidali"
+            className="w-16 h-16 rounded-2xl mx-auto mb-8 shadow-2xl object-contain"
+          />
+          <h2 className="text-[clamp(2rem,5vw,4rem)] font-black tracking-tight leading-[1] mb-4">
+            مستعد تحافظ
+            <br />
+            على زبائنك؟
+          </h2>
+          <p className="text-xl text-white/50 font-light mb-3">
+            Prêt à fidéliser vos clients ?
+          </p>
+          <p className="text-white/40 text-base mb-10 max-w-lg mx-auto">
+            Rejoignez les 500+ commerçants qui font déjà confiance à Fidali.
+            Commencez gratuitement en 2 minutes.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <button
+              onClick={() => router.push('/signup')}
+              className="group px-10 py-5 bg-white text-black font-extrabold rounded-full text-lg shadow-2xl shadow-white/20 hover:shadow-white/30 hover:-translate-y-1 transition-all"
+            >
+              ابدأ الآن — Commencer
+              <span className="inline-block ml-2 group-hover:translate-x-1.5 transition-transform">
+                →
+              </span>
+            </button>
+            <button
+              onClick={() => router.push('/login')}
+              className="px-10 py-5 bg-white/10 backdrop-blur text-white font-semibold rounded-full border border-white/20 hover:bg-white/20 transition text-lg"
+            >
+              Se connecter
+            </button>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-6 mt-8 text-sm text-white/30">
             <span>✓ مجاني — Gratuit</span>
             <span>✓ دقيقتين — 2 min</span>
             <span>✓ بلا تطبيق — Sans app</span>
+            <span>✓ بلا التزام — Sans engagement</span>
           </div>
         </div>
       </section>
 
-      {/* ====== FOOTER ====== */}
-      <footer className="py-8 px-6 border-t border-gray-100">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <img src="/logo.png" alt="" className="w-6 h-6 rounded-lg object-contain" />
-            <span className="text-sm font-semibold text-gray-400">Fidali</span>
+      {/* ═══════ FOOTER ═══════ */}
+      <footer className="bg-gray-950 text-white py-16 px-6">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid md:grid-cols-4 gap-10 mb-12">
+            <div className="md:col-span-2">
+              <div className="flex items-center gap-2.5 mb-4">
+                <img
+                  src="/logo.png"
+                  alt=""
+                  className="w-10 h-10 rounded-xl object-contain"
+                />
+                <span className="font-extrabold text-xl">Fidali</span>
+              </div>
+              <p className="text-white/40 text-sm leading-relaxed max-w-sm mb-4">
+                La solution de fidélité digitale pour les commerçants algériens.
+                Simple, rapide et efficace.
+              </p>
+              <p className="text-white/30 text-sm" dir="rtl">
+                الحل الرقمي لبرامج الولاء للتجار الجزائريين.
+              </p>
+            </div>
+            <div>
+              <p className="font-bold text-sm mb-4 text-white/60 uppercase tracking-wide">
+                Liens
+              </p>
+              <ul className="space-y-2.5 text-sm text-white/40">
+                <li>
+                  <button
+                    onClick={() => router.push('/signup')}
+                    className="hover:text-white transition"
+                  >
+                    Créer un compte
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => router.push('/login')}
+                    className="hover:text-white transition"
+                  >
+                    Connexion
+                  </button>
+                </li>
+                <li>
+                  <a href="#pricing" className="hover:text-white transition">
+                    Tarifs
+                  </a>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <p className="font-bold text-sm mb-4 text-white/60 uppercase tracking-wide">
+                Contact
+              </p>
+              <ul className="space-y-2.5 text-sm text-white/40">
+                <li>contact@fidali.dz</li>
+                <li>+213 XX XX XX XX</li>
+                <li>Alger, Algérie 🇩🇿</li>
+              </ul>
+            </div>
           </div>
-          <p className="text-[11px] text-gray-300">© 2025 Fidali — برنامج ولاء رقمي</p>
-          <button onClick={() => router.push('/login')} className="text-xs text-gray-400 hover:text-gray-600 transition">Connexion →</button>
+          <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row items-center justify-between gap-3">
+            <p className="text-xs text-white/20">
+              © 2025 Fidali — Tous droits réservés
+            </p>
+            <p className="text-xs text-white/20" dir="rtl">
+              برنامج ولاء رقمي 🇩🇿
+            </p>
+          </div>
         </div>
       </footer>
     </div>
