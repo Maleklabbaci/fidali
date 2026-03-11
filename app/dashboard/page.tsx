@@ -104,65 +104,41 @@ export default function DashboardPage() {
     loadData(merchant.id)
   }
 
-    const handlePresence = async (presenceId: string, action: 'validated' | 'rejected') => {
+  const handlePresence = async (presenceId: string, action: 'validated' | 'rejected') => {
     try {
+      const dbStatus = action === 'validated' ? 'confirmed' : 'rejected'
       const { supabase } = await import('@/database/supabase-client')
       const presence = pending.find((p) => p.id === presenceId)
-      console.log('1. PRESENCE TROUVEE:', presence)
-      if (!presence) { console.log('PRESENCE NON TROUVEE'); return }
+      if (!presence) return
 
-      // Étape 1: Update le status dans pending_presences
       const { error: e1 } = await supabase
         .from('pending_presences')
-        .update({ status: action })
+        .update({ status: dbStatus })
         .eq('id', presenceId)
-      console.log('2. UPDATE STATUS:', e1 ? 'ERREUR: ' + e1.message : 'OK')
+      if (e1) { console.error('Erreur:', e1.message); return }
 
-      // Étape 2: Si validé, ajouter les points
       if (action === 'validated') {
         const clientCard = clients.find((c) => c.client_id === presence.client_id && c.card_id === presence.card_id)
-        console.log('3. CLIENT CARD:', clientCard)
-        
-        if (!clientCard) {
-          // Essayer avec client_card_id
-          console.log('3b. Recherche par client_card_id:', presence.client_card_id)
-          if (presence.client_card_id) {
-            const cc = clients.find((c) => c.id === presence.client_card_id)
-            console.log('3c. TROUVE PAR ID:', cc)
-            if (cc) {
-              const card = cards.find((c) => c.id === cc.card_id)
-              const maxPts = card?.max_points || 10
-              const newPts = Math.min((cc.points || 0) + (card?.points_per_visit || 1), maxPts)
-              const reward = newPts >= maxPts
-              console.log('4. POINTS:', cc.points, '->', newPts, 'REWARD:', reward)
-              const { error: e2 } = await supabase
-                .from('client_cards')
-                .update({ points: reward ? 0 : newPts, total_rewards_redeemed: (cc.total_rewards_redeemed || 0) + (reward ? 1 : 0) })
-                .eq('id', cc.id)
-              console.log('5. UPDATE POINTS:', e2 ? 'ERREUR: ' + e2.message : 'OK')
-            }
-          }
-        } else {
-          const card = cards.find((c) => c.id === presence.card_id)
+          || clients.find((c) => c.id === presence.client_card_id)
+        if (clientCard) {
+          const card = cards.find((c) => c.id === (clientCard.card_id || presence.card_id))
           const maxPts = card?.max_points || 10
           const newPts = Math.min((clientCard.points || 0) + (card?.points_per_visit || 1), maxPts)
           const reward = newPts >= maxPts
-          console.log('4. POINTS:', clientCard.points, '->', newPts, 'REWARD:', reward)
-          const { error: e2 } = await supabase
+          await supabase
             .from('client_cards')
             .update({ points: reward ? 0 : newPts, total_rewards_redeemed: (clientCard.total_rewards_redeemed || 0) + (reward ? 1 : 0) })
             .eq('id', clientCard.id)
-          console.log('5. UPDATE POINTS:', e2 ? 'ERREUR: ' + e2.message : 'OK')
         }
       }
 
       setPending((prev) => prev.filter((p) => p.id !== presenceId))
-      setTimeout(() => { if (merchant) loadData(merchant.id) }, 1000)
+      setTimeout(() => { if (merchant) loadData(merchant.id) }, 500)
     } catch (err) {
-      console.error('CATCH ERROR:', err)
+      console.error('Error:', err)
     }
   }
-    
+  
   const handleExportPDF = async () => {
     if (!merchant) return
     setExportingPDF(true)
