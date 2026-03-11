@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import QRCode from 'react-qr-code'
 import { exportDashboardPDF } from '@/lib/export-pdf'
@@ -25,10 +25,17 @@ export default function DashboardPage() {
   const [confirmDelete, setConfirmDelete] = useState<{ type: string; id: string; name: string } | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
-  const [showContact, setShowContact] = useState(false)
-  const [contactForm, setContactForm] = useState({ subject: '', message: '' })
-  const [contactSending, setContactSending] = useState(false)
-  const [contactSent, setContactSent] = useState(false)
+
+  // Chat states
+  const [chatOpen, setChatOpen] = useState(false)
+  const [chatMessages, setChatMessages] = useState<any[]>([])
+  const [chatInput, setChatInput] = useState('')
+  const [chatSubject, setChatSubject] = useState('')
+  const [chatSending, setChatSending] = useState(false)
+  const [chatStep, setChatStep] = useState<'list' | 'new' | 'thread'>('list')
+  const [selectedThread, setSelectedThread] = useState<any>(null)
+  const [unreadCount, setUnreadCount] = useState(0)
+  const chatEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const stored = localStorage.getItem('merchant') || sessionStorage.getItem('merchant')
@@ -36,9 +43,16 @@ export default function DashboardPage() {
     const m = JSON.parse(stored)
     setMerchant(m)
     loadData(m.id)
-    const interval = setInterval(() => loadData(m.id), 30000)
+    loadMessages(m.id)
+    const interval = setInterval(() => { loadData(m.id); loadMessages(m.id) }, 15000)
     return () => clearInterval(interval)
   }, [router])
+
+  useEffect(() => {
+    if (chatOpen && chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [chatMessages, chatOpen, selectedThread])
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type })
@@ -71,6 +85,56 @@ export default function DashboardPage() {
       setStats({ total_clients: totalClients, total_points: totalPoints, total_rewards: totalRewards })
     } catch (err) { console.error('Error:', err) }
     finally { setLoading(false); setRefreshing(false) }
+  }
+
+  const loadMessages = async (merchantId: string) => {
+    try {
+      const { supabase } = await import('@/database/supabase-client')
+      const { data } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('merchant_id', merchantId)
+        .order('created_at', { ascending: true })
+      setChatMessages(data || [])
+      const unread = (data || []).filter((m: any) => m.status === 'replied' && !m.read_by_merchant).length
+      setUnreadCount(unread)
+    } catch (err) { console.error(err) }
+  }
+
+  const handleSendMessage = async () => {
+    if (!chatInput.trim()) return
+    if (chatStep === 'new' && !chatSubject) return
+    setChatSending(true)
+    try {
+      const { supabase } = await import('@/database/supabase-client')
+      await supabase.from('messages').insert({
+        merchant_id: merchant?.id,
+        merchant_name: merchant?.business_name || merchant?.name,
+        merchant_email: merchant?.email,
+        subject: chatStep === 'new' ? chatSubject : (selectedThread?.subject || 'Message'),
+        message: chatInput.trim(),
+      })
+      setChatInput('')
+      if (chatStep === 'new') {
+        setChatSubject('')
+        setChatStep('list')
+      }
+      if (merchant) loadMessages(merchant.id)
+    } catch (err) { console.error(err) }
+    finally { setChatSending(false) }
+  }
+
+  const openThread = async (msg: any) => {
+    setSelectedThread(msg)
+    setChatStep('thread')
+    // Marquer comme lu par le marchand
+    if (msg.status === 'replied' && !msg.read_by_merchant) {
+      try {
+        const { supabase } = await import('@/database/supabase-client')
+        await supabase.from('messages').update({ read_by_merchant: true }).eq('id', msg.id)
+        if (merchant) loadMessages(merchant.id)
+      } catch {}
+    }
   }
 
   const handleRefresh = () => { if (!merchant || refreshing) return; setRefreshing(true); loadData(merchant.id) }
@@ -159,24 +223,6 @@ export default function DashboardPage() {
     router.push('/')
   }
 
-  const handleSendMessage = async () => {
-    if (!contactForm.subject.trim() || !contactForm.message.trim()) return
-    setContactSending(true)
-    try {
-      const { supabase } = await import('@/database/supabase-client')
-      await supabase.from('messages').insert({
-        merchant_id: merchant?.id,
-        merchant_name: merchant?.business_name || merchant?.name,
-        merchant_email: merchant?.email,
-        subject: contactForm.subject.trim(),
-        message: contactForm.message.trim(),
-      })
-      setContactSent(true)
-      setContactForm({ subject: '', message: '' })
-    } catch (err) { console.error(err) }
-    finally { setContactSending(false) }
-  }
-
   const getCardURL = (code: string) => `${typeof window !== 'undefined' ? window.location.origin : ''}/scan/${code}`
   const handleCopyLink = (code: string) => { navigator.clipboard.writeText(getCardURL(code)); setCopied(true); setTimeout(() => setCopied(false), 2000) }
   const handleShare = async (card: any) => {
@@ -187,7 +233,7 @@ export default function DashboardPage() {
   const handlePrintQR = (card: any) => {
     const w = window.open('', '_blank')
     if (!w) return
-    w.document.write(`<!DOCTYPE html><html><head><title>${card.business_name}</title></head><body style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:system-ui;margin:0"><h1 style="margin-bottom:4px">${card.business_name}</h1><p style="color:#666;margin-bottom:20px">Programme de fidélité</p><div style="padding:16px;border:2px solid #000;border-radius:12px"><img src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(getCardURL(card.code))}" width="300" height="300"/></div><p style="font-weight:bold;margin-top:12px">${card.reward}</p><script>setTimeout(()=>window.print(),500)</script></body></html>`)
+    w.document.write(`<!DOCTYPE html><html><head><title>${card.business_name}</title></head><body style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:system-ui;margin:0"><h1>${card.business_name}</h1><p style="color:#666;margin-bottom:20px">Programme de fidélité</p><div style="padding:16px;border:2px solid #000;border-radius:12px"><img src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(getCardURL(card.code))}" width="300" height="300"/></div><p style="font-weight:bold;margin-top:12px">${card.reward}</p><script>setTimeout(()=>window.print(),500)</script></body></html>`)
     w.document.close()
   }
 
@@ -217,6 +263,34 @@ export default function DashboardPage() {
     const c = config[type] || { icon: '📋', color: 'text-slate-600', bg: 'bg-slate-50', label: type || 'Activité' }
     return { ...c, description: desc || c.label }
   }
+
+  const formatTime = (d: string) => {
+    return new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  }
+
+  const formatDate = (d: string) => {
+    const date = new Date(d)
+    const today = new Date()
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+    if (date.toDateString() === today.toDateString()) return "Aujourd'hui"
+    if (date.toDateString() === yesterday.toDateString()) return 'Hier'
+    return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+  }
+
+  // Grouper les messages par sujet pour faire des "threads"
+  const groupedMessages = chatMessages.reduce((acc: any, msg: any) => {
+    const key = msg.subject || 'Sans sujet'
+    if (!acc[key]) acc[key] = []
+    acc[key].push(msg)
+    return acc
+  }, {})
+
+  const threadList = Object.entries(groupedMessages).map(([subject, msgs]: [string, any]) => {
+    const lastMsg = msgs[msgs.length - 1]
+    const hasUnread = msgs.some((m: any) => m.status === 'replied' && !m.read_by_merchant)
+    return { subject, messages: msgs, lastMsg, hasUnread }
+  }).sort((a: any, b: any) => new Date(b.lastMsg.created_at).getTime() - new Date(a.lastMsg.created_at).getTime())
 
   if (loading) {
     return (
@@ -291,6 +365,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* MODALS */}
       {confirmDelete && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 flex items-center justify-center p-4" onClick={() => setConfirmDelete(null)}>
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -354,13 +429,10 @@ export default function DashboardPage() {
                 <>
                   <div className="text-center mb-5">
                     <h3 className="text-lg font-bold text-slate-900">{card.business_name}</h3>
-                    <p className="text-xs text-slate-400 mt-0.5">Scannez pour rejoindre le programme</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Scannez pour rejoindre</p>
                   </div>
                   <div className="bg-slate-50 rounded-2xl p-8 flex items-center justify-center mb-5">
                     <QRCode value={getCardURL(card.code)} size={200} level="H" />
-                  </div>
-                  <div className="bg-slate-50 rounded-xl p-3 mb-5">
-                    <p className="text-[11px] font-mono text-slate-500 text-center break-all">{getCardURL(card.code)}</p>
                   </div>
                   <div className="grid grid-cols-3 gap-2 mb-4">
                     <button onClick={() => handleCopyLink(card.code)} className="py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-xl text-xs font-semibold transition">{copied ? 'Copié !' : 'Copier'}</button>
@@ -375,6 +447,7 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* CONTENT */}
       <main className="max-w-[1300px] mx-auto px-5 md:px-8 py-6">
 
         {activeTab === 'overview' && (
@@ -388,7 +461,6 @@ export default function DashboardPage() {
                     <p className="text-white/70 text-xs">Cliquez pour gérer</p>
                   </div>
                 </div>
-                <svg className="w-5 h-5 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
               </div>
             )}
 
@@ -417,8 +489,7 @@ export default function DashboardPage() {
                   <div className="bg-white border-2 border-dashed border-slate-200 rounded-2xl p-10 text-center">
                     <p className="text-4xl mb-3">💳</p>
                     <p className="text-slate-800 font-bold mb-1">Créez votre première carte</p>
-                    <p className="text-slate-400 text-xs mb-5">Personnalisez et partagez votre programme</p>
-                    <button onClick={() => router.push('/dashboard/create-card')} className="px-5 py-2.5 bg-indigo-600 text-white text-xs font-semibold rounded-xl hover:bg-indigo-700 transition shadow-md shadow-indigo-200">+ Créer une carte</button>
+                    <button onClick={() => router.push('/dashboard/create-card')} className="px-5 py-2.5 bg-indigo-600 text-white text-xs font-semibold rounded-xl hover:bg-indigo-700 transition shadow-md shadow-indigo-200 mt-3">+ Créer une carte</button>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -433,9 +504,8 @@ export default function DashboardPage() {
                                   <div>
                                     <p className="text-[9px] text-white/40 uppercase tracking-[0.15em] font-semibold">Fidélité</p>
                                     <h4 className="font-bold text-base">{card.business_name}</h4>
-                                    <p className="text-white/40 text-[10px] font-mono mt-0.5">{card.code}</p>
                                   </div>
-                                  <span className="text-[11px] bg-white/20 backdrop-blur px-2.5 py-1 rounded-lg font-bold">{card.max_points} pts</span>
+                                  <span className="text-[11px] bg-white/20 px-2.5 py-1 rounded-lg font-bold">{card.max_points} pts</span>
                                 </div>
                                 <div className="flex gap-[3px] mb-2">
                                   {Array.from({ length: Math.min(card.max_points, 12) }).map((_, i) => (
@@ -446,12 +516,8 @@ export default function DashboardPage() {
                               </div>
                             </div>
                             <div className="w-[130px] bg-white flex flex-col items-center justify-center p-3 gap-2">
-                              <div className="cursor-pointer hover:opacity-80 transition" onClick={() => setShowQR(card.code)}>
+                              <div className="cursor-pointer" onClick={() => setShowQR(card.code)}>
                                 <QRCode value={getCardURL(card.code)} size={72} level="M" />
-                              </div>
-                              <div className="flex gap-1 w-full">
-                                <button onClick={() => handleCopyLink(card.code)} className="flex-1 py-1 bg-slate-50 hover:bg-slate-100 rounded text-[9px] font-semibold text-slate-500 transition">Copier</button>
-                                <button onClick={() => handleShare(card)} className="flex-1 py-1 bg-slate-50 hover:bg-slate-100 rounded text-[9px] font-semibold text-slate-500 transition">Partager</button>
                               </div>
                             </div>
                           </div>
@@ -468,7 +534,7 @@ export default function DashboardPage() {
                         </div>
                       )
                     })}
-                    <button onClick={() => router.push('/dashboard/create-card')} className="w-full py-3.5 border-2 border-dashed border-slate-200 rounded-2xl text-xs text-slate-400 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50/50 transition font-semibold">+ Nouvelle carte</button>
+                    <button onClick={() => router.push('/dashboard/create-card')} className="w-full py-3.5 border-2 border-dashed border-slate-200 rounded-2xl text-xs text-slate-400 hover:text-indigo-600 hover:border-indigo-300 transition font-semibold">+ Nouvelle carte</button>
                   </div>
                 )}
               </div>
@@ -483,7 +549,7 @@ export default function DashboardPage() {
                     <p className="p-8 text-center text-xs text-slate-400">Aucune activité</p>
                   ) : (
                     <div className="divide-y divide-slate-50">
-                      {activities.slice(0, 10).map((a, i) => {
+                      {activities.slice(0, 8).map((a, i) => {
                         const f = formatActivity(a)
                         return (
                           <div key={i} className="px-4 py-3 hover:bg-slate-50/50 transition flex items-center gap-3">
@@ -492,7 +558,6 @@ export default function DashboardPage() {
                               <p className="text-xs text-slate-700 truncate">{f.description}</p>
                               <p className="text-[10px] text-slate-300 mt-0.5">{timeAgo(a.created_at)}</p>
                             </div>
-                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full flex-shrink-0 ${f.bg} ${f.color}`}>{f.label}</span>
                           </div>
                         )
                       })}
@@ -514,72 +579,50 @@ export default function DashboardPage() {
                     const pct = Math.min(((cc.points || 0) / maxPts) * 100, 100)
                     const colors = ['bg-amber-400', 'bg-slate-400', 'bg-orange-400', 'bg-indigo-300', 'bg-slate-300']
                     return (
-                      <div key={cc.id || i} className="flex items-center gap-4 px-5 py-3.5 border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition">
-                        <div className={`w-7 h-7 ${colors[i] || 'bg-slate-200'} rounded-full flex items-center justify-center text-[10px] font-bold text-white`}>{i + 1}</div>
+                      <div key={cc.id || i} className="flex items-center gap-4 px-5 py-3.5 border-b border-slate-50 last:border-0">
+                        <div className={`w-7 h-7 ${colors[i]} rounded-full flex items-center justify-center text-[10px] font-bold text-white`}>{i + 1}</div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-slate-800 truncate">{cc.clients?.name || cc.client_name}</p>
                           <div className="flex items-center gap-2 mt-1">
                             <div className="flex-1 h-[6px] bg-slate-100 rounded-full overflow-hidden max-w-[120px]">
-                              <div className={`h-full rounded-full transition-all ${pct >= 100 ? 'bg-gradient-to-r from-amber-400 to-yellow-400' : 'bg-gradient-to-r from-indigo-500 to-violet-500'}`} style={{ width: `${pct}%` }} />
+                              <div className={`h-full rounded-full ${pct >= 100 ? 'bg-amber-400' : 'bg-indigo-500'}`} style={{ width: `${pct}%` }} />
                             </div>
                             <span className="text-[11px] font-semibold text-slate-500">{cc.points}/{maxPts}</span>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <span className="text-xs font-bold text-slate-700">{cc.total_rewards_redeemed || 0}</span>
-                          <p className="text-[9px] text-slate-300">récomp.</p>
-                        </div>
-                        {pct >= 100 && <span className="text-base">🎁</span>}
+                        {pct >= 100 && <span>🎁</span>}
                       </div>
                     )
                   })}
                 </div>
               </div>
             )}
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {[
-                { icon: '💳', label: 'Nouvelle carte', bg: 'bg-indigo-50 hover:bg-indigo-100', text: 'text-indigo-600', action: () => router.push('/dashboard/create-card') },
-                { icon: '📄', label: 'Export PDF', bg: 'bg-emerald-50 hover:bg-emerald-100', text: 'text-emerald-600', action: handleExportPDF },
-                { icon: '📱', label: 'Voir QR Code', bg: 'bg-violet-50 hover:bg-violet-100', text: 'text-violet-600', action: () => cards.length > 0 ? setShowQR(cards[0].code) : null },
-                { icon: '✨', label: 'Upgrader', bg: 'bg-amber-50 hover:bg-amber-100', text: 'text-amber-600', action: () => router.push('/dashboard/upgrade') },
-              ].map((a, i) => (
-                <button key={i} onClick={a.action} className={`${a.bg} ${a.text} p-4 rounded-2xl text-center transition hover:shadow-sm`}>
-                  <span className="text-xl block mb-1">{a.icon}</span>
-                  <span className="text-xs font-semibold">{a.label}</span>
-                </button>
-              ))}
-            </div>
           </div>
         )}
 
         {activeTab === 'pending' && (
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold text-slate-800">Visites en attente</h2>
-              <button onClick={handleRefresh} className="text-xs text-indigo-600 hover:underline font-medium">Rafraîchir</button>
-            </div>
+            <h2 className="text-sm font-bold text-slate-800">Visites en attente</h2>
             {pending.length === 0 ? (
               <div className="bg-white border border-slate-100 rounded-2xl p-12 text-center">
                 <p className="text-3xl mb-3">✅</p>
                 <p className="text-slate-700 font-bold text-sm">Tout est à jour</p>
-                <p className="text-slate-400 text-xs mt-1">Aucune visite en attente</p>
               </div>
             ) : (
               pending.map((p) => (
-                <div key={p.id} className="bg-white border border-slate-100 rounded-2xl p-5 hover:shadow-md transition">
+                <div key={p.id} className="bg-white border border-slate-100 rounded-2xl p-5">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-400 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-sm shadow-amber-200">
-                        {(p.clients?.name || p.client_name || '?')[0]?.toUpperCase()}
+                      <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-400 rounded-xl flex items-center justify-center text-white font-bold text-sm">
+                        {(p.clients?.name || '?')[0]?.toUpperCase()}
                       </div>
                       <div>
                         <p className="text-sm font-semibold text-slate-800">{p.clients?.name || p.client_name}</p>
-                        <p className="text-[11px] text-slate-400">{p.clients?.phone || p.client_phone} · {p.loyalty_cards?.business_name} · {timeAgo(p.created_at)}</p>
+                        <p className="text-[11px] text-slate-400">{p.loyalty_cards?.business_name} · {timeAgo(p.created_at)}</p>
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => handlePresence(p.id, 'validated')} className="px-4 py-2 bg-emerald-500 text-white rounded-xl text-xs font-semibold hover:bg-emerald-600 transition shadow-sm shadow-emerald-200">Confirmer</button>
+                      <button onClick={() => handlePresence(p.id, 'validated')} className="px-4 py-2 bg-emerald-500 text-white rounded-xl text-xs font-semibold hover:bg-emerald-600 transition">Confirmer</button>
                       <button onClick={() => handlePresence(p.id, 'rejected')} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-semibold hover:bg-red-50 hover:text-red-500 transition">Refuser</button>
                     </div>
                   </div>
@@ -593,59 +636,41 @@ export default function DashboardPage() {
           <div className="space-y-5">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-bold text-slate-800">Mes cartes</h2>
-              <button onClick={() => router.push('/dashboard/create-card')} className="px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-xl hover:bg-indigo-700 transition shadow-sm shadow-indigo-200">+ Nouvelle carte</button>
+              <button onClick={() => router.push('/dashboard/create-card')} className="px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-xl hover:bg-indigo-700 transition">+ Nouvelle carte</button>
             </div>
             {cards.length === 0 ? (
               <div className="bg-white border-2 border-dashed border-slate-200 rounded-2xl p-12 text-center">
                 <p className="text-4xl mb-3">💳</p>
-                <p className="text-slate-800 font-bold text-base mb-1">Aucune carte</p>
-                <button onClick={() => router.push('/dashboard/create-card')} className="px-6 py-2.5 bg-indigo-600 text-white text-xs font-semibold rounded-xl hover:bg-indigo-700 transition mt-4">Créer une carte</button>
+                <p className="text-slate-800 font-bold">Aucune carte</p>
+                <button onClick={() => router.push('/dashboard/create-card')} className="px-6 py-2.5 bg-indigo-600 text-white text-xs font-semibold rounded-xl mt-4">Créer une carte</button>
               </div>
             ) : (
               <div className="grid md:grid-cols-2 gap-5">
                 {cards.map((card) => {
                   const cc = clients.filter((c) => c.card_id === card.id)
-                  const totalPts = cc.reduce((s: number, c: any) => s + (c.points || 0), 0)
-                  const totalRew = cc.reduce((s: number, c: any) => s + (c.total_rewards_redeemed || 0), 0)
                   return (
                     <div key={card.id} className="bg-white border border-slate-100 rounded-2xl overflow-hidden hover:shadow-lg transition">
-                      <div className="p-6 relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${card.color1 || '#4f46e5'}, ${card.color2 || '#7c3aed'})` }}>
+                      <div className="p-6 relative" style={{ background: `linear-gradient(135deg, ${card.color1 || '#4f46e5'}, ${card.color2 || '#7c3aed'})` }}>
                         <div className="relative z-10 text-white">
-                          <div className="flex justify-between items-start mb-5">
-                            <div>
-                              <p className="text-[9px] text-white/40 uppercase tracking-[0.15em] font-semibold">Carte de fidélité</p>
-                              <h3 className="font-bold text-lg mt-0.5">{card.business_name}</h3>
-                            </div>
-                            <span className="text-xs bg-white/20 backdrop-blur px-2.5 py-1 rounded-lg font-bold">{card.max_points} pts</span>
-                          </div>
-                          <div className="flex gap-[4px] mb-3">
-                            {Array.from({ length: Math.min(card.max_points, 15) }).map((_, i) => (
-                              <div key={i} className="flex-1 h-2 rounded-full bg-white/20" />
-                            ))}
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <p className="text-white/60 text-xs">🎁 {card.reward}</p>
-                            <p className="text-white/30 text-[10px] font-mono">{card.code}</p>
-                          </div>
+                          <h3 className="font-bold text-lg">{card.business_name}</h3>
+                          <p className="text-white/60 text-xs mt-1">🎁 {card.reward}</p>
+                          <p className="text-white/30 text-[10px] font-mono mt-2">{card.code} · {card.max_points} pts</p>
                         </div>
                       </div>
                       <div className="p-5">
                         <div className="flex gap-4 mb-4">
-                          <div className="cursor-pointer hover:opacity-80 transition" onClick={() => setShowQR(card.code)}>
+                          <div className="cursor-pointer" onClick={() => setShowQR(card.code)}>
                             <QRCode value={getCardURL(card.code)} size={82} level="M" />
                           </div>
                           <div className="flex-1 grid grid-cols-2 gap-2">
-                            {[
-                              { v: cc.length, l: 'Clients', c: 'text-blue-600 bg-blue-50' },
-                              { v: totalPts, l: 'Points', c: 'text-amber-600 bg-amber-50' },
-                              { v: totalRew, l: 'Récomp.', c: 'text-emerald-600 bg-emerald-50' },
-                              { v: card.points_per_visit || 1, l: 'Pts/visite', c: 'text-violet-600 bg-violet-50' },
-                            ].map((st, j) => (
-                              <div key={j} className={`${st.c} rounded-xl p-2 text-center`}>
-                                <p className="text-lg font-extrabold">{st.v}</p>
-                                <p className="text-[9px] opacity-70">{st.l}</p>
-                              </div>
-                            ))}
+                            <div className="bg-blue-50 text-blue-600 rounded-xl p-2 text-center">
+                              <p className="text-lg font-extrabold">{cc.length}</p>
+                              <p className="text-[9px]">Clients</p>
+                            </div>
+                            <div className="bg-amber-50 text-amber-600 rounded-xl p-2 text-center">
+                              <p className="text-lg font-extrabold">{cc.reduce((s: number, c: any) => s + (c.points || 0), 0)}</p>
+                              <p className="text-[9px]">Points</p>
+                            </div>
                           </div>
                         </div>
                         <div className="flex gap-2 pt-3 border-t border-slate-100">
@@ -675,7 +700,6 @@ export default function DashboardPage() {
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-100">
                       <th className="text-left text-[11px] font-semibold text-slate-400 px-5 py-3">Client</th>
-                      <th className="text-left text-[11px] font-semibold text-slate-400 px-5 py-3 hidden md:table-cell">Carte</th>
                       <th className="text-left text-[11px] font-semibold text-slate-400 px-5 py-3">Progression</th>
                       <th className="text-center text-[11px] font-semibold text-slate-400 px-5 py-3">Récomp.</th>
                       <th className="text-right text-[11px] font-semibold text-slate-400 px-5 py-3">Actions</th>
@@ -686,31 +710,22 @@ export default function DashboardPage() {
                       const maxPts = cc.loyalty_cards?.max_points || 10
                       const pct = Math.min(((cc.points || 0) / maxPts) * 100, 100)
                       return (
-                        <tr key={cc.id || i} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition">
+                        <tr key={cc.id || i} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50">
                           <td className="px-5 py-3.5">
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 bg-gradient-to-br from-indigo-400 to-violet-400 rounded-full flex items-center justify-center text-[10px] font-bold text-white">
-                                {(cc.clients?.name || cc.client_name || '?')[0]?.toUpperCase()}
-                              </div>
-                              <div>
-                                <p className="text-xs font-semibold text-slate-800">{cc.clients?.name || cc.client_name}</p>
-                                <p className="text-[10px] text-slate-400">{cc.clients?.phone || cc.client_phone}</p>
-                              </div>
-                            </div>
+                            <p className="text-xs font-semibold text-slate-800">{cc.clients?.name || cc.client_name}</p>
+                            <p className="text-[10px] text-slate-400">{cc.clients?.phone || cc.client_phone}</p>
                           </td>
-                          <td className="px-5 py-3.5 text-xs text-slate-500 hidden md:table-cell">{cc.loyalty_cards?.business_name}</td>
                           <td className="px-5 py-3.5">
                             <div className="flex items-center gap-2">
                               <div className="w-16 h-[6px] bg-slate-100 rounded-full overflow-hidden">
                                 <div className={`h-full rounded-full ${pct >= 100 ? 'bg-amber-400' : 'bg-indigo-500'}`} style={{ width: `${pct}%` }} />
                               </div>
-                              <span className="text-[11px] font-semibold text-slate-500">{cc.points}/{maxPts}</span>
-                              {pct >= 100 && <span className="text-xs">🎁</span>}
+                              <span className="text-[11px] text-slate-500">{cc.points}/{maxPts}</span>
                             </div>
                           </td>
                           <td className="px-5 py-3.5 text-center text-xs font-bold text-slate-700">{cc.total_rewards_redeemed || 0}</td>
                           <td className="px-5 py-3.5 text-right">
-                            <button onClick={() => setConfirmDelete({ type: 'client', id: cc.id, name: cc.clients?.name || cc.client_name || 'ce client' })} className="px-3 py-1 text-[10px] font-semibold text-red-500 hover:bg-red-50 rounded-lg transition">Supprimer</button>
+                            <button onClick={() => setConfirmDelete({ type: 'client', id: cc.id, name: cc.clients?.name || 'ce client' })} className="px-3 py-1 text-[10px] font-semibold text-red-500 hover:bg-red-50 rounded-lg transition">Supprimer</button>
                           </td>
                         </tr>
                       )
@@ -724,10 +739,7 @@ export default function DashboardPage() {
 
         {activeTab === 'activity' && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold text-slate-800">Historique ({activities.length})</h2>
-              <button onClick={handleRefresh} className="text-xs text-indigo-600 hover:underline font-medium">Rafraîchir</button>
-            </div>
+            <h2 className="text-sm font-bold text-slate-800">Historique ({activities.length})</h2>
             {activities.length === 0 ? (
               <div className="bg-white border border-slate-100 rounded-2xl p-12 text-center">
                 <p className="text-3xl mb-3">📋</p>
@@ -739,10 +751,10 @@ export default function DashboardPage() {
                   const f = formatActivity(a)
                   const prevDate = i > 0 ? new Date(activities[i - 1].created_at).toDateString() : null
                   const currentDate = new Date(a.created_at).toDateString()
-                  const showDate = i === 0 || currentDate !== prevDate
+                  const showDateSep = i === 0 || currentDate !== prevDate
                   return (
                     <div key={i}>
-                      {showDate && (
+                      {showDateSep && (
                         <div className="flex items-center gap-3 py-3">
                           <div className="h-px bg-slate-200 flex-1" />
                           <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
@@ -751,15 +763,13 @@ export default function DashboardPage() {
                           <div className="h-px bg-slate-200 flex-1" />
                         </div>
                       )}
-                      <div className="bg-white border border-slate-100 rounded-2xl p-4 hover:shadow-md transition flex items-center gap-4">
+                      <div className="bg-white border border-slate-100 rounded-2xl p-4 flex items-center gap-4">
                         <div className={`w-10 h-10 ${f.bg} rounded-xl flex items-center justify-center text-lg flex-shrink-0`}>{f.icon}</div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm text-slate-800 font-medium leading-snug">{f.description}</p>
-                          <p className="text-[11px] text-slate-400 mt-0.5">
-                            {new Date(a.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} · {timeAgo(a.created_at)}
-                          </p>
+                          <p className="text-sm text-slate-800 font-medium">{f.description}</p>
+                          <p className="text-[11px] text-slate-400 mt-0.5">{formatTime(a.created_at)} · {timeAgo(a.created_at)}</p>
                         </div>
-                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-lg flex-shrink-0 ${f.bg} ${f.color}`}>{f.label}</span>
+                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-lg ${f.bg} ${f.color}`}>{f.label}</span>
                       </div>
                     </div>
                   )
@@ -771,80 +781,285 @@ export default function DashboardPage() {
 
       </main>
 
-      {/* BULLE CONTACT */}
-      <button onClick={() => { setShowContact(true); setContactSent(false) }} className="fixed bottom-6 right-6 z-30 w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg shadow-indigo-300 flex items-center justify-center transition-all hover:scale-110 active:scale-95">
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+      {/* ============================================ */}
+      {/* CHAT BUBBLE - Style Chatbot                  */}
+      {/* ============================================ */}
+
+      {/* Bouton flottant */}
+      <button
+        onClick={() => { setChatOpen(!chatOpen); if (!chatOpen) setChatStep('list') }}
+        className="fixed bottom-6 right-6 z-30 w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg shadow-indigo-300 flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+      >
+        {chatOpen ? (
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+        ) : (
+          <>
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse">{unreadCount}</span>
+            )}
+          </>
+        )}
       </button>
 
-      {showContact && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4" onClick={() => setShowContact(false)}>
-          <div className="bg-white rounded-t-3xl sm:rounded-2xl w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            {contactSent ? (
-              <div className="p-8 text-center">
-                <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                </div>
-                <h3 className="text-lg font-bold text-slate-900 mb-1">Message envoyé !</h3>
-                <p className="text-sm text-slate-400 mb-6">Nous vous répondrons rapidement</p>
-                <button onClick={() => setShowContact(false)} className="px-6 py-2.5 bg-slate-100 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-200 transition">Fermer</button>
+      {/* Fenêtre chat */}
+      {chatOpen && (
+        <div className="fixed bottom-24 right-6 z-40 w-[380px] max-w-[calc(100vw-48px)] bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col" style={{ height: '520px' }}>
+
+          {/* Header chat */}
+          <div className="bg-indigo-600 px-5 py-4 flex items-center justify-between flex-shrink-0">
+            <div className="flex items-center gap-3">
+              {chatStep !== 'list' && (
+                <button onClick={() => { setChatStep('list'); setSelectedThread(null) }} className="text-white/70 hover:text-white transition mr-1">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                </button>
+              )}
+              <div className="w-9 h-9 bg-white/20 rounded-full flex items-center justify-center">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
               </div>
-            ) : (
-              <>
-                <div className="p-6 border-b border-slate-100">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
-                        <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+              <div>
+                <p className="text-white font-bold text-sm">
+                  {chatStep === 'list' ? 'Support Fidali' : chatStep === 'new' ? 'Nouveau message' : selectedThread?.subject}
+                </p>
+                <p className="text-white/60 text-[10px] flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
+                  En ligne · Répond rapidement
+                </p>
+              </div>
+            </div>
+            <button onClick={() => setChatOpen(false)} className="text-white/50 hover:text-white transition">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
+
+          {/* === LISTE DES CONVERSATIONS === */}
+          {chatStep === 'list' && (
+            <div className="flex-1 overflow-y-auto">
+              {/* Message de bienvenue */}
+              <div className="p-4 bg-indigo-50 border-b border-indigo-100">
+                <p className="text-sm text-indigo-900 font-medium">👋 Bonjour {merchant?.business_name} !</p>
+                <p className="text-xs text-indigo-600 mt-1">Comment pouvons-nous vous aider ?</p>
+              </div>
+
+              {/* Bouton nouveau message */}
+              <button
+                onClick={() => setChatStep('new')}
+                className="w-full px-4 py-3 flex items-center gap-3 hover:bg-slate-50 transition border-b border-slate-100"
+              >
+                <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
+                  <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-semibold text-indigo-600">Nouveau message</p>
+                  <p className="text-[10px] text-slate-400">Posez votre question</p>
+                </div>
+              </button>
+
+              {/* Liste des threads */}
+              {threadList.length === 0 ? (
+                <div className="p-8 text-center">
+                  <p className="text-3xl mb-2">💬</p>
+                  <p className="text-sm text-slate-500">Aucun message</p>
+                  <p className="text-xs text-slate-400 mt-1">Envoyez votre premier message !</p>
+                </div>
+              ) : (
+                <div>
+                  {threadList.map((thread, i) => (
+                    <button
+                      key={i}
+                      onClick={() => openThread(thread.lastMsg)}
+                      className={`w-full px-4 py-3 flex items-center gap-3 hover:bg-slate-50 transition border-b border-slate-50 text-left ${thread.hasUnread ? 'bg-indigo-50/50' : ''}`}
+                    >
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                        thread.lastMsg.status === 'replied' ? 'bg-emerald-100' : thread.lastMsg.status === 'unread' ? 'bg-amber-100' : 'bg-slate-100'
+                      }`}>
+                        {thread.lastMsg.status === 'replied' ? (
+                          <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        ) : (
+                          <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        )}
                       </div>
-                      <div>
-                        <h3 className="text-base font-bold text-slate-900">Contactez-nous</h3>
-                        <p className="text-xs text-slate-400">Support Fidali</p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <p className={`text-sm truncate ${thread.hasUnread ? 'font-bold text-slate-900' : 'font-medium text-slate-700'}`}>{thread.subject}</p>
+                          <span className="text-[10px] text-slate-400 flex-shrink-0 ml-2">{timeAgo(thread.lastMsg.created_at)}</span>
+                        </div>
+                        <p className="text-xs text-slate-400 truncate mt-0.5">
+                          {thread.lastMsg.admin_reply ? `Admin: ${thread.lastMsg.admin_reply.slice(0, 40)}...` : thread.lastMsg.message?.slice(0, 40)}...
+                        </p>
                       </div>
-                    </div>
-                    <button onClick={() => setShowContact(false)} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                      {thread.hasUnread && (
+                        <span className="w-2.5 h-2.5 bg-indigo-500 rounded-full flex-shrink-0" />
+                      )}
                     </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* === NOUVEAU MESSAGE === */}
+          {chatStep === 'new' && (
+            <div className="flex-1 flex flex-col">
+              <div className="flex-1 overflow-y-auto p-4">
+                {/* Bot message */}
+                <div className="flex gap-2 mb-4">
+                  <div className="w-7 h-7 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                    <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  </div>
+                  <div className="bg-slate-100 rounded-2xl rounded-tl-md px-4 py-3 max-w-[85%]">
+                    <p className="text-sm text-slate-700">Quel est le sujet de votre message ?</p>
                   </div>
                 </div>
-                <div className="p-6 space-y-4">
-                  <div>
-                    <label className="text-xs font-semibold text-slate-600 mb-1.5 block">Sujet</label>
-                    <select value={contactForm.subject} onChange={(e) => setContactForm({ ...contactForm, subject: e.target.value })} className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
-                      <option value="">Choisir un sujet...</option>
-                      <option value="Problème technique">Problème technique</option>
-                      <option value="Question abonnement">Question abonnement</option>
-                      <option value="Demande fonctionnalité">Demande fonctionnalité</option>
-                      <option value="Signaler un bug">Signaler un bug</option>
-                      <option value="Aide utilisation">Aide utilisation</option>
-                      <option value="Autre">Autre</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-slate-600 mb-1.5 block">Message</label>
-                    <textarea value={contactForm.message} onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })} placeholder="Décrivez votre problème..." rows={4} maxLength={1000} className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none" />
-                    <p className="text-[10px] text-slate-300 text-right mt-1">{contactForm.message.length}/1000</p>
-                  </div>
-                  <div className="bg-slate-50 rounded-xl p-3 flex items-center gap-3">
-                    <span className="text-lg">👤</span>
-                    <div>
-                      <p className="text-xs font-semibold text-slate-700">{merchant?.business_name}</p>
-                      <p className="text-[10px] text-slate-400">{merchant?.email}</p>
+
+                {/* Sujets rapides */}
+                <div className="space-y-2 ml-9">
+                  {[
+                    { value: 'Problème technique', emoji: '🔧' },
+                    { value: 'Question abonnement', emoji: '💰' },
+                    { value: 'Demande fonctionnalité', emoji: '💡' },
+                    { value: 'Signaler un bug', emoji: '🐛' },
+                    { value: 'Aide utilisation', emoji: '❓' },
+                    { value: 'Autre', emoji: '📋' },
+                  ].map((s) => (
+                    <button
+                      key={s.value}
+                      onClick={() => setChatSubject(s.value)}
+                      className={`w-full text-left px-4 py-2.5 rounded-xl text-sm transition ${
+                        chatSubject === s.value
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-white border border-slate-200 text-slate-700 hover:border-indigo-300 hover:bg-indigo-50'
+                      }`}
+                    >
+                      {s.emoji} {s.value}
+                    </button>
+                  ))}
+                </div>
+
+                {chatSubject && (
+                  <div className="mt-4">
+                    <div className="flex gap-2 mb-3">
+                      <div className="w-7 h-7 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                        <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      </div>
+                      <div className="bg-slate-100 rounded-2xl rounded-tl-md px-4 py-3 max-w-[85%]">
+                        <p className="text-sm text-slate-700">Décrivez votre problème ci-dessous 👇</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="p-6 pt-0">
-                  <button onClick={handleSendMessage} disabled={contactSending || !contactForm.subject || !contactForm.message.trim()} className="w-full py-3.5 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition disabled:opacity-40 shadow-md shadow-indigo-200 text-sm">
-                    {contactSending ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        Envoi...
-                      </span>
-                    ) : 'Envoyer le message'}
+                )}
+                <div ref={chatEndRef} />
+              </div>
+
+              {/* Input */}
+              {chatSubject && (
+                <div className="p-3 border-t border-slate-100 flex gap-2">
+                  <input
+                    type="text"
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                    placeholder="Écrivez votre message..."
+                    className="flex-1 px-4 py-2.5 bg-slate-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    autoFocus
+                  />
+                  <button
+                    onClick={handleSendMessage}
+                    disabled={chatSending || !chatInput.trim()}
+                    className="w-10 h-10 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl flex items-center justify-center transition disabled:opacity-40"
+                  >
+                    {chatSending ? (
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                    )}
                   </button>
                 </div>
-              </>
-            )}
-          </div>
+              )}
+            </div>
+          )}
+
+          {/* === THREAD (conversation) === */}
+          {chatStep === 'thread' && selectedThread && (
+            <div className="flex-1 flex flex-col">
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+
+                {/* Afficher tous les messages du même sujet */}
+                {chatMessages
+                  .filter((m) => m.subject === selectedThread.subject)
+                  .map((msg, i) => (
+                    <div key={msg.id || i}>
+                      {/* Date separator */}
+                      {(i === 0 || formatDate(msg.created_at) !== formatDate(chatMessages.filter((m) => m.subject === selectedThread.subject)[i - 1]?.created_at)) && (
+                        <div className="text-center my-3">
+                          <span className="text-[10px] text-slate-400 bg-slate-100 px-3 py-1 rounded-full">{formatDate(msg.created_at)}</span>
+                        </div>
+                      )}
+
+                      {/* Message du marchand (à droite) */}
+                      <div className="flex justify-end">
+                        <div className="max-w-[80%]">
+                          <div className="bg-indigo-600 text-white rounded-2xl rounded-br-md px-4 py-2.5">
+                            <p className="text-sm">{msg.message}</p>
+                          </div>
+                          <p className="text-[10px] text-slate-400 text-right mt-1">{formatTime(msg.created_at)}</p>
+                        </div>
+                      </div>
+
+                      {/* Réponse admin (à gauche) */}
+                      {msg.admin_reply && (
+                        <div className="flex gap-2 mt-2">
+                          <div className="w-7 h-7 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                            <span className="text-xs">🛡️</span>
+                          </div>
+                          <div className="max-w-[80%]">
+                            <div className="bg-slate-100 rounded-2xl rounded-tl-md px-4 py-2.5">
+                              <p className="text-sm text-slate-700">{msg.admin_reply}</p>
+                            </div>
+                            <p className="text-[10px] text-slate-400 mt-1">{msg.replied_at ? formatTime(msg.replied_at) : ''} · Admin</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Status */}
+                      {!msg.admin_reply && (
+                        <div className="flex justify-end mt-1">
+                          <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                            {msg.status === 'unread' ? '⏳ En attente' : msg.status === 'read' ? '👁 Lu' : ''}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                <div ref={chatEndRef} />
+              </div>
+
+              {/* Input pour répondre dans le thread */}
+              <div className="p-3 border-t border-slate-100 flex gap-2">
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                  placeholder="Envoyer un message..."
+                  className="flex-1 px-4 py-2.5 bg-slate-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <button
+                  onClick={handleSendMessage}
+                  disabled={chatSending || !chatInput.trim()}
+                  className="w-10 h-10 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl flex items-center justify-center transition disabled:opacity-40"
+                >
+                  {chatSending ? (
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
         </div>
       )}
 
