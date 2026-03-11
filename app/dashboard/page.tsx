@@ -108,7 +108,6 @@ export default function DashboardPage() {
       setLoading(false)
     }
   }
-}
 
   // Validate / Reject presence
   const handlePresence = async (presenceId: string, action: 'validated' | 'rejected') => {
