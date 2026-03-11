@@ -106,31 +106,18 @@ export default function DashboardPage() {
 
   const handlePresence = async (presenceId: string, action: 'validated' | 'rejected') => {
     try {
-      const { supabase } = await import('@/database/supabase-client')
+      const { validatePresence, rejectPresence } = await import('@/database/supabase-client')
       const presence = pending.find((p) => p.id === presenceId)
       if (!presence) return
-
-      await supabase
-        .from('pending_presences')
-        .update({ status: action })
-        .eq('id', presenceId)
 
       if (action === 'validated') {
         const clientCard = clients.find((c) => c.client_id === presence.client_id && c.card_id === presence.card_id)
         if (clientCard) {
           const card = cards.find((c) => c.id === presence.card_id)
-          const maxPts = card?.max_points || 10
-          const ptsPerVisit = card?.points_per_visit || 1
-          const newPoints = Math.min((clientCard.points || 0) + ptsPerVisit, maxPts)
-          const rewardEarned = newPoints >= maxPts
-          await supabase
-            .from('client_cards')
-            .update({
-              points: rewardEarned ? 0 : newPoints,
-              total_rewards_redeemed: (clientCard.total_rewards_redeemed || 0) + (rewardEarned ? 1 : 0)
-            })
-            .eq('id', clientCard.id)
+          await validatePresence(clientCard.id, card?.points_per_visit || 1, presence.merchant_id)
         }
+      } else {
+        await rejectPresence(presenceId)
       }
 
       setPending((prev) => prev.filter((p) => p.id !== presenceId))
@@ -139,6 +126,7 @@ export default function DashboardPage() {
       console.error('Error:', err)
     }
   }
+    
   const handleExportPDF = async () => {
     if (!merchant) return
     setExportingPDF(true)
