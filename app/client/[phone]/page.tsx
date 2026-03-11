@@ -138,7 +138,10 @@ export default function ClientCardPage() {
                   {/* Header carte */}
                   <div className="flex items-start justify-between mb-8">
                     <div>
-                      <p className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-medium">Carte de fidélité</p>
+                      <div className="flex items-center gap-2">
+  <img src="/logo-white.png" alt="" className="w-5 h-5 object-contain opacity-50" />
+  <p className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-medium">Carte de fidélité</p>
+</div>
                       <h2 className="text-xl font-bold text-white mt-1">{card.business_name}</h2>
                     </div>
                     <div className="bg-white/15 backdrop-blur-sm px-3 py-1.5 rounded-full border border-white/10">
