@@ -149,7 +149,7 @@ export default function ScanPage() {
         .from('clients')
         .select('*')
         .eq('phone', cleanPhone)
-        .single()
+        .maybeSingle()
 
       if (!client) {
         const { data: newClient, error: clientErr } = await supabase
@@ -167,7 +167,7 @@ export default function ScanPage() {
         .select('*')
         .eq('client_id', client.id)
         .eq('card_id', card.id)
-        .single()
+        .maybeSingle()
 
       if (!clientCard) {
         const { data: newCC, error: ccErr } = await supabase
