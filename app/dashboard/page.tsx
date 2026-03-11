@@ -104,36 +104,63 @@ export default function DashboardPage() {
     loadData(merchant.id)
   }
 
-  const handlePresence = async (presenceId: string, action: 'validated' | 'rejected') => {
+    const handlePresence = async (presenceId: string, action: 'validated' | 'rejected') => {
     try {
       const { supabase } = await import('@/database/supabase-client')
-      await supabase
+
+      // Trouver la présence
+      const presence = pending.find((p) => p.id === presenceId)
+      if (!presence) return
+
+      // Mettre à jour le statut de la présence
+      const { error: presenceError } = await supabase
         .from('pending_presences')
-        .update({ status: action, resolved_at: new Date().toISOString() })
+        .update({ 
+          status: action, 
+          resolved_at: new Date().toISOString() 
+        })
         .eq('id', presenceId)
 
+      if (presenceError) {
+        console.error('Erreur présence:', presenceError)
+        return
+      }
+
+      // Si validé, ajouter les points
       if (action === 'validated') {
-        const presence = pending.find((p) => p.id === presenceId)
-        if (presence) {
-          const clientCard = clients.find(
-            (c) => c.client_id === presence.client_id && c.card_id === presence.card_id
-          )
-          if (clientCard) {
-            const card = cards.find((c) => c.id === presence.card_id)
-            const maxPts = card?.max_points || 10
-            const newPoints = Math.min((clientCard.points || 0) + (card?.points_per_visit || 1), maxPts)
-            const rewardEarned = newPoints >= maxPts
-            await supabase
-              .from('client_cards')
-              .update({
-                points: rewardEarned ? 0 : newPoints,
-                total_rewards_redeemed: (clientCard.total_rewards_redeemed || 0) + (rewardEarned ? 1 : 0),
-                last_visit: new Date().toISOString(),
-              })
-              .eq('id', clientCard.id)
+        const clientCard = clients.find(
+          (c) => c.client_id === presence.client_id && c.card_id === presence.card_id
+        )
+        if (clientCard) {
+          const card = cards.find((c) => c.id === presence.card_id)
+          const maxPts = card?.max_points || 10
+          const ptsPerVisit = card?.points_per_visit || 1
+          const newPoints = Math.min((clientCard.points || 0) + ptsPerVisit, maxPts)
+          const rewardEarned = newPoints >= maxPts
+
+          const { error: updateError } = await supabase
+            .from('client_cards')
+            .update({
+              points: rewardEarned ? 0 : newPoints,
+              total_rewards_redeemed: (clientCard.total_rewards_redeemed || 0) + (rewardEarned ? 1 : 0),
+            })
+            .eq('id', clientCard.id)
+
+          if (updateError) {
+            console.error('Erreur update client_card:', updateError)
           }
         }
       }
+
+      // Retirer de la liste
+      setPending((prev) => prev.filter((p) => p.id !== presenceId))
+
+      // Recharger les données
+      if (merchant) loadData(merchant.id)
+    } catch (err) {
+      console.error('Error:', err)
+    }
+  }
 
       setPending((prev) => prev.filter((p) => p.id !== presenceId))
       if (merchant) loadData(merchant.id)
