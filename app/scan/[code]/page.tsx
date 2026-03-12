@@ -84,9 +84,11 @@ export default function ScanPage() {
 
   // Vérifier si push déjà activé
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      setPushEnabled(Notification.permission === 'granted')
-    }
+    try {
+      if (typeof window !== 'undefined' && typeof Notification !== 'undefined') {
+        setPushEnabled(Notification.permission === 'granted')
+      }
+    } catch {}
   }, [])
 
   const loadCard = async () => {
@@ -223,14 +225,17 @@ export default function ScanPage() {
         })
       }
 
-      localStorage.setItem(`fidali_phone_${cardCode}`, cleanPhone)
-      localStorage.setItem('fidali_client', JSON.stringify(client))
+      try { localStorage.setItem(`fidali_phone_${cardCode}`, cleanPhone) } catch {}
+      try { localStorage.setItem('fidali_client', JSON.stringify(client)) } catch {}
       setClientData({ client, clientCard })
       setPoints(clientCard.points || 0)
 
-      // Activer les push notifications
-      await enablePushForClient(client.id)
-      setPushEnabled(Notification.permission === 'granted')
+      // Activer les push notifications — en arrière-plan, ne bloque pas le flow
+      enablePushForClient(client.id).then(() => {
+        try {
+          setPushEnabled(typeof Notification !== 'undefined' && Notification.permission === 'granted')
+        } catch {}
+      }).catch(() => {})
 
       const { data: presence } = await supabase
         .from('pending_presences')
