@@ -55,6 +55,7 @@ export default function DashboardPage() {
           localStorage.setItem('merchant', JSON.stringify(updated))
           sessionStorage.setItem('merchant', JSON.stringify(updated))
           setMerchant(updated)
+          showToast(`🎉 Votre plan a été mis à jour vers ${data.plan.toUpperCase()} !`)
         }
       } catch {}
     }
