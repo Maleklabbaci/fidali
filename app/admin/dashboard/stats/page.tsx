@@ -74,9 +74,9 @@ export default function StatsPage() {
       <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-6">
         <h3 className="text-sm font-semibold text-white/70 mb-2">Revenu estimé</h3>
         <p className="text-4xl font-bold text-white">
-          {((overview?.pro_count || 0) * 4500 + (overview?.premium_count || 0) * 9000).toLocaleString()} <span className="text-xl text-white/40 font-normal">DA / mois</span>
+          {((overview?.pro_count || 0) * 2500 + (overview?.premium_count || 0) * 5000).toLocaleString()} <span className="text-xl text-white/40 font-normal">DA / mois</span>
         </p>
-        <p className="text-xs text-white/25 mt-2">Basé sur les plans actifs (Pro: 4 500 DA · Premium: 9 000 DA)</p>
+        <p className="text-xs text-white/25 mt-2">Basé sur les plans actifs (Pro: 2 500 DA · Premium: 5 000 DA)</p>
       </div>
     </div>
   )
