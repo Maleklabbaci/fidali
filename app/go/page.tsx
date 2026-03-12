@@ -704,14 +704,14 @@ export default function GoPage() {
               </p>
               <p className="text-sm text-white/50 mb-6">Commerces actifs</p>
               <div className="flex items-end gap-1 mb-8">
-                <span className="text-5xl font-black">4 500</span>
+                <span className="text-5xl font-black">2 500</span>
                 <span className="text-white/40 text-base mb-1.5">DA</span>
                 <span className="text-white/25 text-sm mb-1.5">/mois</span>
               </div>
               <ul className="space-y-3.5 text-sm text-white/70 mb-10">
                 {[
-                  'Jusqu\'à 5 cartes',
-                  'Clients illimités',
+                  '3 cartes de fidélité',
+                  'Jusqu\'à 150 clients',
                   'Statistiques avancées',
                   'Support prioritaire',
                   'Personnalisation +',
@@ -739,7 +739,7 @@ export default function GoPage() {
               </p>
               <p className="text-sm text-gray-500 mb-6">Entreprises</p>
               <div className="flex items-end gap-1 mb-8">
-                <span className="text-5xl font-black">9 000</span>
+                <span className="text-5xl font-black">5 000</span>
                 <span className="text-gray-400 text-base mb-1.5">DA</span>
                 <span className="text-gray-300 text-sm mb-1.5">/mois</span>
               </div>
