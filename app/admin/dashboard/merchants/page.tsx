@@ -31,13 +31,25 @@ export default function MerchantsPage() {
     finally { setLoading(false) }
   }
 
+  const [actionMsg, setActionMsg] = useState<string | null>(null)
+
   const action = async (type: string, id: string, plan?: string) => {
     const mod = await import('@/database/supabase-client')
     if (type === 'approve') await mod.approveMerchant(id)
     if (type === 'suspend') await mod.suspendMerchant(id)
     if (type === 'delete') { if (!confirm('Supprimer ce commerçant ?')) return; await mod.deleteMerchant(id) }
-    if (type === 'plan') await mod.changeMerchantPlan(id, plan as any)
-    load(); setSelected(null)
+    if (type === 'plan') {
+      await mod.changeMerchantPlan(id, plan as any)
+      setActionMsg(`Plan mis à jour → ${plan}`)
+      setTimeout(() => setActionMsg(null), 2500)
+    }
+    load()
+    if (type !== 'plan') setSelected(null)
+    else {
+      // Update selected in place
+      setSelected((prev: any) => prev ? { ...prev, plan } : null)
+      setMerchants((prev: any[]) => prev.map(m => m.id === id ? { ...m, plan } : m))
+    }
   }
 
   const filtered = merchants.filter(m => {
@@ -57,6 +69,11 @@ export default function MerchantsPage() {
 
   return (
     <div className="space-y-6">
+      {actionMsg && (
+        <div className="fixed top-4 right-4 z-50 bg-emerald-900/90 border border-emerald-500/30 text-emerald-300 px-5 py-3 rounded-xl text-sm font-medium shadow-xl">
+          ✓ {actionMsg}
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
