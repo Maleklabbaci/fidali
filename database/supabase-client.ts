@@ -763,23 +763,63 @@ export async function deleteMerchant(merchantId: string) {
 }
 
 export async function getPlatformOverview() {
-  return await safeQuery(() =>
-    supabase.from('platform_overview').select('*').single()
-  )
+  try {
+    const [merchants, clients, cards, activities_today, activities_week] = await Promise.all([
+      supabase.from('merchants').select('id, status, plan'),
+      supabase.from('clients').select('id', { count: 'exact', head: true }),
+      supabase.from('loyalty_cards').select('id', { count: 'exact', head: true }).eq('is_active', true),
+      supabase.from('activities').select('id', { count: 'exact', head: true })
+        .gte('created_at', new Date().toISOString().split('T')[0]),
+      supabase.from('activities').select('id', { count: 'exact', head: true })
+        .gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString()),
+    ])
+    const ms = merchants.data || []
+    return {
+      total_merchants: ms.length,
+      active_merchants: ms.filter(m => m.status === 'active').length,
+      pending_merchants: ms.filter(m => m.status === 'pending').length,
+      suspended_merchants: ms.filter(m => m.status === 'suspended').length,
+      starter_count: ms.filter(m => m.plan === 'starter').length,
+      pro_count: ms.filter(m => m.plan === 'pro').length,
+      premium_count: ms.filter(m => m.plan === 'premium').length,
+      total_clients: clients.count || 0,
+      total_cards: cards.count || 0,
+      activities_today: activities_today.count || 0,
+      activities_week: activities_week.count || 0,
+    }
+  } catch (err) {
+    console.error('getPlatformOverview error:', err)
+    return null
+  }
 }
 
 export async function getPendingPayments() {
   const data = await safeQuery(() =>
-    supabase.from('pending_payments').select('*').eq('status', 'pending').order('created_at', { ascending: false })
+    supabase.from('payment_requests')
+      .select('*, merchants(business_name, email, name)')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
   )
   return data || []
 }
 
 export async function approvePayment(paymentId: string, merchantId: string, plan: string) {
+  // 1. Confirmer le paiement
   await safeQuery(() =>
     supabase.from('payment_requests').update({ status: 'confirmed', processed_at: new Date().toISOString() }).eq('id', paymentId)
   )
+  // 2. Mettre à jour le plan
   await changeMerchantPlan(merchantId, plan)
+  // 3. Notifier le commerçant via notifications table
+  await safeQuery(() =>
+    supabase.from('notifications').insert({
+      merchant_id: merchantId,
+      type: 'plan_upgraded',
+      title: 'Plan mis à jour',
+      message: `Votre plan a été mis à jour vers ${plan}. Profitez de vos nouvelles fonctionnalités !`,
+      created_at: new Date().toISOString(),
+    })
+  )
 }
 
 export async function rejectPayment(paymentId: string) {
