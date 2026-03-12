@@ -1,14 +1,20 @@
 // lib/api-auth.ts
 // Middleware d'authentification pour les routes API REST
 
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { autoRefreshToken: false, persistSession: false } }
-)
+let _supabaseAdmin: SupabaseClient | null = null
+
+function getSupabaseAdmin(): SupabaseClient {
+  if (_supabaseAdmin) return _supabaseAdmin
+  _supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+  return _supabaseAdmin
+}
 
 async function sha256(text: string): Promise<string> {
   const encoder = new TextEncoder()
@@ -41,6 +47,7 @@ export async function authenticateApiKey(req: NextRequest): Promise<AuthResult |
     )
   }
 
+  const supabaseAdmin = getSupabaseAdmin()
   const keyHash = await sha256(rawKey)
 
   const { data: apiKey, error } = await supabaseAdmin
@@ -84,4 +91,4 @@ export function isAuthError(result: AuthResult | NextResponse): result is NextRe
   return result instanceof NextResponse
 }
 
-export { supabaseAdmin }
+export { getSupabaseAdmin as supabaseAdmin }
