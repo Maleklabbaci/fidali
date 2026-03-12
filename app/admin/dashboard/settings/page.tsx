@@ -19,8 +19,8 @@ export default function SettingsPage() {
 
   const plans = [
     { name: 'Starter', price: 'Gratuit', cards: '1 carte', clients: '50 clients', color: 'text-white/60' },
-    { name: 'Pro', price: '4 500 DA / mois', cards: '5 cartes', clients: 'Illimité', color: 'text-blue-400' },
-    { name: 'Premium', price: '9 000 DA / mois', cards: 'Illimité', clients: 'Illimité', color: 'text-violet-400' },
+    { name: 'Pro', price: '2 500 DA / mois', cards: '3 cartes', clients: '150 clients', color: 'text-blue-400' },
+    { name: 'Premium', price: '5 000 DA / mois', cards: 'Illimité', clients: 'Illimité', color: 'text-violet-400' },
   ]
 
   return (
