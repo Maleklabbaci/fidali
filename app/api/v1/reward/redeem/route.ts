@@ -1,6 +1,6 @@
 // app/api/v1/reward/redeem/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { authenticateApiKey, isAuthError, supabaseAdmin } from '@/lib/api-auth'
+import { authenticateApiKey, isAuthError, getSupabaseAdmin } from '@/lib/api-auth'
 
 export async function POST(req: NextRequest) {
   const auth = await authenticateApiKey(req)
@@ -17,6 +17,8 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const supabaseAdmin = getSupabaseAdmin()
+
     const { data: card } = await supabaseAdmin
       .from('loyalty_cards')
       .select('id, merchant_id, max_points, reward')
@@ -58,7 +60,6 @@ export async function POST(req: NextRequest) {
       }, { status: 400 })
     }
 
-    // Remettre les points à 0
     await supabaseAdmin
       .from('client_cards')
       .update({
@@ -68,7 +69,6 @@ export async function POST(req: NextRequest) {
       })
       .eq('id', clientCard.id)
 
-    // Logger
     await supabaseAdmin.from('activities').insert({
       merchant_id: auth.merchantId,
       card_id: card.id,
