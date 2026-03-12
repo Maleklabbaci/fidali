@@ -62,7 +62,7 @@ export default function ScanPage() {
     const interval = setInterval(async () => {
       try {
         const { supabase } = await import('@/database/supabase-client')
-        const { data } = await supabase.from('pending_presences').select('status').eq('id', presenceId).single()
+        const { data } = await supabase.from('pending_presences').select('status').eq('id', presenceId).maybeSingle()
         if (data?.status === 'confirmed') { setStep('validated'); clearInterval(interval) }
         else if (data?.status === 'rejected') { setStep('rejected'); clearInterval(interval) }
       } catch {}
@@ -125,7 +125,7 @@ export default function ScanPage() {
         .from('clients')
         .select('*')
         .eq('phone', clientPhone)
-        .single()
+        .maybeSingle()
 
       if (!client) { setStep('new_client'); return }
 
@@ -134,7 +134,7 @@ export default function ScanPage() {
         .select('*')
         .eq('client_id', client.id)
         .eq('card_id', cardData.id)
-        .single()
+        .maybeSingle()
 
       if (!clientCard) { setStep('new_client'); return }
 
@@ -153,7 +153,7 @@ export default function ScanPage() {
         .in('status', ['pending', 'confirmed'])
         .order('created_at', { ascending: false })
         .limit(1)
-        .single()
+        .maybeSingle()
 
       if (lastPresence) {
         const timeSince = Date.now() - new Date(lastPresence.created_at).getTime()
@@ -193,7 +193,7 @@ export default function ScanPage() {
           .from('clients')
           .insert({ name: name.trim(), phone: cleanPhone })
           .select()
-          .single()
+          .maybeSingle()
         if (clientErr) { setError('Erreur: ' + clientErr.message); setLoading(false); return }
         client = newClient
       }
@@ -210,7 +210,7 @@ export default function ScanPage() {
           .from('client_cards')
           .insert({ client_id: client.id, card_id: card.id, points: 0, total_rewards_redeemed: 0 })
           .select()
-          .single()
+          .maybeSingle()
         if (ccErr) { setError('Erreur: ' + ccErr.message); setLoading(false); return }
         clientCard = newCC
 
@@ -246,7 +246,7 @@ export default function ScanPage() {
           status: 'pending',
         })
         .select()
-        .single()
+        .maybeSingle()
 
       if (presence) setPresenceId(presence.id)
       setStep('pending')
@@ -274,7 +274,7 @@ export default function ScanPage() {
         .in('status', ['pending', 'confirmed'])
         .order('created_at', { ascending: false })
         .limit(1)
-        .single()
+        .maybeSingle()
 
       if (lastPresence) {
         const timeSince = Date.now() - new Date(lastPresence.created_at).getTime()
@@ -300,7 +300,7 @@ export default function ScanPage() {
           status: 'pending',
         })
         .select()
-        .single()
+        .maybeSingle()
 
       if (presence) setPresenceId(presence.id)
       setStep('pending')
