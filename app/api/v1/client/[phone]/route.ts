@@ -1,60 +1,95 @@
-// app/api/v1/client/[phone]/route.ts
+// app/api/v1/points/add/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { authenticateApiKey, isAuthError, supabaseAdmin } from '@/lib/api-auth'
+import { authenticateApiKey, isAuthError, getSupabaseAdmin } from '@/lib/api-auth'
 
-export async function GET(req: NextRequest, { params }: { params: { phone: string } }) {
+export async function POST(req: NextRequest) {
   const auth = await authenticateApiKey(req)
   if (isAuthError(auth)) return auth
 
-  const { phone } = params
+  let body: any
+  try { body = await req.json() }
+  catch { return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 }) }
 
-  if (!phone) {
-    return NextResponse.json({ error: 'phone is required' }, { status: 400 })
+  const { card_code, phone, points = 1 } = body
+
+  if (!card_code || !phone) {
+    return NextResponse.json({ error: 'card_code and phone are required' }, { status: 400 })
+  }
+
+  if (typeof points !== 'number' || points < 1 || points > 100) {
+    return NextResponse.json({ error: 'points must be a number between 1 and 100' }, { status: 400 })
   }
 
   try {
+    const supabaseAdmin = getSupabaseAdmin()
+
+    const { data: card, error: cardErr } = await supabaseAdmin
+      .from('loyalty_cards')
+      .select('id, merchant_id, max_points, reward, points_per_visit')
+      .eq('code', card_code.toUpperCase())
+      .eq('merchant_id', auth.merchantId)
+      .eq('is_active', true)
+      .single()
+
+    if (cardErr || !card) {
+      return NextResponse.json({ error: 'Card not found or does not belong to your account' }, { status: 404 })
+    }
+
     const { data: client } = await supabaseAdmin
       .from('clients')
-      .select('id, name, phone, created_at')
+      .select('id, name')
       .eq('phone', phone)
       .single()
 
     if (!client) {
-      return NextResponse.json({ error: 'Client not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Client not found. They must first join the card via the app.' }, { status: 404 })
     }
 
-    // Récupérer les cartes du client qui appartiennent à ce commerçant
-    const { data: clientCards } = await supabaseAdmin
+    const { data: clientCard } = await supabaseAdmin
       .from('client_cards')
-      .select('id, points, total_points_earned, total_rewards_redeemed, last_validation_at, loyalty_cards(id, business_name, code, max_points, reward, color1)')
+      .select('id, points, total_points_earned, total_rewards_redeemed')
       .eq('client_id', client.id)
+      .eq('card_id', card.id)
+      .single()
 
-    const myCards = (clientCards || []).filter((cc: any) => {
-      const card = cc.loyalty_cards
-      return card
+    if (!clientCard) {
+      return NextResponse.json({ error: 'Client has not joined this card yet' }, { status: 404 })
+    }
+
+    const newPoints = clientCard.points + points
+    const rewardReached = newPoints >= card.max_points
+
+    await supabaseAdmin
+      .from('client_cards')
+      .update({
+        points: newPoints,
+        total_points_earned: clientCard.total_points_earned + points,
+        last_validation_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', clientCard.id)
+
+    await supabaseAdmin.from('activities').insert({
+      merchant_id: auth.merchantId,
+      card_id: card.id,
+      client_id: client.id,
+      client_card_id: clientCard.id,
+      type: 'pts',
+      points_amount: points,
+      description: `API: +${points} point${points > 1 ? 's' : ''}`,
     })
 
     return NextResponse.json({
-      id: client.id,
-      name: client.name,
-      phone: client.phone,
-      member_since: client.created_at,
-      cards: myCards.map((cc: any) => ({
-        card_id: cc.loyalty_cards?.id,
-        card_name: cc.loyalty_cards?.business_name,
-        card_code: cc.loyalty_cards?.code,
-        points: cc.points,
-        max_points: cc.loyalty_cards?.max_points,
-        progress_pct: Math.round((cc.points / Math.max(cc.loyalty_cards?.max_points, 1)) * 100),
-        total_points_earned: cc.total_points_earned,
-        rewards_redeemed: cc.total_rewards_redeemed,
-        last_visit: cc.last_validation_at,
-        reward: cc.loyalty_cards?.reward,
-      })),
+      success: true,
+      client_name: client.name,
+      points: newPoints,
+      max_points: card.max_points,
+      reward_reached: rewardReached,
+      reward: rewardReached ? card.reward : null,
     })
 
   } catch (e: any) {
-    console.error('[API] client error:', e)
+    console.error('[API] points/add error:', e)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
