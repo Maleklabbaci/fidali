@@ -405,6 +405,13 @@ export async function markRequestAsRead(merchantId: string) {
 // CARD OPERATIONS
 // ============================================
 
+// Plan limits config — single source of truth
+export const PLAN_LIMITS = {
+  starter: { cards: 1, clients: 50 },
+  pro:     { cards: 3, clients: 150 },
+  premium: { cards: Infinity, clients: Infinity },
+}
+
 export async function createCard(merchantId: string, data: {
   businessName: string
   color1: string
@@ -417,6 +424,20 @@ export async function createCard(merchantId: string, data: {
   welcomeMessage: string
 }) {
   try {
+    // Check plan card limit
+    const merchantData = await safeQuery(() =>
+      supabase.from('merchants').select('plan').eq('id', merchantId).single()
+    )
+    const plan = (merchantData as any)?.plan || 'starter'
+    const limits = PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS] || PLAN_LIMITS.starter
+    const existingCards = await safeQuery(() =>
+      supabase.from('loyalty_cards').select('id').eq('merchant_id', merchantId).eq('is_active', true)
+    )
+    const cardCount = Array.isArray(existingCards) ? existingCards.length : 0
+    if (cardCount >= limits.cards) {
+      return { success: false as const, error: `Limite atteinte : votre plan ${plan} permet ${limits.cards} carte${limits.cards > 1 ? 's' : ''}. Passez au plan supérieur.`, limitReached: true }
+    }
+
     const codeResult = await safeQuery(() =>
       supabase.rpc('generate_card_code', { biz_name: data.businessName })
     )
@@ -472,6 +493,25 @@ export async function getCardByCode(code: string) {
 
 export async function joinCard(cardCode: string, clientName: string, clientPhone: string, deviceToken?: string) {
   try {
+    // Check client limit for this merchant
+    const cardData = await safeQuery(() =>
+      supabase.from('loyalty_cards').select('merchant_id, merchants(plan)').eq('code', cardCode).single()
+    )
+    if (cardData) {
+      const plan = (cardData as any)?.merchants?.plan || 'starter'
+      const limits = PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS] || PLAN_LIMITS.starter
+      if (limits.clients !== Infinity) {
+        const merchantId = (cardData as any).merchant_id
+        const clientsCount = await safeQuery(() =>
+          supabase.from('client_cards').select('id').eq('card_id', (cardData as any).id)
+        )
+        const count = Array.isArray(clientsCount) ? clientsCount.length : 0
+        if (count >= limits.clients) {
+          return { success: false as const, error: `Limite clients atteinte (${limits.clients} max pour ce plan).` }
+        }
+      }
+    }
+
     const { data, error } = await supabase.rpc('join_card', {
       p_card_code: cardCode,
       p_client_name: clientName,
@@ -645,7 +685,7 @@ export async function requestUpgrade(merchantId: string, data: {
   phone: string
   email?: string
 }) {
-  const amount = data.plan === 'premium' ? 9000 : 4500
+  const amount = data.plan === 'premium' ? 5000 : 2500
 
   const result = await safeQuery(() =>
     supabase.from('payment_requests').insert({
@@ -663,70 +703,74 @@ export async function requestUpgrade(merchantId: string, data: {
 }
 
 // ============================================
-// ADMIN OPERATIONS — CORRIGÉ
+// ADMIN OPERATIONS
 // ============================================
 
-export async function getPlatformOverview() {
-  const now = new Date()
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
-  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
-
-  try {
-    const [
-      merchants,
-      activeMerchants,
-      clients,
-      cards,
-      activitiesWeek,
-      activitiesToday,
-    ] = await Promise.all([
-      supabase.from('merchants').select('id', { count: 'exact', head: true }),
-      supabase.from('merchants').select('id', { count: 'exact', head: true }).eq('status', 'active'),
-      supabase.from('clients').select('id', { count: 'exact', head: true }),
-      supabase.from('loyalty_cards').select('id', { count: 'exact', head: true }),
-      supabase.from('activities').select('id', { count: 'exact', head: true }).gte('created_at', weekAgo),
-      supabase.from('activities').select('id', { count: 'exact', head: true }).gte('created_at', todayStart),
-    ])
-
-    return {
-      total_merchants: merchants.count ?? 0,
-      active_merchants: activeMerchants.count ?? 0,
-      total_clients: clients.count ?? 0,
-      total_cards: cards.count ?? 0,
-      activities_week: activitiesWeek.count ?? 0,
-      activities_today: activitiesToday.count ?? 0,
-    }
-  } catch (err) {
-    console.error('getPlatformOverview error:', err)
-    return {
-      total_merchants: 0,
-      active_merchants: 0,
-      total_clients: 0,
-      total_cards: 0,
-      activities_week: 0,
-      activities_today: 0,
-    }
+export async function getAllMerchants(search?: string) {
+  if (search) {
+    const data = await safeQuery(() =>
+      supabase.from('merchants').select('*').or(`business_name.ilike.%${search}%,email.ilike.%${search}%,name.ilike.%${search}%`).order('created_at', { ascending: false })
+    )
+    return data || []
   }
-}
-
-export async function getPendingMerchants() {
   const data = await safeQuery(() =>
-    supabase
-      .from('merchants')
-      .select('*')
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false })
+    supabase.from('merchants').select('*').order('created_at', { ascending: false })
   )
   return data || []
 }
 
+export async function getPendingMerchants() {
+  const data = await safeQuery(() =>
+    supabase.from('merchants').select('*').eq('status', 'pending').order('created_at', { ascending: false })
+  )
+  return data || []
+}
+
+export async function approveMerchant(merchantId: string) {
+  try {
+    const { data, error } = await supabase.rpc('approve_merchant_full', { p_merchant_id: merchantId })
+    if (error) {
+      await supabase.from('merchants').update({ status: 'active', validated_at: new Date().toISOString() }).eq('id', merchantId)
+    }
+    return data
+  } catch {
+    await supabase.from('merchants').update({ status: 'active', validated_at: new Date().toISOString() }).eq('id', merchantId)
+  }
+}
+
+export async function suspendMerchant(merchantId: string) {
+  try {
+    const { data, error } = await supabase.rpc('suspend_merchant_full', { p_merchant_id: merchantId })
+    if (error) {
+      await supabase.from('merchants').update({ status: 'suspended' }).eq('id', merchantId)
+    }
+    return data
+  } catch {
+    await supabase.from('merchants').update({ status: 'suspended' }).eq('id', merchantId)
+  }
+}
+
+export async function changeMerchantPlan(merchantId: string, plan: string) {
+  await safeQuery(() =>
+    supabase.from('merchants').update({ plan, updated_at: new Date().toISOString() }).eq('id', merchantId)
+  )
+}
+
+export async function deleteMerchant(merchantId: string) {
+  await safeQuery(() =>
+    supabase.from('merchants').delete().eq('id', merchantId)
+  )
+}
+
+export async function getPlatformOverview() {
+  return await safeQuery(() =>
+    supabase.from('platform_overview').select('*').single()
+  )
+}
+
 export async function getPendingPayments() {
   const data = await safeQuery(() =>
-    supabase
-      .from('payment_requests')
-      .select('*')
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false })
+    supabase.from('pending_payments').select('*').eq('status', 'pending').order('created_at', { ascending: false })
   )
   return data || []
 }
