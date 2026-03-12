@@ -4,6 +4,19 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { QRCodeSVG } from 'qrcode.react'
 
+// Envoyer une notif push à un client via l'API
+async function sendPushToClient(clientId: string, title: string, body: string, url?: string) {
+  try {
+    await fetch('/api/push/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clientId, title, body, url }),
+    })
+  } catch (e) {
+    console.error('Push send error:', e)
+  }
+}
+
 export default function CardDetailPage() {
   const router = useRouter()
   const params = useParams()
@@ -51,14 +64,11 @@ export default function CardDetailPage() {
       try {
         const { getPendingPresences } = await import('@/database/supabase-client')
         const presences = await getPendingPresences(merchant.id)
-        
-        // Nouvelle présence ?
+
         if (presences.length > pendingPresences.length) {
           const newest = presences[0]
           setNotification(`🔔 ${newest.client_name} demande une validation !`)
           setTimeout(() => setNotification(null), 5000)
-
-          // Vibration
           if (navigator.vibrate) navigator.vibrate([200, 100, 200])
         }
 
@@ -74,20 +84,52 @@ export default function CardDetailPage() {
   const handleValidate = async (presence: any) => {
     try {
       const { validatePresence } = await import('@/database/supabase-client')
-      const result = await validatePresence(
+      await validatePresence(
         presence.client_card_id,
         card?.points_per_visit || 1,
         presence.merchant_id
       )
 
-      // Mettre à jour le statut de la présence
       const { supabase } = await import('@/database/supabase-client')
       await supabase
         .from('pending_presences')
         .update({ status: 'confirmed', resolved_at: new Date().toISOString() })
         .eq('id', presence.id)
 
-      setNotification(`✅ ${presence.client_name} : +${card?.points_per_visit || 1} point(s)`)
+      // Récupérer les nouveaux points du client
+      const { data: clientCard } = await supabase
+        .from('client_cards')
+        .select('points')
+        .eq('id', presence.client_card_id)
+        .single()
+
+      const newPoints = clientCard?.points || 0
+      const maxPts = card?.max_points || 10
+      const pts = card?.points_per_visit || 1
+
+      // Envoyer notif push au client
+      if (newPoints >= maxPts) {
+        // Récompense débloquée !
+        await sendPushToClient(
+          presence.client_id,
+          '🎉 Récompense débloquée !',
+          `Félicitations ! Vous avez gagné : ${card?.reward}. Réclamez-la lors de votre prochaine visite chez ${card?.business_name}.`,
+          `/scan/${card?.code}`
+        )
+      } else {
+        // Points ajoutés
+        const remaining = maxPts - newPoints
+        await sendPushToClient(
+          presence.client_id,
+          `+${pts} point${pts > 1 ? 's' : ''} chez ${card?.business_name} ! 🎯`,
+          remaining === 1
+            ? `Plus qu'1 point pour débloquer votre récompense : ${card?.reward} !`
+            : `Vous avez ${newPoints}/${maxPts} points. Encore ${remaining} point${remaining > 1 ? 's' : ''} pour ${card?.reward}.`,
+          `/scan/${card?.code}`
+        )
+      }
+
+      setNotification(`✅ ${presence.client_name} : +${pts} point(s)`)
       setTimeout(() => setNotification(null), 3000)
 
       loadData()
@@ -110,12 +152,20 @@ export default function CardDetailPage() {
     }
   }
 
-  const handleRedeemReward = async (clientCardId: string, clientName: string) => {
+  const handleRedeemReward = async (clientCardId: string, clientName: string, clientId: string) => {
     try {
       const { redeemReward } = await import('@/database/supabase-client')
       const result = await redeemReward(clientCardId, merchant.id)
 
       if (result.success) {
+        // Notif push : récompense utilisée, remis à 0
+        await sendPushToClient(
+          clientId,
+          `🎁 Récompense utilisée chez ${card?.business_name}`,
+          `Votre récompense a été validée. Continuez à collecter des points pour la prochaine ! 💪`,
+          `/scan/${card?.code}`
+        )
+
         setNotification(`🎁 Récompense donnée à ${clientName} ! Points remis à 0`)
         setTimeout(() => setNotification(null), 4000)
         loadData()
@@ -149,14 +199,12 @@ export default function CardDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Notification popup */}
       {notification && (
         <div className="fixed top-4 right-4 z-50 bg-white rounded-2xl shadow-2xl border border-gray-200 px-6 py-4 animate-bounce max-w-sm">
           <p className="font-bold text-gray-900">{notification}</p>
         </div>
       )}
 
-      {/* Header */}
       <header className="bg-white shadow-sm px-6 py-4 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-4">
           <button onClick={() => router.push('/dashboard')} className="text-gray-400 hover:text-gray-600 text-xl">←</button>
@@ -176,7 +224,6 @@ export default function CardDetailPage() {
       </header>
 
       <main className="max-w-5xl mx-auto px-6 py-8 space-y-6">
-        {/* Card Preview */}
         <div
           className="rounded-3xl p-6 text-white shadow-xl"
           style={{ background: `linear-gradient(135deg, ${card.color1}, ${card.color2})` }}
@@ -196,7 +243,6 @@ export default function CardDetailPage() {
           </div>
         </div>
 
-        {/* Tabs */}
         <div className="flex gap-2">
           {[
             { key: 'qr', label: '📱 QR Code', count: null },
@@ -389,7 +435,7 @@ export default function CardDetailPage() {
 
                           {canRedeem && (
                             <button
-                              onClick={() => handleRedeemReward(c.client_card_id, c.client_name)}
+                              onClick={() => handleRedeemReward(c.client_card_id, c.client_name, c.client_id)}
                               className="px-4 py-2 bg-yellow-400 text-yellow-900 rounded-xl text-sm font-bold hover:bg-yellow-500 transition animate-pulse"
                             >
                               🎁 Donner
