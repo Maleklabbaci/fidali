@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import QRCode from 'react-qr-code'
 import { exportDashboardPDF } from '@/lib/export-pdf'
+import ShareModal from '@/components/ShareModal'
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -23,6 +24,7 @@ export default function DashboardPage() {
   const [editCard, setEditCard] = useState<any>(null)
   const [editForm, setEditForm] = useState({ reward: '', max_points: 0, welcome_message: '', points_per_visit: 1 })
   const [confirmDelete, setConfirmDelete] = useState<{ type: string; id: string; name: string } | null>(null)
+  const [shareCard, setShareCard] = useState<any>(null)
   const [actionLoading, setActionLoading] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
@@ -408,6 +410,8 @@ export default function DashboardPage() {
       </div>
 
       {/* MODALS */}
+      {shareCard && <ShareModal card={shareCard} onClose={() => setShareCard(null)} />}
+
       {confirmDelete && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 flex items-center justify-center p-4" onClick={() => setConfirmDelete(null)}>
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -572,6 +576,7 @@ export default function DashboardPage() {
                               <span><strong className="text-slate-700">{cc.reduce((s: number, c: any) => s + (c.points || 0), 0)}</strong> pts</span>
                             </div>
                             <div className="flex gap-1">
+                              <button onClick={() => setShareCard(card)} className="px-2.5 py-1 text-[10px] text-emerald-600 hover:bg-emerald-50 rounded-lg transition font-semibold">Partager</button>
                               <button onClick={() => openEditCard(card)} className="px-2.5 py-1 text-[10px] text-indigo-600 hover:bg-indigo-50 rounded-lg transition font-semibold">Modifier</button>
                               <button onClick={() => setConfirmDelete({ type: 'card', id: card.id, name: card.business_name })} className="px-2.5 py-1 text-[10px] text-red-500 hover:bg-red-50 rounded-lg transition font-semibold">Supprimer</button>
                             </div>
@@ -719,6 +724,7 @@ export default function DashboardPage() {
                           </div>
                         </div>
                         <div className="flex gap-2 pt-3 border-t border-slate-100">
+                          <button onClick={() => setShareCard(card)} className="flex-1 py-2 text-xs font-semibold text-emerald-600 hover:bg-emerald-50 rounded-xl transition">Partager</button>
                           <button onClick={() => openEditCard(card)} className="flex-1 py-2 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 rounded-xl transition">Modifier</button>
                           <button onClick={() => setConfirmDelete({ type: 'card', id: card.id, name: card.business_name })} className="flex-1 py-2 text-xs font-semibold text-red-500 hover:bg-red-50 rounded-xl transition">Supprimer</button>
                         </div>
