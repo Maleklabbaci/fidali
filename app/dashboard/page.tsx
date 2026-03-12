@@ -335,6 +335,11 @@ export default function DashboardPage() {
               {exportingPDF ? 'Export...' : 'Export PDF'}
             </button>
             {(merchant?.plan === 'pro' || merchant?.plan === 'premium') && (
+              <button onClick={() => router.push('/dashboard/stats')} className="hidden md:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg transition shadow-sm">
+                📊 Stats
+              </button>
+            )}
+            {(merchant?.plan === 'pro' || merchant?.plan === 'premium') && (
               <button onClick={() => router.push('/dashboard/personnalisation')} className="hidden md:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-violet-600 text-white hover:bg-violet-700 rounded-lg transition shadow-sm">
                 ✦ Personnalisation
               </button>
