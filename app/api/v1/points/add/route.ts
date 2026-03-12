@@ -1,13 +1,11 @@
 // app/api/v1/points/add/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { authenticateApiKey, isAuthError, supabaseAdmin } from '@/lib/api-auth'
+import { authenticateApiKey, isAuthError, getSupabaseAdmin } from '@/lib/api-auth'
 
 export async function POST(req: NextRequest) {
-  // Auth
   const auth = await authenticateApiKey(req)
   if (isAuthError(auth)) return auth
 
-  // Body
   let body: any
   try { body = await req.json() }
   catch { return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 }) }
@@ -23,7 +21,8 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // Trouver la carte
+    const supabaseAdmin = getSupabaseAdmin()
+
     const { data: card, error: cardErr } = await supabaseAdmin
       .from('loyalty_cards')
       .select('id, merchant_id, max_points, reward, points_per_visit')
@@ -36,7 +35,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Card not found or does not belong to your account' }, { status: 404 })
     }
 
-    // Trouver le client
     const { data: client } = await supabaseAdmin
       .from('clients')
       .select('id, name')
@@ -47,7 +45,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Client not found. They must first join the card via the app.' }, { status: 404 })
     }
 
-    // Trouver la client_card
     const { data: clientCard } = await supabaseAdmin
       .from('client_cards')
       .select('id, points, total_points_earned, total_rewards_redeemed')
@@ -62,18 +59,16 @@ export async function POST(req: NextRequest) {
     const newPoints = clientCard.points + points
     const rewardReached = newPoints >= card.max_points
 
-    // Mettre à jour les points
     await supabaseAdmin
       .from('client_cards')
       .update({
-        points: rewardReached ? newPoints : newPoints,
+        points: newPoints,
         total_points_earned: clientCard.total_points_earned + points,
         last_validation_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
       .eq('id', clientCard.id)
 
-    // Logger l'activité
     await supabaseAdmin.from('activities').insert({
       merchant_id: auth.merchantId,
       card_id: card.id,
