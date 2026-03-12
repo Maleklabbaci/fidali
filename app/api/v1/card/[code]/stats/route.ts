@@ -1,6 +1,6 @@
 // app/api/v1/card/[code]/stats/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { authenticateApiKey, isAuthError, supabaseAdmin } from '@/lib/api-auth'
+import { authenticateApiKey, isAuthError, getSupabaseAdmin } from '@/lib/api-auth'
 
 export async function GET(req: NextRequest, { params }: { params: { code: string } }) {
   const auth = await authenticateApiKey(req)
@@ -9,6 +9,8 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
   const { code } = params
 
   try {
+    const supabaseAdmin = getSupabaseAdmin()
+
     const { data: card } = await supabaseAdmin
       .from('loyalty_cards')
       .select('id, business_name, code, max_points, reward, color1, color2, created_at')
@@ -30,9 +32,9 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
     ])
 
     const acts = activities || []
-    const visitsToday = acts.filter(a => a.created_at.startsWith(today)).length
-    const visitsWeek = acts.filter(a => a.type === 'pts').length
-    const rewardsGiven = acts.filter(a => a.type === 'redeem').length
+    const visitsToday = acts.filter((a: any) => a.created_at.startsWith(today)).length
+    const visitsWeek = acts.filter((a: any) => a.type === 'pts').length
+    const rewardsGiven = acts.filter((a: any) => a.type === 'redeem').length
 
     return NextResponse.json({
       card_name: card.business_name,
