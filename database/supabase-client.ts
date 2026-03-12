@@ -764,7 +764,7 @@ export async function deleteMerchant(merchantId: string) {
 
 export async function getPlatformOverview() {
   try {
-    const [merchants, clients, cards, activities_today, activities_week] = await Promise.all([
+    const [merchants, clients, cards, activities_today, activities_week, points_data, rewards_data] = await Promise.all([
       supabase.from('merchants').select('id, status, plan'),
       supabase.from('clients').select('id', { count: 'exact', head: true }),
       supabase.from('loyalty_cards').select('id', { count: 'exact', head: true }).eq('is_active', true),
@@ -772,8 +772,12 @@ export async function getPlatformOverview() {
         .gte('created_at', new Date().toISOString().split('T')[0]),
       supabase.from('activities').select('id', { count: 'exact', head: true })
         .gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString()),
+      supabase.from('client_cards').select('points'),
+      supabase.from('client_cards').select('total_rewards_redeemed'),
     ])
     const ms = merchants.data || []
+    const total_points = (points_data.data || []).reduce((s: number, r: any) => s + (r.points || 0), 0)
+    const total_rewards = (rewards_data.data || []).reduce((s: number, r: any) => s + (r.total_rewards_redeemed || 0), 0)
     return {
       total_merchants: ms.length,
       active_merchants: ms.filter(m => m.status === 'active').length,
@@ -786,6 +790,8 @@ export async function getPlatformOverview() {
       total_cards: cards.count || 0,
       activities_today: activities_today.count || 0,
       activities_week: activities_week.count || 0,
+      total_points,
+      total_rewards,
     }
   } catch (err) {
     console.error('getPlatformOverview error:', err)
@@ -826,6 +832,66 @@ export async function rejectPayment(paymentId: string) {
   await safeQuery(() =>
     supabase.from('payment_requests').update({ status: 'rejected', processed_at: new Date().toISOString() }).eq('id', paymentId)
   )
+}
+
+
+// ============================================
+// MULTI-BRANCHES (Premium uniquement)
+// ============================================
+
+export async function getBranches(merchantId: string) {
+  const data = await safeQuery(() =>
+    supabase.from('branches').select('*').eq('merchant_id', merchantId).eq('is_active', true).order('created_at', { ascending: true })
+  )
+  return data || []
+}
+
+export async function createBranch(merchantId: string, branchData: {
+  name: string
+  address?: string
+  city?: string
+  phone?: string
+  manager_name?: string
+}) {
+  return await safeQuery(() =>
+    supabase.from('branches').insert({
+      merchant_id: merchantId,
+      ...branchData,
+    }).select().single()
+  )
+}
+
+export async function updateBranch(branchId: string, branchData: Partial<{
+  name: string
+  address: string
+  city: string
+  phone: string
+  manager_name: string
+}>) {
+  return await safeQuery(() =>
+    supabase.from('branches').update({ ...branchData, updated_at: new Date().toISOString() }).eq('id', branchId).select().single()
+  )
+}
+
+export async function deleteBranch(branchId: string) {
+  await safeQuery(() =>
+    supabase.from('branches').update({ is_active: false }).eq('id', branchId)
+  )
+}
+
+export async function getBranchStats(merchantId: string) {
+  const data = await safeQuery(() =>
+    supabase.from('activities')
+      .select('branch_id')
+      .eq('merchant_id', merchantId)
+      .not('branch_id', 'is', null)
+  )
+  if (!Array.isArray(data)) return []
+  const map: Record<string, number> = {}
+  for (const a of data as any[]) {
+    map[a.branch_id] = (map[a.branch_id] || 0) + 1
+  }
+  return Object.entries(map).map(([id, count]) => ({ id, count }))
 }
 
 // ============================================
