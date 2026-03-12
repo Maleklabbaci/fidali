@@ -1,0 +1,1581 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fidali — Cartes de Fidélité Digitales pour Tous</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#FF6B35">
+<link rel="manifest" id="pwaManifest">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+--o:#FF6B35;--o2:#FF8C5A;--y:#FFD93D;--g:#6BCB77;--b:#4D96FF;
+--pk:#FF6B9D;--pr:#C77DFF;--r:#e74c3c;
+--d:#1A1A2E;--d2:#16213E;--d3:#0F172A;--d4:#0B0F1A;
+--w:#FFFEF5;--l:#F8F9FF;
+--gl:rgba(255,255,255,0.04);--gl2:rgba(255,255,255,0.07);
+--bd:rgba(255,255,255,0.08);
+--side:260px;--radius:16px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Nunito',sans-serif;background:var(--w);color:var(--d);overflow-x:hidden}
+body.dark{background:var(--d4);color:#fff}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-thumb{background:rgba(255,107,53,.3);border-radius:9px}
+
+.page{display:none;min-height:100vh}
+.page.on{display:block}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:999;height:60px;padding:0 32px;display:flex;align-items:center;justify-content:space-between;background:rgba(255,254,245,.95);backdrop-filter:blur(16px);border-bottom:1px solid rgba(255,107,53,.08);transition:.3s}
+nav.dark{background:rgba(11,15,26,.97);border-color:var(--bd)}
+.logo{font-family:'Fredoka One';font-size:1.5rem;color:var(--o);cursor:pointer;display:flex;align-items:center;gap:6px}
+.logo em{font-style:normal;color:var(--d);transition:.3s}
+nav.dark .logo em{color:#fff}
+.logo-dot{width:7px;height:7px;border-radius:50%;background:var(--o);animation:pulse 2s infinite}
+@keyframes pulse{50%{transform:scale(1.5);opacity:.5}}
+.nav-links{display:flex;gap:24px;list-style:none}
+.nav-links a{text-decoration:none;color:var(--d);font-weight:700;font-size:.84rem;transition:.2s}
+.nav-links a:hover{color:var(--o)}
+.nav-right{display:flex;gap:8px;align-items:center}
+.btn-s{padding:8px 18px;border-radius:10px;font-family:inherit;font-weight:700;font-size:.82rem;cursor:pointer;transition:.2s;border:none}
+.btn-login{background:transparent;border:2px solid #ddd;color:var(--d)}
+.btn-login:hover{border-color:var(--o);color:var(--o)}
+.btn-cta{background:var(--o);color:#fff;box-shadow:0 4px 14px rgba(255,107,53,.35)}
+.btn-cta:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(255,107,53,.45)}
+.nav-user{display:none;align-items:center;gap:10px}
+.nav-av{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--o),var(--o2));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.82rem}
+.nav-name{font-weight:700;font-size:.84rem;color:#fff}
+.nav-out{background:none;border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:5px 12px;font-size:.74rem;font-weight:700;color:rgba(255,255,255,.4);cursor:pointer;font-family:inherit;transition:.2s}
+.nav-out:hover{border-color:var(--r);color:var(--r)}
+.nav-badge{background:var(--r);color:#fff;padding:2px 8px;border-radius:6px;font-size:.64rem;font-weight:800;display:none}
+.menu-btn{display:none;background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--d)}
+
+/* OVERLAY / MODAL */
+.ov{display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);align-items:center;justify-content:center}
+.ov.on{display:flex}
+.modal{background:#fff;border-radius:20px;padding:30px;width:92%;max-width:440px;position:relative;box-shadow:0 40px 80px rgba(0,0,0,.25);animation:mIn .3s ease;max-height:90vh;overflow-y:auto}
+@keyframes mIn{from{opacity:0;transform:translateY(30px) scale(.96)}to{opacity:1;transform:none}}
+.modal-x{position:absolute;top:10px;right:14px;background:none;border:none;font-size:1.3rem;cursor:pointer;color:#ccc;width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;transition:.2s}
+.modal-x:hover{color:var(--o);background:#FFF5F0}
+.modal h2{font-family:'Fredoka One';font-size:1.3rem;text-align:center;margin-bottom:4px}
+.modal .sub{text-align:center;color:#888;font-size:.82rem;font-weight:500;margin-bottom:18px}
+.tabs{display:flex;border-radius:10px;background:#f5f5f5;padding:3px;margin-bottom:18px}
+.tab{flex:1;padding:9px;text-align:center;font-weight:700;font-size:.82rem;cursor:pointer;border-radius:8px;border:none;background:transparent;color:#888;font-family:inherit;transition:.2s}
+.tab.on{background:var(--o);color:#fff;box-shadow:0 2px 8px rgba(255,107,53,.3)}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:.7rem;font-weight:700;color:#999;margin-bottom:4px;text-transform:uppercase;letter-spacing:.8px}
+.field input,.field select,.field textarea{width:100%;padding:10px 14px;border:2px solid #eee;border-radius:10px;font-family:inherit;font-weight:600;font-size:.88rem;outline:none;transition:.2s;background:#fafafa;color:var(--d)}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--o);background:#fff;box-shadow:0 0 0 3px rgba(255,107,53,.08)}
+.field textarea{resize:vertical;min-height:60px}
+.modal-btn{width:100%;padding:12px;border-radius:10px;background:var(--o);color:#fff;font-family:inherit;font-weight:800;font-size:.9rem;border:none;cursor:pointer;box-shadow:0 4px 14px rgba(255,107,53,.35);transition:.2s;margin-top:6px}
+.modal-btn:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(255,107,53,.45)}
+.modal-btn.green{background:var(--g);box-shadow:0 4px 14px rgba(107,203,119,.35)}
+.modal-btn.red{background:var(--r);box-shadow:0 4px 14px rgba(231,76,60,.35)}
+.err{color:var(--r);font-size:.76rem;font-weight:600;text-align:center;display:none;padding:7px;background:#fff0f0;border-radius:8px;border:1px solid rgba(231,76,60,.12);margin-bottom:6px}
+.err.on{display:block}
+.info-box{padding:10px 14px;border-radius:10px;font-size:.76rem;font-weight:600;margin-bottom:10px;background:#e0f5e3;color:#2e9e3c;border:1px solid rgba(46,158,60,.12)}
+
+/* CARD DESIGN */
+.card-pro{width:320px;height:195px;border-radius:20px;padding:24px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;cursor:pointer;box-shadow:0 25px 60px rgba(0,0,0,.25);transition:.4s cubic-bezier(.34,1.56,.64,1)}
+.card-pro:hover{transform:translateY(-6px) scale(1.02)}
+.card-pro .shine{position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.25) 0%,rgba(255,255,255,.05) 30%,transparent 60%);pointer-events:none;z-index:1}
+.card-pro .pattern{position:absolute;inset:0;opacity:.06;pointer-events:none;background-image:radial-gradient(circle at 20% 80%,rgba(255,255,255,.8) 1px,transparent 1px),radial-gradient(circle at 80% 20%,rgba(255,255,255,.8) 1px,transparent 1px);background-size:60px 60px,40px 40px;z-index:1}
+.card-pro .circle1{position:absolute;width:180px;height:180px;background:rgba(255,255,255,.07);border-radius:50%;bottom:-50px;right:-30px;z-index:1}
+.card-pro .circle2{position:absolute;width:100px;height:100px;background:rgba(255,255,255,.05);border-radius:50%;top:-20px;left:-20px;z-index:1}
+.c-top{display:flex;justify-content:space-between;align-items:flex-start;position:relative;z-index:2}
+.c-logo{width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,.2);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;font-size:1.3rem;border:1px solid rgba(255,255,255,.25);flex-shrink:0}
+.c-brand{font-family:'Fredoka One';font-size:1.1rem;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.15)}
+.c-chip{width:36px;height:26px;background:linear-gradient(135deg,rgba(255,255,255,.35),rgba(255,255,255,.15));border-radius:6px;border:1px solid rgba(255,255,255,.3)}
+.c-mid{position:relative;z-index:2}
+.c-pts{font-family:'Fredoka One';font-size:2.4rem;color:#fff;line-height:1;text-shadow:0 2px 10px rgba(0,0,0,.2)}
+.c-pts-lbl{font-size:.65rem;color:rgba(255,255,255,.7);font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-top:2px}
+.c-bot{display:flex;justify-content:space-between;align-items:flex-end;position:relative;z-index:2}
+.c-holder{font-size:.72rem;color:rgba(255,255,255,.75);font-weight:700}
+.c-holder-name{font-size:.82rem;color:#fff;font-weight:800}
+.c-reward-tag{background:rgba(255,255,255,.2);backdrop-filter:blur(6px);padding:4px 10px;border-radius:8px;font-size:.65rem;font-weight:700;color:#fff;border:1px solid rgba(255,255,255,.2)}
+.c-progress{position:absolute;bottom:0;left:0;right:0;height:4px;background:rgba(255,255,255,.15);z-index:2}
+.c-progress-fill{height:100%;background:rgba(255,255,255,.6);border-radius:0 2px 0 0;transition:.5s}
+.card-sm{width:200px;height:122px;border-radius:14px;padding:14px}
+.card-sm .c-logo{width:28px;height:28px;border-radius:8px;font-size:.85rem}
+.card-sm .c-brand{font-size:.72rem}
+.card-sm .c-chip{width:24px;height:17px;border-radius:4px}
+.card-sm .c-pts{font-size:1.4rem}
+.card-sm .c-pts-lbl{font-size:.5rem;letter-spacing:1px}
+.card-sm .c-holder,.card-sm .c-holder-name{font-size:.6rem}
+.card-sm .c-reward-tag{font-size:.5rem;padding:2px 6px}
+
+/* HERO */
+.hero{min-height:100vh;padding:90px 40px 60px;display:flex;align-items:center;position:relative;overflow:hidden;background:linear-gradient(135deg,#FFFEF5,#FFF5F0 50%,#F0F8FF)}
+.hero-blobs{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.blob{position:absolute;border-radius:50%;filter:blur(70px);opacity:.22;animation:bfloat 8s ease-in-out infinite}
+.b1{width:400px;height:400px;background:var(--y);top:-100px;right:8%}
+.b2{width:300px;height:300px;background:var(--pk);bottom:-60px;left:3%;animation-delay:2.5s}
+.b3{width:250px;height:250px;background:var(--b);top:35%;right:25%;animation-delay:5s}
+@keyframes bfloat{50%{transform:translateY(-25px) scale(1.05)}}
+.hero-g{display:grid;grid-template-columns:1fr 1fr;gap:70px;max-width:1140px;margin:0 auto;align-items:center;position:relative;width:100%}
+.hero-tag{display:inline-flex;align-items:center;gap:8px;background:var(--y);color:var(--d);padding:5px 14px;border-radius:8px;font-size:.74rem;font-weight:800;letter-spacing:.5px;margin-bottom:16px;box-shadow:0 4px 12px rgba(255,217,61,.3)}
+.hero h1{font-family:'Fredoka One';font-size:clamp(2.2rem,4.5vw,3.4rem);line-height:1.1;margin-bottom:14px}
+.hero .hl{color:var(--o);position:relative;display:inline-block}
+.hero .hl::after{content:'';position:absolute;bottom:-3px;left:0;right:0;height:4px;background:var(--y);border-radius:2px;z-index:-1}
+.hero p{font-size:.95rem;color:#666;line-height:1.7;max-width:420px;margin-bottom:24px;font-weight:500}
+.hero-btns{display:flex;gap:10px;flex-wrap:wrap}
+.btn-big{background:var(--o);color:#fff;padding:12px 24px;border-radius:10px;font-weight:800;font-size:.9rem;border:none;cursor:pointer;font-family:inherit;box-shadow:0 4px 14px rgba(255,107,53,.35);transition:.2s;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.btn-big:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(255,107,53,.45)}
+.btn-sec{background:#fff;color:var(--d);padding:12px 24px;border-radius:10px;font-weight:700;font-size:.9rem;border:2px solid #ddd;cursor:pointer;font-family:inherit;transition:.2s;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.btn-sec:hover{border-color:var(--o);color:var(--o)}
+.cards-vis{position:relative;height:400px}
+.fc{position:absolute;transition:.3s;cursor:pointer}
+.fc:hover{z-index:10!important}
+.fc1{top:0;left:10px;z-index:1;animation:cf1 4s ease-in-out infinite;transform:rotate(-5deg)}
+.fc2{top:65px;left:45px;z-index:2;animation:cf2 4.5s ease-in-out infinite;transform:rotate(3deg)}
+.fc3{top:160px;left:0;z-index:3;animation:cf3 5s ease-in-out infinite;transform:rotate(-2deg)}
+@keyframes cf1{50%{transform:rotate(-4deg) translateY(-10px)}}
+@keyframes cf2{50%{transform:rotate(2deg) translateY(-8px)}}
+@keyframes cf3{50%{transform:rotate(-1deg) translateY(-12px)}}
+.wpills{position:absolute;right:0;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:8px}
+.wpill{background:#fff;border-radius:10px;padding:8px 14px;display:flex;align-items:center;gap:8px;font-size:.74rem;font-weight:700;color:var(--d);box-shadow:0 4px 18px rgba(0,0,0,.07);cursor:pointer;transition:.2s;border:2px solid transparent}
+.wpill:hover{border-color:var(--o);transform:translateX(-4px)}
+.sectors{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:20px}
+.sector-pill{background:#fff;border:2px solid #eee;border-radius:50px;padding:6px 16px;font-size:.78rem;font-weight:700;color:#555;display:flex;align-items:center;gap:6px;transition:.2s;cursor:default}
+.sector-pill:hover{border-color:var(--o);color:var(--o)}
+
+/* SECTIONS */
+.sbar{background:var(--d);padding:22px 40px;display:flex;justify-content:center;gap:50px;flex-wrap:wrap}
+.sbar-i{text-align:center}
+.sbar-n{font-family:'Fredoka One';font-size:1.6rem;color:var(--y)}
+.sbar-l{font-size:.76rem;color:rgba(255,255,255,.4);font-weight:600}
+.sec{padding:70px 40px}
+.sec-c{text-align:center}
+.stag{display:inline-block;padding:4px 12px;border-radius:6px;font-size:.68rem;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px}
+.stag-o{background:#ffe8df;color:var(--o)}.stag-b{background:#e0edff;color:var(--b)}.stag-g{background:#e0f5e3;color:#2e9e3c}
+.stitle{font-family:'Fredoka One';font-size:clamp(1.5rem,3.5vw,2.2rem);margin-bottom:10px;line-height:1.15}
+.ssub{font-size:.9rem;color:#666;max-width:460px;margin:0 auto;line-height:1.7;font-weight:500}
+.mw{max-width:1140px;margin:0 auto}
+.how{background:var(--l)}
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:40px}
+.step{background:#fff;border-radius:16px;padding:22px 16px;text-align:center;border:2px solid transparent;transition:.3s;box-shadow:0 2px 12px rgba(0,0,0,.04)}
+.step:hover{border-color:var(--o);transform:translateY(-4px);box-shadow:0 10px 28px rgba(255,107,53,.1)}
+.step-e{font-size:2rem;margin-bottom:10px;display:block}
+.step-n{display:inline-flex;width:26px;height:26px;border-radius:8px;background:var(--o);color:#fff;font-family:'Fredoka One';font-size:.75rem;align-items:center;justify-content:center;margin-bottom:8px}
+.step h3{font-size:.85rem;font-weight:800;margin-bottom:5px}
+.step p{font-size:.75rem;color:#666;line-height:1.6;font-weight:500}
+
+/* QR SECTION */
+.qr-sec{background:var(--l)}
+.qr-g{display:grid;grid-template-columns:1fr 1fr;gap:44px;align-items:center;margin-top:40px}
+.qr-info h3{font-family:'Fredoka One';font-size:1.3rem;margin-bottom:10px;line-height:1.2}
+.qr-info p{color:#666;line-height:1.7;font-weight:500;margin-bottom:14px;font-size:.9rem}
+.qr-list{list-style:none}
+.qr-list li{padding:9px 0;display:flex;align-items:center;gap:10px;font-weight:600;font-size:.85rem;color:#444;border-bottom:1px solid #eee}
+.qr-num{width:28px;height:28px;border-radius:8px;background:var(--o);color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Fredoka One';font-size:.75rem;flex-shrink:0}
+.qr-demo{background:#fff;border-radius:20px;padding:28px;text-align:center;box-shadow:0 8px 36px rgba(0,0,0,.06);border:2px solid #f0f0f0}
+.qr-demo-t{font-family:'Fredoka One';font-size:1rem;margin-bottom:4px}
+.qr-demo-s{font-size:.78rem;color:#888;font-weight:500;margin-bottom:14px}
+.qr-demo-c{width:180px;height:180px;margin:0 auto 12px;background:#fff;border-radius:12px;display:flex;align-items:center;justify-content:center;border:2px solid #f0f0f0;padding:6px}
+.qr-demo-c img{max-width:100%;max-height:100%;border-radius:8px}
+.qr-badge{display:inline-flex;align-items:center;gap:6px;background:#e0f5e3;color:#2e9e3c;padding:5px 12px;border-radius:8px;font-size:.76rem;font-weight:700}
+
+/* CREATOR */
+.creator{background:var(--l)}
+.cr-g{display:grid;grid-template-columns:1fr 1fr;gap:44px;align-items:start;margin-top:40px}
+.fbox{background:#fff;border-radius:18px;padding:26px;box-shadow:0 4px 22px rgba(0,0,0,.05);border:2px solid #f0f0f0}
+.fbox-t{font-family:'Fredoka One';font-size:1.1rem;margin-bottom:20px}
+.color-row{display:flex;gap:7px;flex-wrap:wrap}
+.csw{width:32px;height:32px;border-radius:10px;cursor:pointer;border:3px solid transparent;transition:.2s;box-shadow:0 2px 6px rgba(0,0,0,.1)}
+.csw:hover{transform:scale(1.1)}.csw.on{border-color:var(--d);transform:scale(1.1)}
+.prev-w{position:sticky;top:76px;display:flex;flex-direction:column;align-items:center;gap:18px}
+.prev-l{font-size:.7rem;font-weight:800;color:#999;text-transform:uppercase;letter-spacing:1.5px}
+
+/* PRICING */
+.pricing{background:#fff}
+.pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:40px}
+.plan{border-radius:18px;padding:26px;border:2px solid #eee;transition:.3s;position:relative;background:#fff}
+.plan:hover{transform:translateY(-4px);box-shadow:0 14px 36px rgba(0,0,0,.08)}
+.plan.pop{border-color:var(--o);background:linear-gradient(135deg,#FFF8F5,#fff);box-shadow:0 8px 28px rgba(255,107,53,.12)}
+.pop-b{position:absolute;top:-11px;left:50%;transform:translateX(-50%);background:var(--o);color:#fff;padding:3px 14px;border-radius:6px;font-size:.68rem;font-weight:800;white-space:nowrap}
+.plan-n{font-family:'Fredoka One';font-size:1.05rem;margin-bottom:4px}
+.plan-p{font-family:'Fredoka One';font-size:2rem;color:var(--o);line-height:1}
+.plan-p span{font-family:'Nunito';font-size:.78rem;color:#888;font-weight:600}
+.plan-d{font-size:.72rem;color:#888;font-weight:600;margin-bottom:16px}
+.plan-f{list-style:none;margin-bottom:20px}
+.plan-f li{padding:5px 0;font-size:.8rem;font-weight:600;color:#444;border-bottom:1px solid #f5f5f5;display:flex;align-items:center;gap:8px}
+.plan-f li::before{content:'✓';color:var(--g);font-weight:900}
+.plan-btn{width:100%;padding:10px;border-radius:10px;border:2px solid var(--d);background:transparent;color:var(--d);font-family:inherit;font-weight:800;font-size:.85rem;cursor:pointer;transition:.2s}
+.plan-btn:hover{background:var(--d);color:#fff}
+.plan.pop .plan-btn{background:var(--o);border-color:var(--o);color:#fff}
+.plan.pop .plan-btn:hover{background:#e55520}
+
+/* FUNNEL */
+.funnel-ov{display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);align-items:center;justify-content:center;overflow-y:auto;padding:20px}
+.funnel-ov.on{display:flex}
+.funnel{background:#fff;border-radius:24px;max-width:680px;width:100%;overflow:hidden;box-shadow:0 40px 100px rgba(0,0,0,.35);animation:mIn .4s ease}
+.funnel-head{background:linear-gradient(135deg,var(--o),var(--o2));padding:28px 32px;text-align:center;position:relative;overflow:hidden}
+.funnel-head::before{content:'';position:absolute;width:200px;height:200px;background:rgba(255,255,255,.08);border-radius:50%;top:-80px;right:-60px}
+.funnel-head h2{font-family:'Fredoka One';font-size:1.5rem;color:#fff;margin-bottom:4px}
+.funnel-head p{color:rgba(255,255,255,.85);font-size:.88rem;font-weight:500}
+.funnel-body{padding:28px 32px}
+.funnel-plans{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px}
+.fp{border-radius:14px;padding:20px;border:2.5px solid #eee;cursor:pointer;transition:.3s;position:relative;text-align:center}
+.fp:hover{border-color:var(--o);transform:translateY(-2px)}
+.fp.sel{border-color:var(--o);background:linear-gradient(135deg,#FFF8F5,#fff);box-shadow:0 6px 20px rgba(255,107,53,.12)}
+.fp.sel::after{content:'✓';position:absolute;top:10px;right:12px;background:var(--o);color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:900}
+.fp-pop{position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:var(--o);color:#fff;padding:2px 10px;border-radius:4px;font-size:.62rem;font-weight:800;white-space:nowrap}
+.fp-name{font-family:'Fredoka One';font-size:1rem;margin-bottom:4px}
+.fp-price{font-family:'Fredoka One';font-size:1.8rem;color:var(--o);line-height:1}
+.fp-price span{font-family:'Nunito';font-size:.72rem;color:#888;font-weight:600}
+.fp-feats{list-style:none;text-align:left;margin-top:12px}
+.fp-feats li{font-size:.76rem;font-weight:600;color:#555;padding:3px 0;display:flex;align-items:center;gap:6px}
+.fp-feats li::before{content:'✓';color:var(--g);font-weight:900;font-size:.8rem}
+.funnel-form{display:flex;flex-direction:column;gap:10px;margin-bottom:18px}
+.funnel-form label{font-size:.72rem;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:.8px}
+.funnel-form input,.funnel-form select{width:100%;padding:10px 14px;border:2px solid #eee;border-radius:10px;font-family:inherit;font-weight:600;font-size:.88rem;outline:none;background:#fafafa;color:var(--d)}
+.funnel-form input:focus,.funnel-form select:focus{border-color:var(--o);background:#fff}
+.funnel-pay{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:18px}
+.pay-opt{border:2px solid #eee;border-radius:10px;padding:12px;text-align:center;cursor:pointer;transition:.2s;font-size:.76rem;font-weight:700;color:#666}
+.pay-opt:hover{border-color:var(--o)}
+.pay-opt.sel{border-color:var(--o);background:#FFF5F0;color:var(--o)}
+.pay-opt-e{font-size:1.4rem;display:block;margin-bottom:4px}
+.funnel-total{background:#f8f9ff;border-radius:12px;padding:14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;border:1px solid #eee}
+.funnel-total-l{font-weight:700;color:#666;font-size:.85rem}
+.funnel-total-v{font-family:'Fredoka One';font-size:1.4rem;color:var(--o)}
+.funnel-total-v span{font-family:'Nunito';font-size:.72rem;color:#888;font-weight:600;display:block}
+.funnel-submit{width:100%;padding:14px;border-radius:12px;background:var(--o);color:#fff;font-family:inherit;font-weight:800;font-size:1rem;border:none;cursor:pointer;box-shadow:0 6px 20px rgba(255,107,53,.35);transition:.2s;display:flex;align-items:center;justify-content:center;gap:8px}
+.funnel-submit:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(255,107,53,.45)}
+.funnel-trust{display:flex;justify-content:center;gap:16px;margin-top:14px}
+.funnel-trust span{font-size:.7rem;color:#999;font-weight:600;display:flex;align-items:center;gap:4px}
+.funnel-success{text-align:center;padding:40px 20px;display:none}
+.funnel-success.on{display:block}
+.funnel-success-e{font-size:3rem;display:block;margin-bottom:12px}
+.funnel-success h3{font-family:'Fredoka One';font-size:1.3rem;margin-bottom:6px}
+.funnel-success p{color:#888;font-weight:500;line-height:1.6;margin-bottom:16px;font-size:.88rem}
+
+/* DASHBOARD */
+.dash{display:flex;min-height:100vh;padding-top:60px;background:var(--d4)}
+.side{width:var(--side);background:var(--d3);border-right:1px solid var(--bd);position:fixed;top:60px;bottom:0;left:0;display:flex;flex-direction:column;overflow-y:auto;z-index:100;transition:.3s}
+.side-prof{padding:18px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:10px}
+.side-av{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--o),var(--o2));display:flex;align-items:center;justify-content:center;font-family:'Fredoka One';font-size:1rem;color:#fff;flex-shrink:0;box-shadow:0 4px 10px rgba(255,107,53,.3)}
+.side-biz{font-weight:800;font-size:.85rem;color:#fff;margin-bottom:2px}
+.side-badge{font-size:.66rem;font-weight:700;padding:2px 7px;border-radius:6px;display:inline-block}
+.bg-starter{background:rgba(107,203,119,.15);color:var(--g)}
+.bg-pro{background:rgba(255,107,53,.15);color:var(--o)}
+.bg-premium{background:rgba(199,125,255,.15);color:var(--pr)}
+.bg-admin{background:rgba(231,76,60,.15);color:var(--r)}
+.side-nav{padding:10px 0;flex:1}
+.side-lbl{padding:6px 18px;font-size:.6rem;font-weight:800;color:rgba(255,255,255,.15);text-transform:uppercase;letter-spacing:2px;margin-top:8px}
+.si{display:flex;align-items:center;gap:10px;padding:9px 18px;margin:1px 6px;border-radius:10px;cursor:pointer;font-size:.82rem;font-weight:600;color:rgba(255,255,255,.4);transition:.2s;position:relative}
+.si:hover{background:var(--gl);color:rgba(255,255,255,.7)}
+.si.on{background:rgba(255,107,53,.12);color:var(--o);font-weight:700}
+.si.on::before{content:'';position:absolute;left:-6px;top:7px;bottom:7px;width:3px;border-radius:0 3px 3px 0;background:var(--o)}
+.si-icon{font-size:1rem;width:20px;text-align:center}
+.si-badge{margin-left:auto;background:var(--o);color:#fff;font-size:.6rem;font-weight:800;padding:2px 6px;border-radius:6px;min-width:16px;text-align:center}
+.side-bot{padding:12px 18px;border-top:1px solid var(--bd)}
+.side-help{display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--gl);border-radius:10px;cursor:pointer;transition:.2s;font-size:.76rem;font-weight:600;color:rgba(255,255,255,.3)}
+.side-help:hover{background:var(--gl2);color:rgba(255,255,255,.6)}
+.backdrop{display:none;position:fixed;inset:0;z-index:150;background:rgba(0,0,0,.6)}
+.backdrop.on{display:block}
+.main{flex:1;margin-left:var(--side);padding:22px;min-height:calc(100vh - 60px)}
+
+/* DASHBOARD PANELS */
+.dp{display:none;animation:dIn .3s ease}
+.dp.on{display:block}
+@keyframes dIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.dh{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;flex-wrap:wrap;gap:10px}
+.dh-t{font-family:'Fredoka One';font-size:1.4rem;color:#fff;margin-bottom:2px}
+.dh-s{font-size:.8rem;color:rgba(255,255,255,.35);font-weight:500}
+.dh-btns{display:flex;gap:5px;flex-wrap:wrap}
+.dbtn{padding:8px 16px;border-radius:10px;font-family:inherit;font-weight:700;font-size:.8rem;cursor:pointer;transition:.2s;border:none;display:flex;align-items:center;gap:5px}
+.dbtn-p{background:var(--o);color:#fff;box-shadow:0 4px 12px rgba(255,107,53,.3)}
+.dbtn-p:hover{transform:translateY(-2px)}
+.dbtn-g{background:var(--gl);color:rgba(255,255,255,.6);border:1px solid var(--bd)}
+.dbtn-g:hover{background:var(--gl2);color:#fff}
+.dbtn-d{background:rgba(231,76,60,.12);color:var(--r);border:1px solid rgba(231,76,60,.15)}
+.dbtn-d:hover{background:rgba(231,76,60,.2)}
+.dbtn-ok{background:rgba(107,203,119,.12);color:var(--g);border:1px solid rgba(107,203,119,.15)}
+.dbtn-ok:hover{background:rgba(107,203,119,.2)}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:22px}
+.kpi{background:var(--gl);border-radius:14px;padding:18px;border:1px solid var(--bd);transition:.3s;position:relative;overflow:hidden}
+.kpi:hover{background:var(--gl2);transform:translateY(-2px)}
+.kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:3px 3px 0 0}
+.kpi:nth-child(1)::after{background:var(--y)}.kpi:nth-child(2)::after{background:var(--g)}.kpi:nth-child(3)::after{background:var(--b)}.kpi:nth-child(4)::after{background:var(--pk)}
+.kpi-v{font-family:'Fredoka One';font-size:1.7rem;color:#fff;margin-bottom:2px}
+.kpi-l{font-size:.74rem;color:rgba(255,255,255,.35);font-weight:600}
+.panel{background:var(--gl);border-radius:14px;border:1px solid var(--bd);overflow:hidden}
+.panel-h{padding:12px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--bd)}
+.panel-t{font-family:'Fredoka One';font-size:.9rem;color:#fff;display:flex;align-items:center;gap:7px}
+.panel-a{font-size:.7rem;font-weight:700;color:var(--o);cursor:pointer;background:none;border:none;font-family:inherit;padding:3px 8px;border-radius:6px;transition:.2s}
+.panel-a:hover{background:rgba(255,107,53,.1)}
+.panel-b{padding:10px 16px}
+.pgrid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.pgrid1{grid-template-columns:1fr}
+
+/* CLIENT ROW */
+.cr{display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px solid var(--bd);transition:.15s}
+.cr:last-child{border-bottom:none}
+.cr:hover{background:var(--gl);margin:0 -16px;padding:9px 16px;border-radius:8px}
+.cr-av{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.8rem;color:#fff;flex-shrink:0}
+.cr-info{flex:1;min-width:0}
+.cr-n{font-weight:700;font-size:.83rem;color:#fff}
+.cr-m{font-size:.7rem;color:rgba(255,255,255,.3);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cr-pts{font-family:'Fredoka One';font-size:.95rem;color:var(--y);white-space:nowrap;margin:0 4px}
+.cr-st{padding:3px 7px;border-radius:6px;font-size:.66rem;font-weight:700;white-space:nowrap}
+.st-act{background:rgba(107,203,119,.12);color:var(--g)}
+.st-new{background:rgba(77,150,255,.12);color:var(--b)}
+.st-vip{background:rgba(255,217,61,.12);color:var(--y)}
+.st-rew{background:rgba(255,107,53,.12);color:var(--o)}
+.cr-btns{display:flex;gap:3px;flex-shrink:0}
+.cr-btn{background:var(--gl);border:none;width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.2s;font-size:.85rem}
+.cr-btn:hover{background:rgba(255,107,53,.15);transform:scale(1.05)}
+.prog{background:var(--gl);border-radius:100px;height:4px;margin-top:4px;overflow:hidden;max-width:150px}
+.prog-f{height:100%;border-radius:100px;background:linear-gradient(90deg,var(--o),var(--y));transition:.5s}
+.search{display:flex;gap:5px;margin-bottom:12px}
+.search input{flex:1;background:var(--gl);border:1px solid var(--bd);border-radius:10px;padding:8px 12px;color:#fff;font-family:inherit;font-weight:600;font-size:.83rem;outline:none;transition:.2s}
+.search input::placeholder{color:rgba(255,255,255,.2)}
+.search input:focus{border-color:var(--o)}
+
+/* STATS */
+.smini{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.smi{background:var(--gl);border-radius:14px;padding:14px;border:1px solid var(--bd);text-align:center}
+.smi-v{font-family:'Fredoka One';font-size:1.4rem;margin-bottom:2px}
+.smi-l{font-size:.7rem;color:rgba(255,255,255,.35);font-weight:600}
+.chart-wrap{background:var(--gl);border-radius:14px;padding:20px;border:1px solid var(--bd);margin-bottom:14px}
+.chart-t{font-family:'Fredoka One';font-size:.9rem;color:#fff;margin-bottom:14px}
+.bars{display:flex;align-items:flex-end;gap:7px;height:120px;padding:0 10px}
+.bar{flex:1;border-radius:5px 5px 0 0;transition:.5s;position:relative;min-width:18px}
+.bar-l{position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:.6rem;color:rgba(255,255,255,.25);font-weight:700}
+.bar-v{position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:.62rem;color:rgba(255,255,255,.4);font-weight:700;font-family:'Fredoka One'}
+
+/* SETTINGS */
+.set-g{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.set-p{background:var(--gl);border-radius:14px;padding:20px;border:1px solid var(--bd)}
+.set-t{font-family:'Fredoka One';font-size:.9rem;color:#fff;margin-bottom:12px;display:flex;align-items:center;gap:7px}
+.set-r{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--bd)}
+.set-r:last-child{border-bottom:none}
+.set-rl{font-weight:600;font-size:.8rem;color:rgba(255,255,255,.6)}
+.set-rl small{display:block;font-size:.7rem;color:rgba(255,255,255,.25);font-weight:500;margin-top:1px}
+.toggle{width:40px;height:20px;border-radius:100px;background:rgba(255,255,255,.12);cursor:pointer;position:relative;transition:.3s;flex-shrink:0}
+.toggle.on{background:var(--o)}
+.toggle::after{content:'';position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;top:3px;left:3px;transition:.3s}
+.toggle.on::after{left:23px}
+.set-in{background:rgba(255,255,255,.05);border:1px solid var(--bd);border-radius:8px;padding:8px 10px;color:#fff;font-family:inherit;font-weight:600;font-size:.82rem;outline:none;transition:.2s;width:100%}
+.set-in:focus{border-color:var(--o)}
+.set-save{background:var(--o);color:#fff;border:none;padding:8px 16px;border-radius:8px;font-family:inherit;font-weight:700;cursor:pointer;transition:.2s;margin-top:10px;font-size:.8rem}
+.set-save:hover{transform:translateY(-1px)}
+
+/* ONBOARDING */
+.onb{background:linear-gradient(135deg,rgba(255,107,53,.06),rgba(255,217,61,.06));border:1px solid rgba(255,107,53,.1);border-radius:14px;padding:22px;margin-bottom:18px;text-align:center}
+.onb h3{font-family:'Fredoka One';font-size:1rem;color:#fff;margin-bottom:5px}
+.onb p{font-size:.82rem;color:rgba(255,255,255,.5);font-weight:500;margin-bottom:12px;line-height:1.6}
+.onb-steps{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:12px}
+.ob-s{background:var(--gl);border-radius:10px;padding:12px;flex:1;min-width:90px;max-width:150px}
+.ob-s-e{font-size:1.6rem;display:block;margin-bottom:5px}
+.ob-s-t{font-size:.72rem;font-weight:700;color:rgba(255,255,255,.6)}
+
+/* CLIENT JOIN PAGE */
+.cj-page{min-height:100vh;background:linear-gradient(135deg,#FFFEF5,#FFF5F0 50%,#F0F8FF);display:flex;align-items:center;justify-content:center;padding:76px 16px 36px}
+.cj-box{max-width:400px;width:100%}
+.cj-welcome{font-size:.82rem;color:#666;text-align:center;margin-bottom:12px;font-weight:500;line-height:1.6;font-style:italic}
+.cj-form{background:#fff;border-radius:18px;padding:26px;box-shadow:0 8px 36px rgba(0,0,0,.06);border:2px solid #f0f0f0}
+.cj-form h3{font-family:'Fredoka One';font-size:1.1rem;text-align:center;margin-bottom:3px}
+.cj-form .sub{text-align:center;color:#888;font-size:.8rem;font-weight:500;margin-bottom:16px}
+.cj-ok{text-align:center;display:none}
+.cj-ok-e{font-size:2.8rem;display:block;margin-bottom:10px}
+.cj-ok h3{font-family:'Fredoka One';font-size:1.1rem;margin-bottom:4px}
+.cj-ok p{color:#888;font-weight:500;line-height:1.6;margin-bottom:12px;font-size:.85rem}
+.wbtns{display:flex;flex-direction:column;gap:7px;margin-top:12px}
+.wb{display:flex;align-items:center;justify-content:center;gap:9px;padding:10px 18px;border-radius:10px;border:none;cursor:pointer;font-size:.83rem;font-weight:700;font-family:inherit;transition:.2s;width:100%}
+.wb-a{background:#000;color:#fff}.wb-a:hover{background:#222;transform:translateY(-2px)}
+.wb-g{background:#fff;color:var(--d);border:2px solid #eee}.wb-g:hover{border-color:var(--b);transform:translateY(-2px)}
+
+/* PRESENCE CONFIRM */
+.pres-confirm{text-align:center;padding:10px 0}
+.pres-confirm .pres-emoji{font-size:3rem;display:block;margin-bottom:10px}
+.pres-confirm h3{font-family:'Fredoka One';font-size:1.1rem;margin-bottom:4px}
+.pres-confirm .pres-sub{font-size:.82rem;color:#888;font-weight:500;margin-bottom:16px}
+.pres-confirm .pres-card-wrap{display:flex;justify-content:center;margin-bottom:16px}
+.pres-pts-select{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:16px}
+.pres-pts-select input{width:80px;text-align:center;font-family:'Fredoka One';font-size:1.3rem;padding:10px;border:2px solid #eee;border-radius:10px;outline:none}
+.pres-pts-select input:focus{border-color:var(--o)}
+.pres-pts-label{font-size:.82rem;font-weight:700;color:#666}
+.pres-btns{display:flex;gap:8px}
+.pres-btns button{flex:1}
+
+/* POINTS QUICK */
+.pts-qk{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+.pts-q{padding:5px 12px;border-radius:8px;background:#fafafa;border:2px solid #eee;font-family:inherit;font-weight:700;font-size:.78rem;cursor:pointer;transition:.2s;color:var(--d)}
+.pts-q:hover{border-color:var(--o);color:var(--o)}
+.pts-q.on{background:var(--o);color:#fff;border-color:var(--o)}
+
+/* HISTORY */
+.hi{display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid #f0f0f0;font-size:.8rem}
+.hi:last-child{border-bottom:none}
+.hi-i{font-size:.95rem;width:24px;text-align:center}
+.hi-t{flex:1;font-weight:600;color:#444}
+.hi-d{font-size:.7rem;color:#888;font-weight:500}
+
+/* ADMIN */
+.admin-top{background:linear-gradient(135deg,var(--d),#1a1040);padding:18px 22px;border-radius:14px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;border:1px solid rgba(199,125,255,.15)}
+.admin-top-t{font-family:'Fredoka One';font-size:1.2rem;color:#fff}
+.admin-top-s{font-size:.78rem;color:rgba(255,255,255,.4);font-weight:500;margin-top:2px}
+.admin-top-stats{display:flex;gap:22px}
+.ats{text-align:center}
+.ats-v{font-family:'Fredoka One';font-size:1.3rem;color:var(--pr)}
+.ats-l{font-size:.66rem;color:rgba(255,255,255,.35);font-weight:600}
+.mr{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bd);transition:.15s}
+.mr:last-child{border-bottom:none}
+.mr:hover{background:var(--gl);margin:0 -16px;padding:10px 16px;border-radius:8px}
+.mr-av{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.85rem;color:#fff;flex-shrink:0}
+.mr-info{flex:1;min-width:0}
+.mr-biz{font-weight:700;font-size:.85rem;color:#fff}
+.mr-det{font-size:.7rem;color:rgba(255,255,255,.3);font-weight:500}
+.mr-stats{display:flex;gap:12px;flex-shrink:0}
+.mr-stat{text-align:center}
+.mr-sv{font-family:'Fredoka One';font-size:.9rem;color:var(--y)}
+.mr-sl{font-size:.6rem;color:rgba(255,255,255,.3);font-weight:600}
+.mr-acts{display:flex;gap:3px;flex-shrink:0}
+.psel{background:var(--gl);border:1px solid var(--bd);border-radius:8px;padding:5px 8px;color:#fff;font-family:inherit;font-weight:700;font-size:.74rem;cursor:pointer;outline:none}
+.psel option{background:var(--d);color:#fff}
+.sdot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.sdot-a{background:var(--g);box-shadow:0 0 6px rgba(107,203,119,.4)}
+.sdot-p{background:var(--y);box-shadow:0 0 6px rgba(255,217,61,.4)}
+.sdot-s{background:var(--r);box-shadow:0 0 6px rgba(231,76,60,.4)}
+
+/* WALLET CARD PAGE */
+.wallet-page{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:76px 16px 36px;background:linear-gradient(135deg,#FFFEF5,#FFF5F0 50%,#F0F8FF)}
+.wallet-box{max-width:400px;width:100%;text-align:center}
+.wallet-box h2{font-family:'Fredoka One';font-size:1.3rem;margin-bottom:4px}
+.wallet-box .sub{color:#888;font-size:.82rem;font-weight:500;margin-bottom:18px}
+.wallet-details{background:#fff;border-radius:16px;padding:20px;box-shadow:0 6px 24px rgba(0,0,0,.06);border:2px solid #f0f0f0;margin-top:18px;text-align:left}
+.wd-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:.85rem}
+.wd-row:last-child{border-bottom:none}
+.wd-row span:first-child{color:#888;font-weight:600}
+.wd-row span:last-child{font-weight:800;color:var(--d)}
+.wd-prog{margin-top:10px}
+.wd-prog-bar{height:8px;background:#eee;border-radius:100px;overflow:hidden;margin-top:6px}
+.wd-prog-fill{height:100%;background:linear-gradient(90deg,var(--o),var(--y));border-radius:100px;transition:.5s}
+.wallet-saved{background:#e0f5e3;border-radius:12px;padding:14px;margin-top:14px;border:1px solid rgba(46,158,60,.12)}
+.wallet-saved p{font-size:.82rem;font-weight:700;color:#2e9e3c;margin-bottom:2px}
+.wallet-saved small{font-size:.72rem;color:#666;font-weight:500}
+
+/* TOAST */
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--d);color:#fff;padding:10px 20px;border-radius:10px;font-weight:700;font-size:.83rem;box-shadow:0 8px 28px rgba(0,0,0,.3);z-index:99999;transition:.4s cubic-bezier(.34,1.56,.64,1);display:flex;align-items:center;gap:7px;max-width:90vw;border:1px solid var(--bd)}
+.toast.on{transform:translateX(-50%) translateY(0)}
+
+/* EMPTY STATE */
+.empty{text-align:center;padding:32px 16px}
+.empty-e{font-size:2.2rem;margin-bottom:10px;display:block}
+.empty-t{font-family:'Fredoka One';font-size:.95rem;color:#fff;margin-bottom:3px}
+.empty-s{font-size:.8rem;color:rgba(255,255,255,.3);font-weight:500;margin-bottom:12px}
+
+/* FOOTER */
+footer{background:var(--d);padding:44px 40px 20px}
+.ft{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:32px;margin-bottom:32px}
+.f-logo{font-family:'Fredoka One';font-size:1.4rem;color:var(--o);margin-bottom:10px}
+.f-desc{font-size:.8rem;color:rgba(255,255,255,.35);line-height:1.7;font-weight:500}
+.f-col h4{font-size:.7rem;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px}
+.f-col ul{list-style:none}.f-col li{margin-bottom:7px}
+.f-col a{text-decoration:none;font-size:.8rem;color:rgba(255,255,255,.35);font-weight:500;transition:.2s}
+.f-col a:hover{color:var(--o)}
+.f-bot{border-top:1px solid rgba(255,255,255,.06);padding-top:16px;display:flex;justify-content:space-between;align-items:center}
+.f-copy,.f-love{font-size:.72rem;color:rgba(255,255,255,.25)}
+.f-love span{color:var(--o)}
+
+/* RESPONSIVE */
+@media(max-width:1100px){.kpis{grid-template-columns:repeat(2,1fr)}.pgrid2,.set-g{grid-template-columns:1fr}.smini{grid-template-columns:1fr 1fr}.funnel-plans{grid-template-columns:1fr}}
+@media(max-width:900px){
+nav{padding:0 14px}.nav-links{display:none}.menu-btn{display:block}
+.hero{padding:76px 16px 44px}.hero-g{grid-template-columns:1fr;gap:28px}.cards-vis{height:280px}
+.sec{padding:44px 16px}.steps{grid-template-columns:1fr 1fr}.cr-g,.qr-g{grid-template-columns:1fr}.pgrid{grid-template-columns:1fr}.ft{grid-template-columns:1fr 1fr}.sbar{gap:18px;padding:18px 14px}
+.prev-w{position:static}
+.side{transform:translateX(-100%);z-index:200}.side.open{transform:translateX(0);box-shadow:10px 0 36px rgba(0,0,0,.5)}
+.main{margin-left:0;padding:12px 10px}
+.nav-name{display:none}
+.admin-top{flex-direction:column;gap:12px;text-align:center}.admin-top-stats{justify-content:center}
+.card-pro{width:260px;height:160px;padding:18px}
+.card-pro .c-pts{font-size:1.8rem}.card-pro .c-brand{font-size:.9rem}
+.funnel-body{padding:20px 16px}.funnel-head{padding:20px 16px}
+.funnel-pay{grid-template-columns:1fr}
+}
+@media(max-width:600px){.steps{grid-template-columns:1fr}.ft{grid-template-columns:1fr}.kpis{grid-template-columns:1fr}.smini{grid-template-columns:1fr}.mr-stats{display:none}.card-pro{width:240px;height:148px;padding:14px}}
+
+/* ANIMATIONS */
+@keyframes slideUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
+.hero-content>*{animation:slideUp .6s ease forwards;opacity:0}
+.hero-content>*:nth-child(1){animation-delay:.1s}.hero-content>*:nth-child(2){animation-delay:.2s}.hero-content>*:nth-child(3){animation-delay:.3s}.hero-content>*:nth-child(4){animation-delay:.4s}.hero-content>*:nth-child(5){animation-delay:.5s}
+
+/* INSTALL PROMPT */
+.install-banner{position:fixed;bottom:0;left:0;right:0;background:linear-gradient(135deg,var(--o),var(--o2));padding:14px 20px;display:none;align-items:center;justify-content:center;gap:12px;z-index:9998;box-shadow:0 -4px 20px rgba(0,0,0,.2)}
+.install-banner.on{display:flex}
+.install-banner p{color:#fff;font-weight:700;font-size:.85rem}
+.install-banner button{padding:8px 16px;border-radius:8px;font-family:inherit;font-weight:800;font-size:.82rem;cursor:pointer;border:none;transition:.2s}
+.install-yes{background:#fff;color:var(--o)}
+.install-no{background:rgba(255,255,255,.2);color:#fff}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="nav">
+<div style="display:flex;align-items:center;gap:7px">
+<button class="menu-btn" id="menuBtn" onclick="toggleSide()">☰</button>
+<div class="logo" onclick="goHome()">Fida<em>li</em><div class="logo-dot"></div></div>
+</div>
+<ul class="nav-links" id="navLinks">
+<li><a href="#comment">Comment ça marche</a></li>
+<li><a href="#creer">Créer une carte</a></li>
+<li><a href="#tarifs">Tarifs</a></li>
+</ul>
+<div class="nav-right" id="navRight">
+<button class="btn-s btn-login" onclick="openAuth('login')">Connexion</button>
+<button class="btn-s btn-cta" onclick="openAuth('signup')">Essai Gratuit 🚀</button>
+</div>
+<div class="nav-user" id="navUser">
+<div class="nav-av" id="navAv">K</div>
+<span class="nav-name" id="navName">Karim</span>
+<span class="nav-badge" id="navBadge"></span>
+<button class="nav-out" onclick="logout()">Déconnexion</button>
+</div>
+</nav>
+
+<div class="backdrop" id="backdrop" onclick="closeSide()"></div>
+
+<!-- AUTH MODAL -->
+<div class="ov" id="authOv">
+<div class="modal">
+<button class="modal-x" onclick="closeAuth()">&times;</button>
+<h2 id="authTitle">Connexion 🔑</h2>
+<div class="sub" id="authSub">Accédez à votre espace</div>
+<div class="tabs">
+<button class="tab on" id="tLogin" onclick="authTab('login')">Connexion</button>
+<button class="tab" id="tSignup" onclick="authTab('signup')">Inscription</button>
+</div>
+<div id="loginF">
+<div class="field"><label>Email</label><input type="email" id="lEmail" placeholder="votre@email.com"></div>
+<div class="field"><label>Mot de passe</label><input type="password" id="lPass" placeholder="••••••••"></div>
+<div class="err" id="lErr"></div>
+<button class="modal-btn" onclick="doLogin()">Se connecter →</button>
+</div>
+<div id="signupF" style="display:none">
+<div class="info-box">💡 Pour tous les commerçants — Restaurants, boutiques, salons, e-commerce...</div>
+<div class="field"><label>Votre nom</label><input type="text" id="sName" placeholder="Votre nom complet"></div>
+<div class="field"><label>Nom du commerce</label><input type="text" id="sBiz" placeholder="Mon Commerce 🏪"></div>
+<div class="field"><label>Secteur d'activité</label>
+<select id="sSector">
+<option value="restaurant">🍕 Restaurant / Fast-food</option>
+<option value="cafe">☕ Café / Salon de thé</option>
+<option value="boulangerie">🥖 Boulangerie / Pâtisserie</option>
+<option value="boutique">👗 Boutique / Prêt-à-porter</option>
+<option value="salon">💇 Salon de coiffure / Beauté</option>
+<option value="pharmacie">💊 Pharmacie</option>
+<option value="superette">🛒 Supérette / Épicerie</option>
+<option value="ecommerce">📦 E-commerce</option>
+<option value="gym">💪 Salle de sport</option>
+<option value="autre">🏪 Autre commerce</option>
+</select>
+</div>
+<div class="field"><label>Téléphone</label><input type="tel" id="sPhone" placeholder="0555 XX XX XX"></div>
+<div class="field"><label>Email</label><input type="email" id="sEmail" placeholder="votre@email.com"></div>
+<div class="field"><label>Mot de passe</label><input type="password" id="sPass" placeholder="Min. 6 caractères"></div>
+<div class="err" id="sErr"></div>
+<button class="modal-btn" onclick="doSignup()">Créer mon compte 🎉</button>
+</div>
+</div>
+</div>
+
+<!-- QR MODAL -->
+<div class="ov" id="qrOv">
+<div class="modal" style="max-width:460px">
+<button class="modal-x" onclick="closeOv('qrOv')">&times;</button>
+<div id="qrContent"></div>
+</div>
+</div>
+
+<!-- CREATE CARD MODAL -->
+<div class="ov" id="ccOv">
+<div class="modal" style="max-width:480px">
+<button class="modal-x" onclick="closeOv('ccOv')">&times;</button>
+<h2>Nouvelle carte 🎨</h2>
+<div class="sub">Configurez votre carte de fidélité</div>
+<div id="ccLimitMsg" class="err" style="display:none"></div>
+<div class="field"><label>🏪 Nom du commerce + emoji</label><input type="text" id="ccName" placeholder="Mon Commerce 🏪"></div>
+<div class="field"><label>🎨 Couleur de la carte</label><div class="color-row" id="ccColors"></div></div>
+<div class="field"><label>⭐ Règle de points</label>
+<div style="display:flex;gap:6px;margin-bottom:6px">
+<input type="number" id="ccPtsVal" value="1" min="1" style="width:60px;text-align:center;padding:10px;border:2px solid #eee;border-radius:10px;font-family:inherit;font-weight:700;font-size:.9rem;outline:none">
+<select id="ccPtsType" style="flex:1;padding:10px;border:2px solid #eee;border-radius:10px;font-family:inherit;font-weight:600;font-size:.85rem;outline:none;background:#fafafa">
+<option value="visit">point(s) par visite</option>
+<option value="da">point(s) par 100 DA dépensé</option>
+<option value="item">point(s) par article acheté</option>
+<option value="custom">personnalisé...</option>
+</select>
+</div>
+<input type="text" id="ccPtsCustom" placeholder="Ex: 2 points par service effectué" style="display:none;width:100%;padding:10px 14px;border:2px solid #eee;border-radius:10px;font-family:inherit;font-weight:600;font-size:.85rem;outline:none;background:#fafafa">
+</div>
+<div class="field"><label>🎁 Récompense</label><input type="text" id="ccReward" placeholder="Ex: 500 pts = 1 cadeau offert 🎁"></div>
+<div class="field"><label>🎯 Points pour la récompense</label><input type="number" id="ccMax" placeholder="500" value="500" min="1" style="text-align:center;font-family:'Fredoka One';font-size:1rem"></div>
+<div class="field"><label>📝 Message de bienvenue</label><textarea id="ccMsg" placeholder="Bienvenue ! Gagnez des points à chaque visite 🎉"></textarea></div>
+<div style="margin:14px 0;text-align:center"><div class="prev-l" style="margin-bottom:10px">📱 Aperçu</div><div id="ccPreview" style="display:inline-block"></div></div>
+<button class="modal-btn" onclick="createCard()">Créer la carte 🚀</button>
+</div>
+</div>
+
+<!-- ADD POINTS MODAL -->
+<div class="ov" id="ptsOv">
+<div class="modal" style="max-width:380px">
+<button class="modal-x" onclick="closeOv('ptsOv')">&times;</button>
+<h2 id="ptsTitle">Ajouter des points ⭐</h2>
+<div class="sub" id="ptsSub">Client</div>
+<div class="field" style="margin-top:10px">
+<label>Nombre de points</label>
+<input type="number" id="ptsAmt" value="10" min="1" style="text-align:center;font-size:1.1rem;font-family:'Fredoka One'">
+</div>
+<div class="pts-qk">
+<button class="pts-q" onclick="setP(1)">+1</button>
+<button class="pts-q" onclick="setP(5)">+5</button>
+<button class="pts-q on" onclick="setP(10)">+10</button>
+<button class="pts-q" onclick="setP(25)">+25</button>
+<button class="pts-q" onclick="setP(50)">+50</button>
+<button class="pts-q" onclick="setP(100)">+100</button>
+</div>
+<input type="hidden" id="ptsCid">
+<input type="hidden" id="ptsCcid">
+<button class="modal-btn" style="margin-top:12px" onclick="confirmPts()">Confirmer ⭐</button>
+</div>
+</div>
+
+<!-- PRESENCE CONFIRM POPUP -->
+<div class="ov" id="presOv">
+<div class="modal" style="max-width:420px">
+<button class="modal-x" onclick="closeOv('presOv')">&times;</button>
+<div id="presContent"></div>
+</div>
+</div>
+
+<!-- HISTORY MODAL -->
+<div class="ov" id="histOv">
+<div class="modal" style="max-width:440px">
+<button class="modal-x" onclick="closeOv('histOv')">&times;</button>
+<h2 id="histTitle">Historique 📋</h2>
+<div class="sub" id="histSub"></div>
+<div id="histContent"></div>
+</div>
+</div>
+
+<!-- FUNNEL -->
+<div class="funnel-ov" id="funnelOv">
+<div class="funnel">
+<div class="funnel-head">
+<h2>Passez au niveau supérieur 🚀</h2>
+<p>Débloquez tout le potentiel de Fidali</p>
+</div>
+<div class="funnel-body" id="funnelBody">
+<div id="funnelStep1">
+<div style="background:linear-gradient(135deg,#FFF8E0,#fff);border:2px solid rgba(255,217,61,.3);border-radius:12px;padding:14px;margin-bottom:22px;text-align:center">
+<div style="font-size:1.8rem;display:block;margin-bottom:4px">⏰</div>
+<div style="font-family:'Fredoka One';font-size:.9rem;color:var(--d);margin-bottom:2px">Offre limitée — 30% de réduction</div>
+<div style="font-size:.76rem;color:#888;font-weight:500">Valable ce mois uniquement</div>
+</div>
+<div style="font-family:'Fredoka One';font-size:.9rem;margin-bottom:12px;color:var(--d)">1️⃣ Choisissez votre plan</div>
+<div class="funnel-plans">
+<div class="fp sel" onclick="selPlan('pro',this)">
+<div class="fp-pop">⭐ Populaire</div>
+<div class="fp-name">🚀 Pro</div>
+<div class="fp-price">4,500 <span>DA/mois</span></div>
+<ul class="fp-feats"><li>5 cartes de fidélité</li><li>100 clients</li><li>Apple + Google Wallet</li><li>Notifications push</li><li>Statistiques avancées</li></ul>
+</div>
+<div class="fp" onclick="selPlan('premium',this)">
+<div class="fp-name">💎 Premium</div>
+<div class="fp-price">9,000 <span>DA/mois</span></div>
+<ul class="fp-feats"><li>Cartes illimitées</li><li>Clients illimités</li><li>API intégration</li><li>Branding personnalisé</li><li>Accompagnement dédié</li></ul>
+</div>
+</div>
+<button class="funnel-submit" onclick="goFunnelStep2()">Continuer → Paiement 💳</button>
+<div style="text-align:center;margin-top:10px"><button style="background:none;border:none;color:#999;font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit" onclick="closeFunnel()">Non merci</button></div>
+</div>
+<div id="funnelStep2" style="display:none">
+<div style="font-family:'Fredoka One';font-size:.9rem;margin-bottom:12px;color:var(--d)">2️⃣ Vos informations</div>
+<div class="funnel-form">
+<div><label>Nom complet</label><input type="text" id="fName"></div>
+<div><label>WhatsApp</label><input type="tel" id="fPhone" placeholder="0555 XX XX XX"></div>
+<div><label>Email</label><input type="email" id="fEmail"></div>
+<div><label>Commerce</label><input type="text" id="fBiz" readonly></div>
+</div>
+<div style="font-family:'Fredoka One';font-size:.9rem;margin-bottom:12px;color:var(--d)">3️⃣ Mode de paiement</div>
+<div class="funnel-pay">
+<div class="pay-opt sel" onclick="selPay('baridimob',this)"><span class="pay-opt-e">📱</span>Baridimob</div>
+<div class="pay-opt" onclick="selPay('ccp',this)"><span class="pay-opt-e">🏦</span>CCP</div>
+<div class="pay-opt" onclick="selPay('especes',this)"><span class="pay-opt-e">💵</span>Espèces</div>
+</div>
+<div class="funnel-total">
+<div class="funnel-total-l">Total</div>
+<div class="funnel-total-v" id="fTotalPrice">4,500 DA<span>/mois · Pro</span></div>
+</div>
+<div class="err" id="fErr"></div>
+<button class="funnel-submit" onclick="submitFunnel()">✅ Confirmer ma demande</button>
+<div class="funnel-trust"><span>🔒 Sécurisé</span><span>📞 Support WhatsApp</span><span>✅ Activation 24h</span></div>
+</div>
+<div class="funnel-success" id="funnelSuccess">
+<span class="funnel-success-e">🎉</span>
+<h3>Demande envoyée !</h3>
+<p>Notre équipe vous contactera sous 24h pour activer votre plan.</p>
+<button class="funnel-submit" onclick="closeFunnel()">Retour →</button>
+</div>
+</div>
+</div>
+</div>
+
+<!-- INSTALL PROMPT -->
+<div class="install-banner" id="installBanner">
+<p>📱 Ajouter Fidali à l'écran d'accueil</p>
+<button class="install-yes" onclick="doInstall()">Installer</button>
+<button class="install-no" onclick="dismissInstall()">Non merci</button>
+</div>
+
+<!-- ===== LANDING ===== -->
+<div id="landing" class="page">
+
+<section class="hero">
+<div class="hero-blobs"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
+<div class="hero-g">
+<div class="hero-content">
+<div class="hero-tag">🇩🇿 Fait pour l'Algérie · Tous secteurs</div>
+<h1>Fidélisez vos clients avec des cartes <span class="hl">digitales</span></h1>
+<p>Restaurant, boutique, salon, pharmacie, e-commerce... Créez votre carte de fidélité en 2 minutes. Le client scanne, entre son nom, c'est fait !</p>
+<div class="hero-btns">
+<button class="btn-big" onclick="openAuth('signup')">Créer ma carte gratuitement 🎉</button>
+<a href="#comment" class="btn-sec">Comment ça marche</a>
+</div>
+<div class="sectors">
+<div class="sector-pill">🍕 Restaurants</div>
+<div class="sector-pill">☕ Cafés</div>
+<div class="sector-pill">👗 Boutiques</div>
+<div class="sector-pill">💇 Salons</div>
+<div class="sector-pill">💊 Pharmacies</div>
+<div class="sector-pill">📦 E-commerce</div>
+<div class="sector-pill">💪 Gyms</div>
+<div class="sector-pill">🏪 + Tous</div>
+</div>
+</div>
+<div class="cards-vis">
+<div class="fc fc1" id="hc1"></div>
+<div class="fc fc2" id="hc2"></div>
+<div class="fc fc3" id="hc3"></div>
+<div class="wpills">
+<div class="wpill"><span>🍎</span> Apple Wallet</div>
+<div class="wpill"><span>🟢</span> Google Wallet</div>
+<div class="wpill"><span>📱</span> Web App</div>
+</div>
+</div>
+</div>
+</section>
+
+<div class="sbar">
+<div class="sbar-i"><div class="sbar-n">+500</div><div class="sbar-l">Commerces inscrits</div></div>
+<div class="sbar-i"><div class="sbar-n">12+ secteurs</div><div class="sbar-l">Tous types de business</div></div>
+<div class="sbar-i"><div class="sbar-n">30 sec</div><div class="sbar-l">Pour s'ajouter</div></div>
+<div class="sbar-i"><div class="sbar-n">0 DA</div><div class="sbar-l">Pour commencer</div></div>
+</div>
+
+<section class="sec how" id="comment">
+<div class="mw">
+<div class="sec-c">
+<div class="stag stag-b">Comment ça marche</div>
+<h2 class="stitle">Simple pour vous ET vos clients 👋</h2>
+<p class="ssub">Que vous soyez restaurateur, coiffeur ou e-commerçant</p>
+</div>
+<div class="steps">
+<div class="step"><span class="step-e">🏪</span><div class="step-n">1</div><h3>Créez votre carte</h3><p>Nom, couleur, emoji, règle de points et récompense.</p></div>
+<div class="step"><span class="step-e">📲</span><div class="step-n">2</div><h3>Affichez le QR</h3><p>Un QR code unique à afficher en caisse ou partager en ligne.</p></div>
+<div class="step"><span class="step-e">👤</span><div class="step-n">3</div><h3>Le client scanne</h3><p>Il entre juste nom + téléphone. Pas d'appli, pas de compte !</p></div>
+<div class="step"><span class="step-e">⭐</span><div class="step-n">4</div><h3>Valider la présence</h3><p>Le client re-scanne le même QR. S'il a déjà une carte, on valide sa présence directement !</p></div>
+</div>
+</div>
+</section>
+
+<section class="sec qr-sec">
+<div class="mw">
+<div class="qr-g">
+<div class="qr-info">
+<div class="stag stag-g">Un seul QR fait tout</div>
+<h3>Le client scanne → il a sa carte OU il valide sa présence 📱</h3>
+<p>Un seul QR code pour tout. Le client scanne :</p>
+<ul class="qr-list">
+<li><div class="qr-num">1</div><b>Nouveau client</b> → Entre son nom + téléphone → Carte créée !</li>
+<li><div class="qr-num">2</div><b>Client existant</b> → Entre son téléphone → Sa carte s'affiche</li>
+<li><div class="qr-num">3</div><b>Validation</b> → Le commerçant confirme → Points ajoutés !</li>
+</ul>
+</div>
+<div class="qr-demo">
+<div class="qr-demo-t">💇 Salon Beauté Alger</div>
+<div class="qr-demo-s">Scannez pour obtenir ou valider votre carte</div>
+<div class="qr-demo-c" id="demoQR"></div>
+<div class="qr-badge">✅ 1 seul QR · Inscription + Validation</div>
+</div>
+</div>
+</div>
+</section>
+
+<section class="sec creator" id="creer">
+<div class="mw">
+<div class="sec-c">
+<div class="stag stag-o">Essai Gratuit</div>
+<h2 class="stitle">Créez votre carte maintenant 🚀</h2>
+<p class="ssub">Personnalisez et voyez le résultat en temps réel</p>
+</div>
+<div class="cr-g">
+<div class="fbox">
+<div class="fbox-t">🎨 Personnalisez votre carte</div>
+<div class="field"><label>🏪 Nom + emoji</label><input type="text" id="brandName" value="Salon Beauté 💇" oninput="upPrev()"></div>
+<div class="field"><label>🎨 Couleur</label><div class="color-row" id="prevColors"></div></div>
+<div class="field"><label>⭐ Règle de points</label><input type="text" id="ruleVal" value="1 point par visite" oninput="upPrev()"></div>
+<div class="field"><label>🎁 Récompense</label><input type="text" id="rewVal" value="10 visites = 1 service offert 🎁" oninput="upPrev()"></div>
+<button class="btn-big" style="width:100%;justify-content:center" onclick="openAuth('signup')">Créer mon compte commerçant 🎉</button>
+</div>
+<div class="prev-w">
+<div class="prev-l">Aperçu en temps réel</div>
+<div id="prevCardWrap" style="perspective:1000px"></div>
+<div style="background:#FFF5F0;border-radius:10px;padding:10px 14px;width:100%;border:2px solid rgba(255,107,53,.15)">
+<div style="font-size:.7rem;font-weight:800;color:var(--o);margin-bottom:2px">🎁 Récompense</div>
+<div style="font-size:.8rem;font-weight:600;color:#444" id="prevRew">10 visites = 1 service offert 🎁</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<section class="sec pricing" id="tarifs">
+<div class="mw">
+<div class="sec-c">
+<div class="stag stag-g">Tarifs en DZD</div>
+<h2 class="stitle">Des prix adaptés à l'Algérie 💚</h2>
+<p class="ssub">Commencez gratuitement. Paiement par CCP ou Baridimob.</p>
+</div>
+<div class="pgrid">
+<div class="plan">
+<div class="plan-n">🌱 Starter</div>
+<div class="plan-p">Gratuit <span>/toujours</span></div>
+<div class="plan-d">0 DA</div>
+<ul class="plan-f"><li>1 carte de fidélité</li><li>Jusqu'à 10 clients</li><li>QR Code unique</li><li>Validation par scan</li><li>Support email</li></ul>
+<button class="plan-btn" onclick="openAuth('signup')">Commencer</button>
+</div>
+<div class="plan pop">
+<div class="pop-b">⭐ Populaire</div>
+<div class="plan-n">🚀 Pro</div>
+<div class="plan-p">4,500 <span>DA/mois</span></div>
+<div class="plan-d">≈ 30 € · Baridimob / CCP</div>
+<ul class="plan-f"><li>5 cartes de fidélité</li><li>100 clients</li><li>Apple + Google Wallet</li><li>Notifications push</li><li>Statistiques avancées</li></ul>
+<button class="plan-btn" onclick="openFunnel('pro')">Choisir Pro</button>
+</div>
+<div class="plan">
+<div class="plan-n">💎 Premium</div>
+<div class="plan-p">9,000 <span>DA/mois</span></div>
+<div class="plan-d">≈ 60 € · Baridimob / CCP</div>
+<ul class="plan-f"><li>Cartes illimitées</li><li>Clients illimités</li><li>API intégration</li><li>Accompagnement dédié</li><li>Branding personnalisé</li></ul>
+<button class="plan-btn" onclick="openFunnel('premium')">Choisir Premium</button>
+</div>
+</div>
+</div>
+</section>
+
+<footer>
+<div class="mw">
+<div class="ft">
+<div><div class="f-logo">Fidali 🎯</div><p class="f-desc">La première plateforme de cartes de fidélité digitales pour TOUS les commerçants en Algérie.</p></div>
+<div class="f-col"><h4>Produit</h4><ul><li><a href="#">Fonctionnalités</a></li><li><a href="#">Tarifs</a></li><li><a href="#">Demo</a></li></ul></div>
+<div class="f-col"><h4>Secteurs</h4><ul><li><a href="#">Restaurants & Cafés</a></li><li><a href="#">Boutiques & Mode</a></li><li><a href="#">Salons & Beauté</a></li><li><a href="#">E-commerce</a></li><li><a href="#">Tous secteurs</a></li></ul></div>
+<div class="f-col"><h4>Contact</h4><ul><li><a href="#">WhatsApp</a></li><li><a href="#">Email</a></li><li><a href="#">Instagram</a></li></ul></div>
+</div>
+<div class="f-bot"><div class="f-copy">© 2025 Fidali.</div><div class="f-love">Fait avec <span>♥</span> en Algérie 🇩🇿</div></div>
+</div>
+</footer>
+
+</div>
+
+<!-- ===== MERCHANT DASHBOARD ===== -->
+<div id="merchPage" class="page">
+<div class="dash">
+<div class="side" id="side">
+<div class="side-prof">
+<div class="side-av" id="sAv">K</div>
+<div><div class="side-biz" id="sBizName">Mon Commerce</div><div class="side-badge bg-starter" id="sPlan">🌱 Starter</div></div>
+</div>
+<div class="side-nav">
+<div class="side-lbl">Principal</div>
+<div class="si on" onclick="dp('accueil')" data-p="accueil"><span class="si-icon">🏠</span>Accueil</div>
+<div class="si" onclick="dp('cartes')" data-p="cartes"><span class="si-icon">🃏</span>Mes cartes<span class="si-badge" id="sCards">0</span></div>
+<div class="si" onclick="dp('clients')" data-p="clients"><span class="si-icon">👥</span>Clients<span class="si-badge" id="sClients">0</span></div>
+<div class="side-lbl">Analyse</div>
+<div class="si" onclick="dp('stats')" data-p="stats"><span class="si-icon">📊</span>Statistiques</div>
+<div class="side-lbl">Config</div>
+<div class="si" onclick="dp('settings')" data-p="settings"><span class="si-icon">⚙️</span>Paramètres</div>
+</div>
+<div class="side-bot"><div class="side-help" onclick="toast('💬 Support: fidali@support.dz')"><span>💬</span>Besoin d'aide ?</div></div>
+</div>
+<div class="main">
+
+<div class="dp on" id="dpAccueil">
+<div class="dh">
+<div><div class="dh-t" id="dhGreet">Bonjour 👋</div><div class="dh-s">Vos clients s'ajoutent automatiquement via QR</div></div>
+<div class="dh-btns">
+<button class="dbtn dbtn-g" onclick="openMasterQR()">📲 Mon QR Code</button>
+<button class="dbtn dbtn-p" onclick="openCC()">+ Nouvelle carte</button>
+</div>
+</div>
+<div id="onbSection"></div>
+<div class="kpis" id="kpis"></div>
+<div class="pgrid2">
+<div class="panel"><div class="panel-h"><div class="panel-t">👥 Clients récents</div><button class="panel-a" onclick="dp('clients')">Voir tout →</button></div><div class="panel-b" id="recentCl"></div></div>
+<div class="panel"><div class="panel-h"><div class="panel-t">🃏 Mes cartes</div><button class="panel-a" onclick="dp('cartes')">Gérer →</button></div><div class="panel-b" id="recentCa"></div></div>
+</div>
+<div class="pgrid2 pgrid1">
+<div class="panel"><div class="panel-h"><div class="panel-t">📈 Activité récente</div></div><div class="panel-b" id="actFeed"></div></div>
+</div>
+</div>
+
+<div class="dp" id="dpCartes">
+<div class="dh"><div><div class="dh-t">🃏 Mes cartes de fidélité</div><div class="dh-s" id="cartesLimit"></div></div>
+<div class="dh-btns"><button class="dbtn dbtn-p" onclick="openCC()">+ Nouvelle carte</button></div></div>
+<div id="cartesBody"></div>
+</div>
+
+<div class="dp" id="dpClients">
+<div class="dh"><div><div class="dh-t">👥 Tous les clients</div><div class="dh-s">Ajoutés automatiquement via QR</div></div></div>
+<div class="search"><input type="text" id="clSearch" placeholder="🔍 Rechercher un client..." oninput="renderAll()"></div>
+<div class="panel"><div class="panel-h"><div class="panel-t">Liste complète</div><div style="font-size:.74rem;color:rgba(255,255,255,.35);font-weight:600" id="clCount"></div></div><div class="panel-b" id="allCl"></div></div>
+</div>
+
+<div class="dp" id="dpStats">
+<div class="dh"><div><div class="dh-t">📊 Statistiques</div><div class="dh-s">Analyse de votre activité</div></div></div>
+<div class="smini" id="statMini"></div>
+<div class="chart-wrap"><div class="chart-t">📈 Points distribués (7 jours)</div><div class="bars" id="chartBars"></div><div style="height:24px"></div></div>
+<div class="pgrid2">
+<div class="panel"><div class="panel-h"><div class="panel-t">🏆 Top clients</div></div><div class="panel-b" id="topCl"></div></div>
+<div class="panel"><div class="panel-h"><div class="panel-t">🃏 Performance cartes</div></div><div class="panel-b" id="cardPerf"></div></div>
+</div>
+</div>
+
+<div class="dp" id="dpSettings">
+<div class="dh"><div><div class="dh-t">⚙️ Paramètres</div><div class="dh-s">Configurez votre compte</div></div></div>
+<div class="set-g">
+<div class="set-p"><div class="set-t">👤 Commerce</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<div><label style="color:rgba(255,255,255,.4);font-size:.7rem">Nom</label><input class="set-in" id="setBiz"></div>
+<div><label style="color:rgba(255,255,255,.4);font-size:.7rem">Email</label><input class="set-in" id="setEmail"></div>
+<div><label style="color:rgba(255,255,255,.4);font-size:.7rem">Téléphone</label><input class="set-in" id="setPhone"></div>
+<button class="set-save" onclick="saveSets()">Sauvegarder ✅</button>
+</div></div>
+<div class="set-p"><div class="set-t">💎 Mon abonnement</div><div id="setPlanInfo"></div><button class="set-save" style="background:var(--pr)" onclick="openFunnel()">Changer de plan 💎</button></div>
+<div class="set-p"><div class="set-t">🔔 Notifications</div>
+<div class="set-r"><div class="set-rl">Nouveau client<small>Via QR scan</small></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+<div class="set-r"><div class="set-rl">Récompense atteinte</div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+</div>
+<div class="set-p" style="border-color:rgba(231,76,60,.15)"><div class="set-t" style="color:var(--r)">⚠️ Zone dangereuse</div>
+<div class="set-r"><div class="set-rl">Réinitialiser tout<small>Irréversible</small></div><button style="background:rgba(231,76,60,.12);color:var(--r);border:none;padding:5px 12px;border-radius:8px;font-weight:700;cursor:pointer;font-family:inherit;font-size:.76rem" onclick="if(confirm('Supprimer TOUTES vos données ?')){localStorage.removeItem(SK);location.reload()}">Réinitialiser</button></div>
+</div>
+</div>
+</div>
+
+</div>
+</div>
+</div>
+
+<!-- ===== ADMIN ===== -->
+<div id="adminPage" class="page">
+<div class="dash">
+<div class="side" id="adminSide">
+<div class="side-prof"><div class="side-av" style="background:linear-gradient(135deg,var(--r),#c0392b)">🛡</div><div><div class="side-biz">Admin Fidali</div><div class="side-badge bg-admin">🔐 Super Admin</div></div></div>
+<div class="side-nav">
+<div class="side-lbl">Gestion</div>
+<div class="si on" onclick="ap('overview')" data-a="overview"><span class="si-icon">📊</span>Vue d'ensemble</div>
+<div class="si" onclick="ap('merchants')" data-a="merchants"><span class="si-icon">🏪</span>Commerçants<span class="si-badge" id="abM">0</span></div>
+<div class="si" onclick="ap('pending')" data-a="pending"><span class="si-icon">⏳</span>En attente<span class="si-badge" id="abP" style="background:var(--y);color:var(--d)">0</span></div>
+<div class="side-lbl">Plateforme</div>
+<div class="si" onclick="ap('plans')" data-a="plans"><span class="si-icon">💎</span>Plans</div>
+<div class="si" onclick="ap('activity')" data-a="activity"><span class="si-icon">📜</span>Journal</div>
+</div>
+<div class="side-bot"><div class="side-help" onclick="goHome()"><span>🏠</span>Retour accueil</div></div>
+</div>
+<div class="main">
+<div class="dp on" id="apOverview">
+<div class="admin-top"><div><div class="admin-top-t">Panel Administrateur</div><div class="admin-top-s">Gestion complète</div></div><div class="admin-top-stats"><div class="ats"><div class="ats-v" id="aoM">0</div><div class="ats-l">Commerçants</div></div><div class="ats"><div class="ats-v" id="aoC">0</div><div class="ats-l">Cartes</div></div><div class="ats"><div class="ats-v" id="aoCl">0</div><div class="ats-l">Clients</div></div><div class="ats"><div class="ats-v" id="aoP">0</div><div class="ats-l">Points</div></div></div></div>
+<div class="kpis" id="aKpis"></div>
+<div class="pgrid2"><div class="panel"><div class="panel-h"><div class="panel-t">⏳ Récents</div></div><div class="panel-b" id="aRecent"></div></div><div class="panel"><div class="panel-h"><div class="panel-t">💰 Plans</div></div><div class="panel-b" id="aPlanDist"></div></div></div>
+</div>
+<div class="dp" id="apMerchants"><div class="dh"><div><div class="dh-t">🏪 Commerçants</div></div></div><div class="search"><input type="text" id="aMSearch" placeholder="🔍 Rechercher..." oninput="renderAdmin()"></div><div class="panel"><div class="panel-h"><div class="panel-t">Liste</div><div style="font-size:.74rem;color:rgba(255,255,255,.35);font-weight:600" id="aMCount"></div></div><div class="panel-b" id="aMList"></div></div></div>
+<div class="dp" id="apPending"><div class="dh"><div><div class="dh-t">⏳ En attente</div><div class="dh-s">Validez ou refusez</div></div></div><div class="panel"><div class="panel-h"><div class="panel-t">En attente</div></div><div class="panel-b" id="aPendList"></div></div></div>
+<div class="dp" id="apPlans"><div class="dh"><div><div class="dh-t">💎 Plans</div></div></div><div class="panel"><div class="panel-h"><div class="panel-t">Abonnements</div></div><div class="panel-b" id="aPlanList"></div></div></div>
+<div class="dp" id="apActivity"><div class="dh"><div><div class="dh-t">📜 Journal</div></div></div><div class="panel"><div class="panel-h"><div class="panel-t">Activité</div></div><div class="panel-b" id="aActLog"></div></div></div>
+</div>
+</div>
+</div>
+
+<!-- ===== CLIENT JOIN ===== -->
+<div id="joinPage" class="page">
+<div class="cj-page">
+<div class="cj-box">
+<div id="cjCard" style="display:flex;justify-content:center;margin-bottom:18px"></div>
+<div class="cj-welcome" id="cjWelcome"></div>
+<div class="cj-form" id="cjForm">
+<h3 id="cjTitle">Bienvenue ! 🎉</h3>
+<div class="sub" id="cjSub">Entrez votre téléphone pour commencer</div>
+
+<div id="cjStep1">
+<div class="field"><label>Numéro de téléphone</label><input type="tel" id="cjPhone" placeholder="0555 XX XX XX"></div>
+<div class="err" id="cjErr1"></div>
+<button class="modal-btn" onclick="cjCheckPhone()">Continuer →</button>
+</div>
+
+<div id="cjStep2New" style="display:none">
+<div class="info-box">🆕 Première visite ! Entrez votre nom pour créer votre carte.</div>
+<div class="field"><label>Votre nom complet</label><input type="text" id="cjName" placeholder="Votre nom"></div>
+<div class="err" id="cjErr2"></div>
+<input type="hidden" id="cjCardId">
+<button class="modal-btn" onclick="cjCreateClient()">Obtenir ma carte 🎉</button>
+</div>
+
+<div id="cjStep2Existing" style="display:none">
+<div id="cjExistingCard" style="display:flex;justify-content:center;margin:14px 0"></div>
+<div style="text-align:center;margin-bottom:14px">
+<div style="font-family:'Fredoka One';font-size:1.8rem;color:var(--o)" id="cjExPts">0</div>
+<div style="font-size:.8rem;color:#888;font-weight:600" id="cjExLabel">points</div>
+<div class="prog" style="max-width:200px;margin:8px auto"><div class="prog-f" id="cjExProg" style="width:0%"></div></div>
+<div style="font-size:.75rem;color:#aaa;font-weight:500;margin-top:4px" id="cjExRemain"></div>
+</div>
+<div style="background:#e0f5e3;border-radius:10px;padding:12px;text-align:center;margin-bottom:14px;border:1px solid rgba(46,158,60,.12)">
+<div style="font-size:.82rem;font-weight:700;color:#2e9e3c">✅ Vous êtes ici !</div>
+<div style="font-size:.76rem;color:#555;font-weight:500;margin-top:2px">Montrez cet écran au caissier pour valider votre présence</div>
+</div>
+<div id="cjExWaiting" style="text-align:center;padding:10px">
+<div style="font-size:2rem;margin-bottom:6px">⏳</div>
+<div style="font-size:.85rem;font-weight:700;color:#444">En attente de validation...</div>
+<div style="font-size:.76rem;color:#888;font-weight:500">Le commerçant va confirmer votre présence</div>
+</div>
+<div id="cjExConfirmed" style="text-align:center;padding:10px;display:none">
+<div style="font-size:2rem;margin-bottom:6px">🎉</div>
+<div style="font-size:.85rem;font-weight:700;color:#2e9e3c" id="cjExConfMsg">Points ajoutés !</div>
+</div>
+<div class="wbtns" style="margin-top:10px" id="cjWalletBtns"></div>
+</div>
+
+<div class="cj-ok" id="cjOk">
+<span class="cj-ok-e">🎉</span>
+<h3 id="cjOkTitle">Carte créée !</h3>
+<p id="cjOkText"></p>
+<div style="background:#e0f5e3;border-radius:10px;padding:12px;text-align:center;margin-bottom:14px;border:1px solid rgba(46,158,60,.12)">
+<div style="font-size:.82rem;font-weight:700;color:#2e9e3c">✅ Montrez cet écran au caissier</div>
+<div style="font-size:.76rem;color:#555;font-weight:500;margin-top:2px">Il confirmera votre première visite</div>
+</div>
+<div class="wbtns" id="cjOkWalletBtns"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- ===== WALLET CARD VIEW ===== -->
+<div id="walletPage" class="page">
+<div class="wallet-page">
+<div class="wallet-box" id="walletContent"></div>
+</div>
+</div>
+
+<div class="toast" id="toastEl"></div>
+
+<script>
+const SK='fidali_v17';
+const BASE=location.origin+location.pathname;
+let DB;
+const COLORS=[
+{c1:'#FF6B35',c2:'#FF9A5C'},{c1:'#4D96FF',c2:'#6BBBFF'},{c1:'#6BCB77',c2:'#9EE8A8'},
+{c1:'#C77DFF',c2:'#E0AAFF'},{c1:'#FF6B9D',c2:'#FFB3CD'},{c1:'#1A1A2E',c2:'#16213E'},
+{c1:'#FF9500',c2:'#FFCD00'},{c1:'#00B4D8',c2:'#90E0EF'},{c1:'#E74C3C',c2:'#FF7675'},
+{c1:'#2D3436',c2:'#636E72'}
+];
+const DAYS=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+const LIMITS={starter:{cards:1,clients:10},pro:{cards:5,clients:100},premium:{cards:999,clients:99999}};
+const COOLDOWN_MS=2*3600000;
+const CLIENT_KEY='fidali_client_cards';
+
+function uid(){return Math.random().toString(36).substr(2,8).toUpperCase()}
+function $(id){return document.getElementById(id)}
+function load(){try{let s=localStorage.getItem(SK);if(s){DB=JSON.parse(s);if(!DB.merchants)seed();}else seed()}catch(e){seed()}}
+function save(){try{localStorage.setItem(SK,JSON.stringify(DB))}catch(e){}}
+
+function seed(){
+let now=Date.now();
+DB={
+admin:{email:'admin@fidali.dz',password:'admin123'},
+merchants:[
+{id:'M001',name:'Karim Boudiaf',email:'karim@pizzaoran.dz',password:'demo123',business:'Pizza Oran 🍕',sector:'restaurant',phone:'0555 12 34 56',plan:'starter',status:'active',at:now-86400000*30},
+{id:'M002',name:'Amina Hadj',email:'amina@salonbeaute.dz',password:'demo123',business:'Salon Beauté Alger 💇',sector:'salon',phone:'0555 98 76 54',plan:'pro',status:'active',at:now-86400000*15}
+],
+cards:[
+{id:'C001',mid:'M001',biz:'Pizza Oran 🍕',c1:'#FF6B35',c2:'#FF9A5C',rule:'1 point par 100 DA',ptsPerVisit:10,reward:'500 pts = 1 repas offert 🎁',max:500,msg:'Bienvenue chez Pizza Oran ! 🍕',code:'PIZZA-ORAN-001',at:now-86400000*28},
+{id:'C002',mid:'M002',biz:'Salon Beauté Alger 💇',c1:'#FF6B9D',c2:'#FFB3CD',rule:'1 point par visite',ptsPerVisit:1,reward:'10 visites = 1 soin offert 💆',max:10,msg:'Bienvenue au Salon Beauté ! 💇',code:'SALON-BEAUTE-001',at:now-86400000*14}
+],
+clients:[],clientCards:[],acts:[],cur:null,role:null,pendingPresence:null
+};
+let names=[{n:'Ahmed Benali',p:'0555112233'},{n:'Sarah Mansouri',p:'0555445566'},{n:'Youcef Kaddour',p:'0555778899'},{n:'Amina Cherif',p:'0555334455'},{n:'Reda Bouzid',p:'0555667788'}];
+let pts=[350,120,480,210,150];
+names.forEach((c,i)=>{
+let cid='CL'+String(i+1).padStart(3,'0');let t=now-((i+1)*86400000);
+DB.clients.push({id:cid,name:c.n,phone:c.p,at:t});
+DB.clientCards.push({id:'CC'+uid(),cid:cid,cardId:'C001',pts:pts[i],at:t,lastValidation:t});
+if(i<3) DB.clientCards.push({id:'CC'+uid(),cid:cid,cardId:'C002',pts:Math.floor(Math.random()*8),at:t,lastValidation:t});
+DB.acts.push({type:'join',cid:cid,cardId:'C001',ts:t,mid:'M001'});
+let rem=pts[i],off=0;
+while(rem>0){let ch=Math.min(rem,Math.floor(Math.random()*40)+5);DB.acts.push({type:'pts',cid:cid,cardId:'C001',amt:ch,ts:t+3600000+off*86400000,mid:'M001'});rem-=ch;off++}
+});
+save();
+}
+
+// === QR CODE ===
+function genQR(text,container,size){
+if(!container)return;size=size||180;container.innerHTML='';
+let img=document.createElement('img');
+img.src='https://api.qrserver.com/v1/create-qr-code/?size='+size+'x'+size+'&data='+encodeURIComponent(text)+'&color=1A1A2E&bgcolor=FFFFFF&margin=8';
+img.width=size;img.height=size;img.style.borderRadius='8px';img.style.display='block';
+img.onerror=function(){container.innerHTML='<div style="width:'+size+'px;height:'+size+'px;display:flex;align-items:center;justify-content:center;background:#f5f5f5;border-radius:8px;font-size:.8rem;color:#999;font-weight:600;border:2px dashed #ddd">QR Code</div>'};
+container.appendChild(img);
+}
+
+// === CARD BUILDER ===
+function buildCard(o){
+let{biz,c1,c2,pts,max,holder,reward,cls}=o;pts=pts||0;max=max||500;cls=cls||'';
+let emoji=biz.match(/[\u{1F000}-\u{1FFFF}]/u);let le=emoji?emoji[0]:'🏪';
+let bn=biz.replace(/[\u{1F000}-\u{1FFFF}]/gu,'').trim();
+let prog=Math.min(pts/max*100,100);
+return'<div class="card-pro '+cls+'" style="background:linear-gradient(135deg,'+c1+','+c2+')"><div class="shine"></div><div class="pattern"></div><div class="circle1"></div><div class="circle2"></div><div class="c-top"><div style="display:flex;align-items:center;gap:10px"><div class="c-logo">'+le+'</div><div class="c-brand">'+bn+'</div></div><div class="c-chip"></div></div><div class="c-mid"><div class="c-pts">'+pts.toLocaleString()+'</div><div class="c-pts-lbl">points fidélité</div></div><div class="c-bot"><div><div class="c-holder">TITULAIRE</div><div class="c-holder-name">'+(holder||'Votre nom')+'</div></div>'+(reward?'<div class="c-reward-tag">🎁 '+(reward.split('=')[0]||reward)+'</div>':'')+'</div><div class="c-progress"><div class="c-progress-fill" style="width:'+prog+'%"></div></div></div>';
+}
+
+// === WALLET / SAVE CARD ===
+function getClientCards(){try{return JSON.parse(localStorage.getItem(CLIENT_KEY)||'[]')}catch(e){return[]}}
+function saveClientCard(cardData){
+let cards=getClientCards();
+let exists=cards.find(c=>c.ccid===cardData.ccid);
+if(!exists){cards.push(cardData);localStorage.setItem(CLIENT_KEY,JSON.stringify(cards))}
+else{Object.assign(exists,cardData);localStorage.setItem(CLIENT_KEY,JSON.stringify(cards))}
+}
+function findSavedCard(cardId){
+let cards=getClientCards();
+return cards.find(c=>c.cardId===cardId);
+}
+
+function generateWalletBtns(cardData){
+let h='';
+// Apple Wallet - generate .pkpass-like downloadable card image
+h+='<button class="wb wb-a" onclick="addToWallet(\'apple\',\''+cardData.ccid+'\')">🍎 Ajouter à Apple Wallet</button>';
+// Google Wallet
+h+='<button class="wb wb-g" onclick="addToWallet(\'google\',\''+cardData.ccid+'\')">🟢 Ajouter à Google Wallet</button>';
+// Save to phone
+h+='<button class="wb" style="background:var(--o);color:#fff" onclick="addToWallet(\'save\',\''+cardData.ccid+'\')">📱 Sauvegarder sur mon téléphone</button>';
+return h;
+}
+
+function addToWallet(type,ccid){
+let cc=DB.clientCards.find(x=>x.id===ccid);
+if(!cc){toast('❌ Carte introuvable');return}
+let card=DB.cards.find(c=>c.id===cc.cardId);
+let cl=DB.clients.find(c=>c.id===cc.cid);
+if(!card||!cl)return;
+
+// Save card data locally
+let cardData={
+ccid:cc.id,cardId:card.id,cid:cl.id,
+biz:card.biz,c1:card.c1,c2:card.c2,
+holder:cl.name,phone:cl.phone,
+reward:card.reward,max:card.max,
+rule:card.rule,code:card.code,
+savedAt:Date.now()
+};
+saveClientCard(cardData);
+
+if(type==='apple'){
+// Generate a vCard + calendar event that acts like a wallet pass
+let vcard='BEGIN:VCARD\nVERSION:3.0\n';
+vcard+='FN:'+card.biz+' - Carte Fidélité\n';
+vcard+='ORG:'+card.biz+'\n';
+vcard+='NOTE:Carte fidélité Fidali - '+cl.name+' - '+cc.pts+' points\\nRécompense: '+card.reward+'\\nCode: '+card.code+'\n';
+vcard+='URL:'+BASE+'#wallet/'+cc.id+'\n';
+vcard+='END:VCARD';
+let blob=new Blob([vcard],{type:'text/vcard'});
+let url=URL.createObjectURL(blob);
+let a=document.createElement('a');
+a.href=url;a.download=card.biz.replace(/[^\w]/g,'')+'_fidali.vcf';
+a.click();URL.revokeObjectURL(url);
+toast('🍎 Contact carte ajouté ! Ouvrez-le pour le sauvegarder');
+}else if(type==='google'){
+// Generate calendar event as Google Wallet alternative
+let title=encodeURIComponent(card.biz+' - Carte Fidélité');
+let details=encodeURIComponent('Carte fidélité: '+cl.name+'\nPoints: '+cc.pts+'/'+card.max+'\nRécompense: '+card.reward+'\n\nVoir ma carte: '+BASE+'#wallet/'+cc.id);
+let gUrl='https://calendar.google.com/calendar/render?action=TEMPLATE&text='+title+'&details='+details+'&dates=20250101/20261231';
+window.open(gUrl,'_blank');
+toast('🟢 Rappel Google créé ! Votre carte est sauvegardée');
+}else{
+// Save + open wallet view
+location.hash='#wallet/'+cc.id;
+toast('📱 Carte sauvegardée sur votre téléphone !');
+}
+}
+
+// === PWA INSTALL ===
+let deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;$('installBanner').classList.add('on')});
+function doInstall(){if(deferredPrompt){deferredPrompt.prompt();deferredPrompt.userChoice.then(()=>{deferredPrompt=null;$('installBanner').classList.remove('on')})}else{toast('📱 Ajoutez cette page à l\'écran d\'accueil via le menu de votre navigateur')}}
+function dismissInstall(){$('installBanner').classList.remove('on')}
+
+// === NAV ===
+function setNav(mode){
+let n=$('nav'),lk=$('navLinks'),r=$('navRight'),u=$('navUser'),mb=$('menuBtn'),bg=$('navBadge');
+if(mode==='dash'||mode==='admin'){
+n.classList.add('dark');lk.style.display='none';r.style.display='none';u.style.display='flex';mb.style.display='';
+if(mode==='admin'){bg.style.display='inline';bg.textContent='ADMIN'}else bg.style.display='none';
+}else if(mode==='join'||mode==='wallet'){
+n.classList.remove('dark');lk.style.display='none';r.style.display='none';u.style.display='none';mb.style.display='none';
+}else{
+n.classList.remove('dark');lk.style.display='';r.style.display='flex';u.style.display='none';mb.style.display='none';bg.style.display='none';
+}
+}
+
+function showP(id){
+document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+$(id)?.classList.add('on');
+document.body.classList.toggle('dark',id==='merchPage'||id==='adminPage');
+window.scrollTo(0,0);
+}
+
+// === AUTH ===
+function openAuth(tab){clearErr();$('authOv').classList.add('on');authTab(tab||'login')}
+function closeAuth(){$('authOv').classList.remove('on')}
+function authTab(t){clearErr();let isL=t==='login';$('tLogin').classList.toggle('on',isL);$('tSignup').classList.toggle('on',!isL);$('loginF').style.display=isL?'block':'none';$('signupF').style.display=isL?'none':'block';$('authTitle').textContent=isL?'Connexion 🔑':'Inscription 🚀';$('authSub').textContent=isL?'Accédez à votre espace':'Créez votre compte commerçant'}
+function clearErr(){document.querySelectorAll('.err').forEach(e=>{e.classList.remove('on');e.textContent=''})}
+function showErr(id,msg){let e=$(id);if(e){e.textContent='⚠️ '+msg;e.classList.add('on')}}
+function closeOv(id){$(id).classList.remove('on')}
+
+function doLogin(){
+clearErr();let email=$('lEmail').value.trim(),pass=$('lPass').value;
+if(!email||!pass)return showErr('lErr','Remplissez tous les champs');
+if(email===DB.admin.email&&pass===DB.admin.password){DB.cur='ADMIN';DB.role='admin';save();closeAuth();enterAdmin();toast('🛡️ Bienvenue Admin !');return}
+let m=DB.merchants.find(x=>x.email===email&&x.password===pass);
+if(!m)return showErr('lErr','Email ou mot de passe incorrect');
+if(m.status==='pending')return showErr('lErr','⏳ Compte en attente de validation');
+if(m.status==='suspended')return showErr('lErr','🚫 Compte suspendu');
+DB.cur=m.id;DB.role='merchant';save();closeAuth();enterDash(m);toast('✅ Bienvenue '+m.business+' !');
+}
+
+function doSignup(){
+clearErr();let name=$('sName').value.trim(),biz=$('sBiz').value.trim(),sector=$('sSector').value,phone=$('sPhone').value.trim(),email=$('sEmail').value.trim(),pass=$('sPass').value;
+if(!name||!biz||!email||!pass)return showErr('sErr','Remplissez tous les champs');
+if(pass.length<6)return showErr('sErr','Min. 6 caractères');
+if(DB.merchants.find(x=>x.email===email))return showErr('sErr','Email déjà utilisé');
+DB.merchants.push({id:'M'+uid(),name,business:biz,sector,phone,email,password:pass,plan:'starter',status:'pending',at:Date.now()});
+save();closeAuth();toast('⏳ Compte créé ! En attente de validation.');
+}
+
+function logout(){DB.cur=null;DB.role=null;save();exitDash();toast('👋 Déconnecté')}
+function getM(){return DB.cur&&DB.role==='merchant'?DB.merchants.find(m=>m.id===DB.cur):null}
+
+function enterDash(m){
+setNav('dash');$('navAv').textContent=m.name.charAt(0);$('navName').textContent=m.business;
+$('sAv').textContent=m.name.charAt(0);$('sBizName').textContent=m.business;
+let pb=$('sPlan');pb.textContent=m.plan==='premium'?'💎 Premium':m.plan==='pro'?'🚀 Pro':'🌱 Starter';pb.className='side-badge bg-'+m.plan;
+showP('merchPage');renderAll();
+}
+function enterAdmin(){setNav('admin');$('navAv').textContent='🛡';$('navName').textContent='Admin';showP('adminPage');renderAdmin()}
+function exitDash(){setNav('landing');showP('landing');setTimeout(initLanding,100)}
+function goHome(){if(DB.role==='admin')enterAdmin();else{let m=getM();if(m)enterDash(m);else exitDash()}}
+
+function dp(p){
+document.querySelectorAll('#merchPage .dp').forEach(x=>x.classList.remove('on'));
+document.querySelectorAll('#merchPage .si').forEach(x=>x.classList.remove('on'));
+$('dp'+p.charAt(0).toUpperCase()+p.slice(1))?.classList.add('on');
+document.querySelector('#merchPage .si[data-p="'+p+'"]')?.classList.add('on');
+closeSide();renderAll();
+}
+function ap(p){
+document.querySelectorAll('#adminPage .dp').forEach(x=>x.classList.remove('on'));
+document.querySelectorAll('#adminPage .si').forEach(x=>x.classList.remove('on'));
+let map={overview:'apOverview',merchants:'apMerchants',pending:'apPending',plans:'apPlans',activity:'apActivity'};
+$(map[p])?.classList.add('on');
+document.querySelector('#adminPage .si[data-a="'+p+'"]')?.classList.add('on');
+closeSide();renderAdmin();
+}
+function toggleSide(){let s=document.querySelector('.page.on .side');if(s){s.classList.toggle('open');$('backdrop').classList.toggle('on')}}
+function closeSide(){document.querySelectorAll('.side').forEach(s=>s.classList.remove('open'));$('backdrop').classList.remove('on')}
+
+// === HELPERS ===
+function timeAgo(ts){let d=Date.now()-ts;if(d<60000)return"à l'instant";if(d<3600000)return'il y a '+Math.floor(d/60000)+' min';if(d<86400000)return'il y a '+Math.floor(d/3600000)+'h';if(d<604800000)return'il y a '+Math.floor(d/86400000)+'j';return new Date(ts).toLocaleDateString('fr-FR')}
+function fmtDate(ts){return new Date(ts).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}
+function clStatus(pts,max,at){if(pts>=max)return{c:'st-rew',t:'🎁 Récompense'};if(Date.now()-at<172800000)return{c:'st-new',t:'Nouveau'};if(pts>max*.6)return{c:'st-vip',t:'⭐ VIP'};return{c:'st-act',t:'Actif'}}
+function joinURL(code){return BASE+'#join/'+code}
+function cardLimit(m){return LIMITS[m.plan]||LIMITS.starter}
+
+function myData(){
+let m=getM();if(!m)return null;
+let mc=DB.cards.filter(c=>c.mid===m.id);
+let cids=new Set(mc.map(c=>c.id));
+let acc=DB.clientCards.filter(x=>cids.has(x.cardId));
+let uq={},uids=[];acc.forEach(x=>{if(!uq[x.cid]){uq[x.cid]=1;uids.push(x.cid)}});
+let tp=acc.reduce((s,x)=>s+x.pts,0);
+let rw=acc.filter(x=>{let c=mc.find(y=>y.id===x.cardId);return c&&x.pts>=c.max}).length;
+return{m,mc,acc,uids,tp,rw};
+}
+
+// === RENDER ALL ===
+function renderAll(){
+let d=myData();if(!d)return;let{m,mc,acc,uids,tp,rw}=d;let lim=cardLimit(m);
+$('sCards').textContent=mc.length;$('sClients').textContent=uids.length;
+$('dhGreet').textContent='Bonjour, '+m.business+' 👋';
+$('cartesLimit').textContent=mc.length+'/'+(lim.cards===999?'∞':lim.cards)+' cartes · '+uids.length+'/'+(lim.clients===99999?'∞':lim.clients)+' clients · Plan '+m.plan;
+let ob='';
+if(!mc.length)ob='<div class="onb"><h3>Bienvenue sur Fidali ! 🎯</h3><p>Créez votre première carte de fidélité pour commencer.</p><div class="onb-steps"><div class="ob-s"><span class="ob-s-e">🎨</span><div class="ob-s-t">Créer une carte</div></div><div class="ob-s"><span class="ob-s-e">📲</span><div class="ob-s-t">Afficher le QR</div></div><div class="ob-s"><span class="ob-s-e">👥</span><div class="ob-s-t">Clients arrivent</div></div></div><button class="dbtn dbtn-p" onclick="openCC()">Créer ma première carte 🎨</button></div>';
+$('onbSection').innerHTML=ob;
+$('kpis').innerHTML='<div class="kpi"><div class="kpi-v">'+uids.length+'</div><div class="kpi-l">👥 Clients</div></div><div class="kpi"><div class="kpi-v">'+mc.length+'</div><div class="kpi-l">🃏 Cartes</div></div><div class="kpi"><div class="kpi-v">'+tp.toLocaleString()+'</div><div class="kpi-l">⭐ Points distribués</div></div><div class="kpi"><div class="kpi-v">'+rw+'</div><div class="kpi-l">🎁 Récompenses</div></div>';
+let sorted=uids.map(id=>DB.clients.find(c=>c.id===id)).filter(Boolean).sort((a,b)=>b.at-a.at);
+let colors=['#FF6B35','#4D96FF','#6BCB77','#C77DFF','#FF6B9D','#00B4D8','#FF9500','#e74c3c'];
+let rc='';
+sorted.slice(0,5).forEach((cl,i)=>{let ccs=acc.filter(x=>x.cid===cl.id);let pts2=ccs.reduce((s,x)=>s+x.pts,0);let card=mc.find(c=>c.id===ccs[0]?.cardId);let mx=card?card.max:500;let st=clStatus(pts2,mx,cl.at);let isR=st.t.includes('Récompense');
+rc+='<div class="cr"><div class="cr-av" style="background:'+colors[i%colors.length]+'">'+cl.name.charAt(0)+'</div><div class="cr-info"><div class="cr-n">'+cl.name+'</div><div class="cr-m">📱 '+cl.phone+' · '+timeAgo(cl.at)+'</div></div><div class="cr-pts">'+pts2+'</div><span class="cr-st '+st.c+'">'+st.t+'</span><div class="cr-btns"><button class="cr-btn" onclick="openPts(\''+cl.id+'\')">⭐</button>'+(isR?'<button class="cr-btn" onclick="redeem(\''+cl.id+'\')">🎁</button>':'')+'<button class="cr-btn" onclick="showHist(\''+cl.id+'\')">📋</button></div></div>'});
+if(!sorted.length)rc='<div class="empty"><span class="empty-e">📲</span><div class="empty-t">Aucun client</div><div class="empty-s">Partagez votre QR code !</div></div>';
+$('recentCl').innerHTML=rc;
+let ch='';mc.forEach(card=>{let cnt=DB.clientCards.filter(x=>x.cardId===card.id).length;
+ch+='<div style="display:flex;align-items:center;gap:10px;padding:8px;background:var(--gl);border-radius:10px;border:1px solid var(--bd);margin-bottom:5px;cursor:pointer" onclick="showQR(\''+card.id+'\')"><div style="width:56px;height:34px;border-radius:8px;background:linear-gradient(135deg,'+card.c1+','+card.c2+');position:relative;overflow:hidden;flex-shrink:0"><div style="position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.2) 0%,transparent 60%)"></div></div><div style="flex:1;min-width:0"><div style="font-weight:700;font-size:.83rem;color:#fff">'+card.biz+'</div><div style="font-size:.7rem;color:rgba(255,255,255,.3);font-weight:500">'+cnt+' clients · '+card.rule+'</div></div></div>'});
+if(!mc.length)ch='<div class="empty"><span class="empty-e">🎨</span><div class="empty-t">Aucune carte</div><button class="dbtn dbtn-p" onclick="openCC()">+ Créer</button></div>';
+$('recentCa').innerHTML=ch;
+let myActs=DB.acts.filter(a=>a.mid===m.id).sort((a,b)=>b.ts-a.ts).slice(0,8);
+let af='';myActs.forEach(a=>{let cl2=DB.clients.find(c=>c.id===a.cid);if(!cl2)return;let icon=a.type==='join'?'👤':a.type==='redeem'?'🎁':'⭐';let txt=a.type==='join'?'<b>'+cl2.name+'</b> a rejoint':a.type==='redeem'?'<b>'+cl2.name+'</b> récompense échangée':'<b>'+cl2.name+'</b> +'+(a.amt||0)+' pts';
+af+='<div style="display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px solid var(--bd);font-size:.8rem;color:rgba(255,255,255,.5);font-weight:500"><span style="font-size:.95rem">'+icon+'</span><span>'+txt+'</span><span style="margin-left:auto;font-size:.66rem;color:rgba(255,255,255,.2);white-space:nowrap">'+timeAgo(a.ts)+'</span></div>'});
+if(!myActs.length)af='<div style="text-align:center;padding:14px;color:rgba(255,255,255,.25)">Aucune activité</div>';
+$('actFeed').innerHTML=af;
+renderCartes(mc,m);renderClients(d);renderStats(d);
+$('setBiz').value=m.business;$('setEmail').value=m.email;$('setPhone').value=m.phone||'';
+let cl2=cardLimit(m);
+$('setPlanInfo').innerHTML='<div class="set-r"><div class="set-rl">Plan<small>'+m.plan+'</small></div><span style="color:var(--o);font-weight:800">'+(m.plan==='premium'?'9,000 DA':m.plan==='pro'?'4,500 DA':'Gratuit')+'</span></div><div class="set-r"><div class="set-rl">Cartes<small>'+mc.length+'/'+(cl2.cards===999?'∞':cl2.cards)+'</small></div></div><div class="set-r"><div class="set-rl">Clients<small>'+uids.length+'/'+(cl2.clients===99999?'∞':cl2.clients)+'</small></div></div>';
+}
+
+function renderCartes(mc,m){let h='';mc.forEach(card=>{let cnt=DB.clientCards.filter(x=>x.cardId===card.id).length;h+='<div class="panel" style="margin-bottom:10px"><div class="panel-b" style="display:flex;gap:16px;align-items:center;flex-wrap:wrap"><div style="flex-shrink:0">'+buildCard({biz:card.biz,c1:card.c1,c2:card.c2,pts:0,max:card.max,holder:'Aperçu',reward:card.reward,cls:'card-sm'})+'</div><div style="flex:1;min-width:160px"><div style="font-weight:800;font-size:.9rem;color:#fff;margin-bottom:3px">'+card.biz+'</div><div style="font-size:.72rem;color:rgba(255,255,255,.35);margin-bottom:4px">⭐ '+card.rule+'</div><div style="font-size:.72rem;color:rgba(255,255,255,.35);margin-bottom:4px">🎁 '+card.reward+'</div><div style="font-size:.72rem;color:rgba(255,255,255,.35)">🎯 '+card.max+' pts · 👥 '+cnt+' clients</div></div><div style="display:flex;gap:4px;flex-shrink:0"><button class="dbtn dbtn-g" style="padding:6px 10px;font-size:.76rem" onclick="showQR(\''+card.id+'\')">📱 QR</button><button class="dbtn dbtn-d" style="padding:6px 10px;font-size:.76rem" onclick="delCard(\''+card.id+'\')">🗑️</button></div></div></div>'});
+if(!mc.length)h='<div class="panel"><div class="panel-b"><div class="empty"><span class="empty-e">🎨</span><div class="empty-t">Aucune carte</div><button class="dbtn dbtn-p" onclick="openCC()">+ Nouvelle carte</button></div></div></div>';
+$('cartesBody').innerHTML=h}
+
+function renderClients(d){let sv=($('clSearch')||{}).value||'';sv=sv.toLowerCase().trim();let cls=d.uids.map(id=>DB.clients.find(c=>c.id===id)).filter(Boolean).sort((a,b)=>b.at-a.at);if(sv)cls=cls.filter(c=>c.name.toLowerCase().includes(sv)||c.phone.includes(sv));$('clCount').textContent=cls.length+' client'+(cls.length!==1?'s':'');let colors=['#FF6B35','#4D96FF','#6BCB77','#C77DFF','#FF6B9D','#00B4D8','#FF9500','#e74c3c'];let h='';cls.forEach((cl,i)=>{let ccs=d.acc.filter(x=>x.cid===cl.id);let pts=ccs.reduce((s,x)=>s+x.pts,0);let card=ccs[0]?d.mc.find(c=>c.id===ccs[0].cardId):null;let mx=card?card.max:500;let prog=ccs[0]?Math.min(ccs[0].pts/mx*100,100):0;let st=clStatus(pts,mx,cl.at);let isR=st.t.includes('Récompense');
+h+='<div class="cr"><div class="cr-av" style="background:'+colors[i%colors.length]+'">'+cl.name.charAt(0)+'</div><div class="cr-info"><div class="cr-n">'+cl.name+'</div><div class="cr-m">📱 '+cl.phone+' · '+timeAgo(cl.at)+'</div><div class="prog"><div class="prog-f" style="width:'+prog+'%"></div></div></div><div class="cr-pts">'+pts+'</div><span class="cr-st '+st.c+'">'+st.t+'</span><div class="cr-btns"><button class="cr-btn" onclick="openPts(\''+cl.id+'\')">⭐</button>'+(isR?'<button class="cr-btn" onclick="redeem(\''+cl.id+'\')">🎁</button>':'')+'<button class="cr-btn" onclick="showHist(\''+cl.id+'\')">📋</button><button class="cr-btn" onclick="delCl(\''+cl.id+'\')">🗑️</button></div></div>'});
+if(!cls.length)h='<div class="empty"><span class="empty-e">'+(sv?'🔍':'📲')+'</span><div class="empty-t">'+(sv?'Aucun résultat':'Aucun client')+'</div></div>';
+$('allCl').innerHTML=h}
+
+function renderStats(d){let avg=d.uids.length?Math.round(d.tp/d.uids.length):0;$('statMini').innerHTML='<div class="smi"><div class="smi-v" style="color:var(--y)">'+d.uids.length+'</div><div class="smi-l">Clients</div></div><div class="smi"><div class="smi-v" style="color:var(--g)">'+d.tp.toLocaleString()+'</div><div class="smi-l">Points totaux</div></div><div class="smi"><div class="smi-v" style="color:var(--b)">'+avg+'</div><div class="smi-l">Moy. pts/client</div></div>';
+let bc=['var(--o)','var(--b)','var(--g)','var(--y)','var(--pk)','var(--pr)','var(--o)'];let dd=[],td=new Date;td.setHours(0,0,0,0);for(let i=6;i>=0;i--){let ds=new Date(td);ds.setDate(ds.getDate()-i);let de=new Date(ds);de.setDate(de.getDate()+1);let v=DB.acts.filter(a=>a.mid===d.m.id&&a.type==='pts'&&a.ts>=ds.getTime()&&a.ts<de.getTime()).reduce((s,a)=>s+(a.amt||0),0);dd.push({l:DAYS[ds.getDay()],v})}
+let mx=Math.max(...dd.map(x=>x.v))||1;let bh='';dd.forEach((x,i)=>{let h2=Math.max(12,Math.round(110*x.v/mx));bh+='<div class="bar" style="height:'+h2+'px;background:'+bc[i%bc.length]+';opacity:.7"><div class="bar-v">'+x.v+'</div><div class="bar-l">'+x.l+'</div></div>'});$('chartBars').innerHTML=bh;
+let srt=d.uids.map(id=>{let cl=DB.clients.find(c=>c.id===id);let pts=d.acc.filter(x=>x.cid===id).reduce((s,x)=>s+x.pts,0);return{cl,pts}}).filter(x=>x.cl).sort((a,b)=>b.pts-a.pts).slice(0,5);let medals=['🥇','🥈','🥉','4️⃣','5️⃣'];let th='';let clrs=['#FF6B35','#4D96FF','#6BCB77','#C77DFF','#FF6B9D'];
+srt.forEach((x,i)=>{th+='<div class="cr"><span style="font-size:1rem;width:24px;text-align:center">'+medals[i]+'</span><div class="cr-av" style="background:'+clrs[i%clrs.length]+'">'+x.cl.name.charAt(0)+'</div><div class="cr-info"><div class="cr-n">'+x.cl.name+'</div></div><div class="cr-pts">'+x.pts+'</div></div>'});
+if(!srt.length)th='<div style="text-align:center;padding:14px;color:rgba(255,255,255,.25)">Aucun client</div>';$('topCl').innerHTML=th;
+let ph='';d.mc.forEach(card=>{let cnt=DB.clientCards.filter(x=>x.cardId===card.id).length;let pts2=DB.clientCards.filter(x=>x.cardId===card.id).reduce((s,x)=>s+x.pts,0);ph+='<div class="cr"><div style="width:36px;height:22px;border-radius:6px;background:linear-gradient(135deg,'+card.c1+','+card.c2+');flex-shrink:0"></div><div class="cr-info"><div class="cr-n">'+card.biz+'</div><div class="cr-m">'+cnt+' clients · '+pts2+' pts</div></div></div>'});$('cardPerf').innerHTML=ph||'<div style="text-align:center;padding:14px;color:rgba(255,255,255,.25)">Aucune carte</div>'}
+
+// === QR ===
+function showQR(cardId){let card=DB.cards.find(c=>c.id===cardId);if(!card)return;let url=joinURL(card.code);
+$('qrContent').innerHTML='<div style="text-align:center"><div style="margin-bottom:14px">'+buildCard({biz:card.biz,c1:card.c1,c2:card.c2,pts:0,max:card.max,holder:'Nouveau client',reward:card.reward,cls:'card-sm'})+'</div><p style="font-size:.82rem;font-weight:700;color:var(--o);margin-bottom:4px">1 seul QR = Inscription + Validation</p><p style="font-size:.76rem;color:#888;font-weight:500;margin-bottom:12px">Nouveau client → crée sa carte<br>Client existant → valide sa présence</p><div id="qrCanvas" style="display:inline-block;background:#fff;padding:6px;border-radius:10px;border:2px solid #f0f0f0;margin-bottom:10px"></div><p style="font-size:.7rem;color:#aaa;margin-bottom:10px">Code: '+card.code+'</p><div style="display:flex;gap:5px;justify-content:center;flex-wrap:wrap"><button class="dbtn dbtn-p" style="font-size:.76rem" onclick="copyTxt(\''+url+'\')">📋 Copier</button><button class="dbtn dbtn-ok" style="font-size:.76rem" onclick="shareWA(\''+card.code+'\',\''+esc(card.biz)+'\')">💬 WhatsApp</button><button class="dbtn dbtn-g" style="font-size:.76rem" onclick="dlQR()">📥 Télécharger</button></div></div>';
+$('qrOv').classList.add('on');setTimeout(()=>genQR(url,$('qrCanvas'),200),100)}
+function dlQR(){let el=$('qrCanvas');if(!el)return;let img=el.querySelector('img');if(img){let a=document.createElement('a');a.download='fidali-qr.png';a.href=img.src;a.target='_blank';a.click();toast('📥 QR téléchargé !')}}
+function openMasterQR(){let m=getM();let cards=DB.cards.filter(c=>c.mid===m.id);if(cards.length)showQR(cards[0].id);else toast('⚠️ Créez d\'abord une carte !')}
+
+// === CREATE CARD ===
+let newC={c1:'#FF6B35',c2:'#FF9A5C'};
+function initColorPickers(){let ccH='',pvH='';COLORS.forEach((c,i)=>{let a=i===0?' on':'';ccH+='<div class="csw'+a+'" style="background:linear-gradient(135deg,'+c.c1+','+c.c2+')" data-c1="'+c.c1+'" data-c2="'+c.c2+'" onclick="pickCC(this)"></div>';pvH+='<div class="csw'+a+'" style="background:linear-gradient(135deg,'+c.c1+','+c.c2+')" onclick="setCol(\''+c.c1+'\',\''+c.c2+'\',this)"></div>'});$('ccColors').innerHTML=ccH;$('prevColors').innerHTML=pvH}
+function pickCC(el){document.querySelectorAll('#ccColors .csw').forEach(s=>s.classList.remove('on'));el.classList.add('on');newC.c1=el.dataset.c1;newC.c2=el.dataset.c2;updateCCPrev()}
+function openCC(){let m=getM();if(!m)return;let lim=cardLimit(m),cur=DB.cards.filter(c=>c.mid===m.id).length;if(cur>=lim.cards){$('ccLimitMsg').textContent='⚠️ Limite atteinte ! Passez au plan supérieur.';$('ccLimitMsg').style.display='block'}else $('ccLimitMsg').style.display='none';$('ccName').value=m.business;$('ccReward').value='';$('ccMax').value='500';$('ccMsg').value='Bienvenue ! Gagnez des points à chaque visite 🎉';newC={c1:'#FF6B35',c2:'#FF9A5C'};document.querySelectorAll('#ccColors .csw').forEach((s,i)=>s.classList.toggle('on',i===0));updateCCPrev();$('ccOv').classList.add('on')}
+function updateCCPrev(){let biz=$('ccName').value||'Mon Commerce';let rew=$('ccReward').value||'Récompense';let max=parseInt($('ccMax').value)||500;$('ccPreview').innerHTML=buildCard({biz,c1:newC.c1,c2:newC.c2,pts:0,max,holder:'Nouveau client',reward:rew,cls:'card-sm'})}
+$('ccPtsType')?.addEventListener('change',function(){$('ccPtsCustom').style.display=this.value==='custom'?'block':'none'});
+$('ccName')?.addEventListener('input',updateCCPrev);$('ccReward')?.addEventListener('input',updateCCPrev);$('ccMax')?.addEventListener('input',updateCCPrev);
+
+function createCard(){let m=getM();if(!m)return;let lim=cardLimit(m),cur=DB.cards.filter(c=>c.mid===m.id).length;if(cur>=lim.cards)return toast('⚠️ Limite de cartes atteinte');let biz=$('ccName').value.trim()||m.business;let pv=parseInt($('ccPtsVal').value)||1;let pt=$('ccPtsType').value;let rule;if(pt==='visit')rule=pv+' point'+(pv>1?'s':'')+' par visite';else if(pt==='da')rule=pv+' point'+(pv>1?'s':'')+' par 100 DA';else if(pt==='item')rule=pv+' point'+(pv>1?'s':'')+' par article';else rule=$('ccPtsCustom').value.trim()||pv+' point(s)';let reward=$('ccReward').value.trim()||'Cadeau offert';let max=parseInt($('ccMax').value)||500;let msg=$('ccMsg').value.trim()||'Bienvenue !';let code=biz.replace(/[^a-zA-Z0-9]/g,'').substring(0,10).toUpperCase()+'-'+uid().substring(0,4);DB.cards.push({id:'C'+uid(),mid:m.id,biz,c1:newC.c1,c2:newC.c2,rule,ptsPerVisit:pv,reward,max,msg,code,at:Date.now()});save();closeOv('ccOv');toast('🎉 Carte créée !');renderAll()}
+
+// === ACTIONS ===
+function openPts(cid){let m=getM();if(!m)return;let cl=DB.clients.find(c=>c.id===cid);if(!cl)return;let ci=new Set(DB.cards.filter(c=>c.mid===m.id).map(c=>c.id));let ccs=DB.clientCards.filter(x=>x.cid===cid&&ci.has(x.cardId));if(!ccs.length)return toast('⚠️ Pas de carte');$('ptsSub').textContent=cl.name;$('ptsCid').value=cid;$('ptsAmt').value=10;document.querySelectorAll('.pts-q').forEach(b=>b.classList.remove('on'));document.querySelectorAll('.pts-q')[2]?.classList.add('on');$('ptsCcid').value=ccs[0].id;$('ptsOv').classList.add('on')}
+function setP(v){$('ptsAmt').value=v;document.querySelectorAll('.pts-q').forEach(b=>b.classList.toggle('on',parseInt(b.textContent.replace('+',''))===v))}
+function confirmPts(){let ccid=$('ptsCcid').value,amt=parseInt($('ptsAmt').value)||0;if(amt<1)return toast('⚠️ Min. 1');let cc=DB.clientCards.find(x=>x.id===ccid);if(!cc)return;let m=getM();cc.pts+=amt;cc.lastValidation=Date.now();let card=DB.cards.find(c=>c.id===cc.cardId);DB.acts.push({type:'pts',cid:cc.cid,cardId:cc.cardId,amt,ts:Date.now(),mid:m.id});save();closeOv('ptsOv');renderAll();toast(cc.pts>=card.max?'🎉 Récompense atteinte !':'⭐ +'+amt+' points !')}
+function redeem(cid){let m=getM();if(!m)return;let cl=DB.clients.find(c=>c.id===cid);if(!cl)return;let ci=new Set(DB.cards.filter(c=>c.mid===m.id).map(c=>c.id));let ccs=DB.clientCards.filter(x=>x.cid===cid&&ci.has(x.cardId));let rd=ccs.filter(x=>{let card=DB.cards.find(c=>c.id===x.cardId);return card&&x.pts>=card.max});if(!rd.length)return toast('⚠️ Pas de récompense');let cc=rd[0];let card=DB.cards.find(c=>c.id===cc.cardId);if(!confirm('Échanger la récompense pour '+cl.name+' ?\n\n🎁 '+card.reward+'\n\nPoints remis à 0.'))return;cc.pts=0;DB.acts.push({type:'redeem',cid,cardId:cc.cardId,ts:Date.now(),mid:m.id});save();renderAll();toast('🎉 Récompense échangée !')}
+function showHist(cid){let m=getM();if(!m)return;let cl=DB.clients.find(c=>c.id===cid);if(!cl)return;$('histTitle').textContent='📋 '+cl.name;$('histSub').textContent=cl.phone;let acts=DB.acts.filter(a=>a.cid===cid&&a.mid===m.id).sort((a,b)=>b.ts-a.ts);let h='';if(!acts.length)h='<div style="text-align:center;padding:16px;color:#888">Aucun historique</div>';acts.forEach(a=>{let icon=a.type==='join'?'👤':a.type==='redeem'?'🎁':'⭐';let txt=a.type==='join'?'Inscription':a.type==='redeem'?'Récompense échangée':'+'+a.amt+' pts';h+='<div class="hi"><span class="hi-i">'+icon+'</span><span class="hi-t">'+txt+'</span><span class="hi-d">'+fmtDate(a.ts)+'</span></div>'});$('histContent').innerHTML=h;$('histOv').classList.add('on')}
+function saveSets(){let m=getM();if(!m)return;let nb=$('setBiz').value.trim(),ne=$('setEmail').value.trim(),np=$('setPhone').value.trim();if(!nb||!ne)return toast('⚠️ Requis');m.business=nb;m.email=ne;m.phone=np;$('sBizName').textContent=nb;$('navName').textContent=nb;save();toast('✅ Sauvegardé !');renderAll()}
+function delCard(id){if(!confirm('Supprimer cette carte ?'))return;DB.clientCards=DB.clientCards.filter(x=>x.cardId!==id);DB.acts=DB.acts.filter(a=>a.cardId!==id);DB.cards=DB.cards.filter(c=>c.id!==id);save();renderAll();toast('🗑️ Carte supprimée')}
+function delCl(cid){if(!confirm('Retirer ce client ?'))return;let m=getM();let ci=new Set(DB.cards.filter(c=>c.mid===m.id).map(c=>c.id));DB.clientCards=DB.clientCards.filter(x=>!(x.cid===cid&&ci.has(x.cardId)));save();renderAll();toast('🗑️ Client retiré')}
+
+// === CLIENT JOIN ===
+function openJoin(code){
+let card=DB.cards.find(c=>c.code===code)||DB.cards.find(c=>c.code.toUpperCase()===code.toUpperCase());
+if(!card){toast('❌ Carte introuvable');return}
+// Check if client already has a saved card for this
+let saved=findSavedCard(card.id);
+if(saved){
+let cl=DB.clients.find(c=>c.id===saved.cid);
+let cc=DB.clientCards.find(x=>x.id===saved.ccid);
+if(cl&&cc){
+// Auto-show existing client view
+$('cjCard').innerHTML=buildCard({biz:card.biz,c1:card.c1,c2:card.c2,pts:cc.pts,max:card.max,holder:cl.name,reward:card.reward});
+$('cjWelcome').textContent='Ravi de vous revoir, '+cl.name+' !';
+$('cjTitle').textContent=card.biz;
+$('cjStep1').style.display='none';$('cjStep2New').style.display='none';$('cjOk').style.display='none';
+$('cjStep2Existing').style.display='block';$('cjForm').style.display='block';
+showExistingClient(cl,cc,card);
+setNav('join');showP('joinPage');return;
+}
+}
+$('cjCard').innerHTML=buildCard({biz:card.biz,c1:card.c1,c2:card.c2,pts:0,max:card.max,holder:'',reward:card.reward});
+$('cjWelcome').textContent=card.msg||'';$('cjTitle').textContent=card.biz;$('cjSub').textContent='Entrez votre numéro de téléphone';$('cjCardId').value=card.id;
+$('cjStep1').style.display='block';$('cjStep2New').style.display='none';$('cjStep2Existing').style.display='none';$('cjOk').style.display='none';$('cjForm').style.display='block';$('cjPhone').value='';$('cjName').value='';clearErr();
+setNav('join');showP('joinPage');
+}
+
+function cjCheckPhone(){
+clearErr();let phone=$('cjPhone').value.trim();if(!phone||phone.length<8)return showErr('cjErr1','Entrez un numéro valide');
+let cardId=$('cjCardId').value;let card=DB.cards.find(c=>c.id===cardId);if(!card)return;
+let cl=DB.clients.find(c=>c.phone===phone);
+if(cl){let cc=DB.clientCards.find(x=>x.cid===cl.id&&x.cardId===cardId);if(cc){showExistingClient(cl,cc,card);return}}
+$('cjStep1').style.display='none';$('cjStep2New').style.display='block';$('cjName').focus();
+}
+
+function showExistingClient(cl,cc,card){
+$('cjStep1').style.display='none';$('cjStep2Existing').style.display='block';
+$('cjExistingCard').innerHTML=buildCard({biz:card.biz,c1:card.c1,c2:card.c2,pts:cc.pts,max:card.max,holder:cl.name,reward:card.reward,cls:'card-sm'});
+$('cjExPts').textContent=cc.pts;$('cjExLabel').textContent=cc.pts+' / '+card.max+' points';
+let prog=Math.min(cc.pts/card.max*100,100);$('cjExProg').style.width=prog+'%';
+let remain=card.max-cc.pts;$('cjExRemain').textContent=remain>0?remain+' points restants pour la récompense 🎁':'🎉 Récompense disponible !';
+$('cjExWaiting').style.display='block';$('cjExConfirmed').style.display='none';
+// Generate wallet buttons
+$('cjWalletBtns').innerHTML=generateWalletBtns({ccid:cc.id,cardId:card.id,cid:cl.id});
+// Save card locally for auto-recognition
+saveClientCard({ccid:cc.id,cardId:card.id,cid:cl.id,biz:card.biz,c1:card.c1,c2:card.c2,holder:cl.name,phone:cl.phone,reward:card.reward,max:card.max,rule:card.rule,code:card.code,savedAt:Date.now()});
+DB.pendingPresence={cid:cl.id,ccid:cc.id,cardId:card.id,mid:card.mid,phone:cl.phone,name:cl.name,ts:Date.now()};save();
+let m=getM();if(m&&m.id===card.mid)showPresencePopup(cl,cc,card);
+let oldPts=cc.pts;let pollId=setInterval(()=>{load();let updCC=DB.clientCards.find(x=>x.id===cc.id);if(!DB.pendingPresence||DB.pendingPresence.cid!==cl.id){clearInterval(pollId);if(updCC&&updCC.pts>oldPts){$('cjExWaiting').style.display='none';$('cjExConfirmed').style.display='block';$('cjExConfMsg').textContent='🎉 +'+(updCC.pts-oldPts)+' points ajoutés ! Total: '+updCC.pts;$('cjExConfMsg').style.color='#2e9e3c';$('cjExPts').textContent=updCC.pts;$('cjExLabel').textContent=updCC.pts+' / '+card.max+' points';$('cjExProg').style.width=Math.min(updCC.pts/card.max*100,100)+'%';$('cjExistingCard').innerHTML=buildCard({biz:card.biz,c1:card.c1,c2:card.c2,pts:updCC.pts,max:card.max,holder:cl.name,reward:card.reward,cls:'card-sm'});saveClientCard({ccid:cc.id,cardId:card.id,cid:cl.id,biz:card.biz,c1:card.c1,c2:card.c2,holder:cl.name,phone:cl.phone,reward:card.reward,max:card.max,rule:card.rule,code:card.code,savedAt:Date.now()})}else{$('cjExWaiting').style.display='none';$('cjExConfirmed').style.display='block';$('cjExConfMsg').textContent='❌ Présence non validée';$('cjExConfMsg').style.color='var(--r)'}}},2000);
+setTimeout(()=>clearInterval(pollId),300000);
+}
+
+function showPresencePopup(cl,cc,card){$('presContent').innerHTML='<div class="pres-confirm"><div class="pres-emoji">👋</div><h3>'+cl.name+' est là !</h3><div class="pres-sub">'+card.biz+' · '+cc.pts+'/'+card.max+' pts</div><div class="pres-card-wrap">'+buildCard({biz:card.biz,c1:card.c1,c2:card.c2,pts:cc.pts,max:card.max,holder:cl.name,reward:card.reward,cls:'card-sm'})+'</div><div class="pres-pts-select"><span class="pres-pts-label">Ajouter</span><input type="number" id="presPoints" value="'+(card.ptsPerVisit||1)+'" min="1"><span class="pres-pts-label">points</span></div><div class="pres-btns"><button class="modal-btn green" onclick="confirmPresence(\''+cl.id+'\',\''+cc.id+'\',\''+card.id+'\')">✅ Oui, valider</button><button class="modal-btn red" onclick="rejectPresence()">❌ Refuser</button></div></div>';$('presOv').classList.add('on')}
+
+function confirmPresence(cid,ccid,cardId){let pts=parseInt($('presPoints')?.value)||1;let cc=DB.clientCards.find(x=>x.id===ccid);if(!cc)return;let card=DB.cards.find(c=>c.id===cardId);let cl=DB.clients.find(c=>c.id===cid);if(cc.lastValidation&&(Date.now()-cc.lastValidation)<COOLDOWN_MS){let rem=Math.ceil((COOLDOWN_MS-(Date.now()-cc.lastValidation))/60000);toast('⏳ Réessayez dans '+rem+' min');closeOv('presOv');return}cc.pts+=pts;cc.lastValidation=Date.now();DB.acts.push({type:'pts',cid,cardId,amt:pts,ts:Date.now(),mid:card.mid});DB.pendingPresence=null;save();closeOv('presOv');renderAll();toast(cc.pts>=card.max?'🎉 '+cl.name+' — RÉCOMPENSE !':'✅ '+cl.name+' +'+pts+' pts ('+cc.pts+'/'+card.max+')')}
+
+function rejectPresence(){DB.pendingPresence=null;save();closeOv('presOv');toast('❌ Présence refusée')}
+
+function cjCreateClient(){clearErr();let name=$('cjName').value.trim(),phone=$('cjPhone').value.trim(),cardId=$('cjCardId').value;if(!name)return showErr('cjErr2','Entrez votre nom');let card=DB.cards.find(c=>c.id===cardId);if(!card)return;let merch=DB.merchants.find(m=>m.id===card.mid);let lim=cardLimit(merch||{plan:'starter'});let existing=new Set(DB.clientCards.filter(x=>x.cardId===cardId).map(x=>x.cid)).size;if(existing>=lim.clients){showErr('cjErr2','Ce commerce a atteint sa limite de clients');return}let cl=DB.clients.find(c=>c.phone===phone);if(!cl){cl={id:'CL'+uid(),name,phone,at:Date.now()};DB.clients.push(cl)}else{cl.name=name}let ccid='CC'+uid();DB.clientCards.push({id:ccid,cid:cl.id,cardId,pts:0,at:Date.now(),lastValidation:null});DB.acts.push({type:'join',cid:cl.id,cardId,ts:Date.now(),mid:card.mid});
+DB.pendingPresence={cid:cl.id,ccid:ccid,cardId:card.id,mid:card.mid,phone:cl.phone,name:cl.name,ts:Date.now()};
+// Save card locally
+saveClientCard({ccid,cardId:card.id,cid:cl.id,biz:card.biz,c1:card.c1,c2:card.c2,holder:cl.name,phone:cl.phone,reward:card.reward,max:card.max,rule:card.rule,code:card.code,savedAt:Date.now()});
+save();$('cjStep2New').style.display='none';$('cjOk').style.display='block';$('cjOkTitle').textContent='Bienvenue '+name+' ! 🎉';$('cjOkText').textContent='Votre carte est créée avec 0 points. Montrez cet écran au caissier !';
+$('cjOkWalletBtns').innerHTML=generateWalletBtns({ccid,cardId:card.id,cid:cl.id});
+let m=getM();if(m&&m.id===card.mid){let cc=DB.clientCards.find(x=>x.id===ccid);showPresencePopup(cl,cc,card)}}
+
+function checkPendingPresence(){if(!DB.pendingPresence)return;let m=getM();if(!m)return;if(DB.pendingPresence.mid!==m.id)return;if(Date.now()-DB.pendingPresence.ts>300000){DB.pendingPresence=null;save();return}let cl=DB.clients.find(c=>c.id===DB.pendingPresence.cid);let cc=DB.clientCards.find(x=>x.id===DB.pendingPresence.ccid);let card=DB.cards.find(c=>c.id===DB.pendingPresence.cardId);if(!cl||!cc||!card){DB.pendingPresence=null;save();return}showPresencePopup(cl,cc,card)}
+
+// === WALLET VIEW ===
+function openWalletView(ccid){
+let cc=DB.clientCards.find(x=>x.id===ccid);
+let saved=getClientCards().find(c=>c.ccid===ccid);
+if(!cc&&!saved){toast('❌ Carte introuvable');return}
+let card=cc?DB.cards.find(c=>c.id===cc.cardId):null;
+let cl=cc?DB.clients.find(c=>c.id===cc.cid):null;
+let biz=card?card.biz:(saved?saved.biz:'Commerce');
+let c1=card?card.c1:(saved?saved.c1:'#FF6B35');
+let c2=card?card.c2:(saved?saved.c2:'#FF9A5C');
+let pts=cc?cc.pts:0;
+let max=card?card.max:(saved?saved.max:500);
+let holder=cl?cl.name:(saved?saved.holder:'Client');
+let reward=card?card.reward:(saved?saved.reward:'');
+let rule=card?card.rule:(saved?saved.rule:'');
+let code=card?card.code:(saved?saved.code:'');
+let prog=Math.min(pts/max*100,100);
+let remain=max-pts;
+
+$('walletContent').innerHTML='<div style="margin-bottom:20px">'+buildCard({biz,c1,c2,pts,max,holder,reward})+'</div><h2>'+biz+'</h2><div class="sub">Carte de fidélité</div><div class="wallet-details"><div class="wd-row"><span>Titulaire</span><span>'+holder+'</span></div><div class="wd-row"><span>Points</span><span style="color:var(--o)">'+pts+' / '+max+'</span></div><div class="wd-row"><span>Règle</span><span>'+rule+'</span></div><div class="wd-row"><span>Récompense</span><span>'+reward+'</span></div><div class="wd-prog"><div style="display:flex;justify-content:space-between;font-size:.78rem;font-weight:700"><span style="color:#888">Progression</span><span style="color:var(--o)">'+Math.round(prog)+'%</span></div><div class="wd-prog-bar"><div class="wd-prog-fill" style="width:'+prog+'%"></div></div><div style="font-size:.72rem;color:#aaa;margin-top:4px;text-align:center">'+(remain>0?remain+' points restants':'🎉 Récompense disponible !')+'</div></div></div>'+(code?'<div style="text-align:center;margin-top:16px"><button class="btn-big" onclick="location.hash=\'#join/'+code+'\'">📱 Valider ma présence</button></div>':'')+'<div class="wallet-saved"><p>📱 Carte sauvegardée</p><small>Cette carte est sauvegardée sur votre téléphone. Revenez ici à tout moment.</small></div>';
+setNav('wallet');showP('walletPage');
+}
+
+// === ADMIN ===
+function renderAdmin(){
+let tM=DB.merchants.length,actM=DB.merchants.filter(m=>m.status==='active').length,penM=DB.merchants.filter(m=>m.status==='pending').length;let tC=DB.cards.length,tCl=DB.clients.length,tP=DB.clientCards.reduce((s,x)=>s+x.pts,0);let stM=DB.merchants.filter(m=>m.plan==='starter').length,prM=DB.merchants.filter(m=>m.plan==='pro').length,pmM=DB.merchants.filter(m=>m.plan==='premium').length;
+$('abM').textContent=tM;$('abP').textContent=penM;$('aoM').textContent=tM;$('aoC').textContent=tC;$('aoCl').textContent=tCl;$('aoP').textContent=tP.toLocaleString();
+$('aKpis').innerHTML='<div class="kpi"><div class="kpi-v">'+actM+'</div><div class="kpi-l">✅ Actifs</div></div><div class="kpi"><div class="kpi-v">'+penM+'</div><div class="kpi-l">⏳ En attente</div></div><div class="kpi"><div class="kpi-v">'+prM+'</div><div class="kpi-l">🚀 Pro</div></div><div class="kpi"><div class="kpi-v">'+pmM+'</div><div class="kpi-l">💎 Premium</div></div>';
+let colors=['#FF6B35','#4D96FF','#6BCB77','#C77DFF','#FF6B9D'];
+let recent=DB.merchants.slice().sort((a,b)=>b.at-a.at).slice(0,5);let rh='';recent.forEach((m,i)=>{let sd=m.status==='active'?'sdot-a':m.status==='pending'?'sdot-p':'sdot-s';rh+='<div class="mr"><div class="sdot '+sd+'"></div><div class="mr-av" style="background:'+colors[i%colors.length]+'">'+m.name.charAt(0)+'</div><div class="mr-info"><div class="mr-biz">'+m.business+'</div><div class="mr-det">'+m.email+' · '+m.sector+' · '+timeAgo(m.at)+'</div></div><span class="side-badge bg-'+m.plan+'" style="flex-shrink:0">'+m.plan.toUpperCase()+'</span></div>'});$('aRecent').innerHTML=rh;
+$('aPlanDist').innerHTML='<div style="display:flex;flex-direction:column;gap:8px"><div style="display:flex;align-items:center;gap:9px"><div style="width:12px;height:12px;border-radius:4px;background:var(--g)"></div><span style="color:rgba(255,255,255,.6);font-weight:600;font-size:.8rem;flex:1">Starter</span><span style="color:#fff;font-weight:800">'+stM+'</span></div><div style="display:flex;align-items:center;gap:9px"><div style="width:12px;height:12px;border-radius:4px;background:var(--o)"></div><span style="color:rgba(255,255,255,.6);font-weight:600;font-size:.8rem;flex:1">Pro</span><span style="color:#fff;font-weight:800">'+prM+'</span></div><div style="display:flex;align-items:center;gap:9px"><div style="width:12px;height:12px;border-radius:4px;background:var(--pr)"></div><span style="color:rgba(255,255,255,.6);font-weight:600;font-size:.8rem;flex:1">Premium</span><span style="color:#fff;font-weight:800">'+pmM+'</span></div></div>';
+let sv=($('aMSearch')||{}).value||'';sv=sv.toLowerCase().trim();let ms=DB.merchants.slice().sort((a,b)=>b.at-a.at);if(sv)ms=ms.filter(m=>m.business.toLowerCase().includes(sv)||m.email.toLowerCase().includes(sv));$('aMCount').textContent=ms.length;let mh='';ms.forEach((m,i)=>{let cards=DB.cards.filter(c=>c.mid===m.id).length;let sd=m.status==='active'?'sdot-a':m.status==='pending'?'sdot-p':'sdot-s';mh+='<div class="mr"><div class="sdot '+sd+'"></div><div class="mr-av" style="background:'+colors[i%colors.length]+'">'+m.name.charAt(0)+'</div><div class="mr-info"><div class="mr-biz">'+m.business+'</div><div class="mr-det">'+m.name+' · '+m.email+' · '+m.sector+'</div></div><div class="mr-stats"><div class="mr-stat"><div class="mr-sv">'+cards+'</div><div class="mr-sl">Cartes</div></div></div><div class="mr-acts"><select class="psel" onchange="chgPlan(\''+m.id+'\',this.value)"><option value="starter"'+(m.plan==='starter'?' selected':'')+'>🌱</option><option value="pro"'+(m.plan==='pro'?' selected':'')+'>🚀</option><option value="premium"'+(m.plan==='premium'?' selected':'')+'>💎</option></select>';if(m.status==='active')mh+='<button class="cr-btn" onclick="chgStatus(\''+m.id+'\',\'suspended\')">🚫</button>';else if(m.status==='suspended')mh+='<button class="cr-btn" onclick="chgStatus(\''+m.id+'\',\'active\')">✅</button>';else mh+='<button class="cr-btn" onclick="chgStatus(\''+m.id+'\',\'active\')">✅</button><button class="cr-btn" onclick="chgStatus(\''+m.id+'\',\'suspended\')">❌</button>';mh+='<button class="cr-btn" onclick="delMerch(\''+m.id+'\')">🗑️</button></div></div>'});$('aMList').innerHTML=mh||'<div class="empty"><span class="empty-e">🏪</span><div class="empty-t">Aucun</div></div>';
+let pend=DB.merchants.filter(m=>m.status==='pending').sort((a,b)=>b.at-a.at);let pph='';if(!pend.length)pph='<div class="empty"><span class="empty-e">✅</span><div class="empty-t">Aucun en attente</div></div>';pend.forEach((m,i)=>{pph+='<div class="mr" style="background:rgba(255,217,61,.04);padding:12px 16px;border-radius:10px;margin-bottom:5px;border:1px solid rgba(255,217,61,.1)"><div class="sdot sdot-p"></div><div class="mr-av" style="background:'+colors[i%colors.length]+'">'+m.name.charAt(0)+'</div><div class="mr-info"><div class="mr-biz">'+m.business+'</div><div class="mr-det">'+m.name+' · '+m.email+' · '+m.sector+' · '+timeAgo(m.at)+'</div></div><div class="mr-acts" style="gap:5px"><button class="dbtn dbtn-ok" onclick="chgStatus(\''+m.id+'\',\'active\')">✅ Valider</button><button class="dbtn dbtn-d" onclick="chgStatus(\''+m.id+'\',\'suspended\')">❌ Refuser</button></div></div>'});$('aPendList').innerHTML=pph;
+let plms=DB.merchants.filter(m=>m.status==='active').sort((a,b)=>{let o2={premium:0,pro:1,starter:2};return(o2[a.plan]||2)-(o2[b.plan]||2)});let plh='';plms.forEach((m,i)=>{let pr=m.plan==='premium'?'9,000 DA':m.plan==='pro'?'4,500 DA':'Gratuit';plh+='<div class="mr"><div class="mr-av" style="background:'+colors[i%colors.length]+'">'+m.name.charAt(0)+'</div><div class="mr-info"><div class="mr-biz">'+m.business+'</div></div><span class="side-badge bg-'+m.plan+'" style="flex-shrink:0">'+m.plan.toUpperCase()+'</span><div style="font-size:.76rem;color:rgba(255,255,255,.4);font-weight:600;min-width:80px;text-align:right">'+pr+'</div><div class="mr-acts"><select class="psel" onchange="chgPlan(\''+m.id+'\',this.value)"><option value="starter"'+(m.plan==='starter'?' selected':'')+'>🌱</option><option value="pro"'+(m.plan==='pro'?' selected':'')+'>🚀</option><option value="premium"'+(m.plan==='premium'?' selected':'')+'>💎</option></select></div></div>'});$('aPlanList').innerHTML=plh;
+let acts=DB.acts.slice().sort((a,b)=>b.ts-a.ts).slice(0,20);let ah='';acts.forEach(a=>{let cl=DB.clients.find(c=>c.id===a.cid);if(!cl)return;let icon=a.type==='join'?'👤':a.type==='redeem'?'🎁':'⭐';ah+='<div style="display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px solid var(--bd);font-size:.8rem;color:rgba(255,255,255,.5);font-weight:500"><span style="font-size:.95rem">'+icon+'</span><span>'+cl.name+(a.amt?' +'+a.amt+' pts':'')+'</span><span style="margin-left:auto;font-size:.66rem;color:rgba(255,255,255,.2)">'+timeAgo(a.ts)+'</span></div>'});$('aActLog').innerHTML=ah||'<div style="text-align:center;padding:14px;color:rgba(255,255,255,.25)">Aucune</div>'}
+
+function chgPlan(mid,plan){let m=DB.merchants.find(x=>x.id===mid);if(!m)return;m.plan=plan;save();renderAdmin();toast('💎 '+m.business+' → '+plan.toUpperCase())}
+function chgStatus(mid,st){let m=DB.merchants.find(x=>x.id===mid);if(!m)return;m.status=st;save();renderAdmin();toast(st==='active'?'✅ Validé':'🚫 Suspendu')}
+function delMerch(mid){if(!confirm('Supprimer ?'))return;DB.cards=DB.cards.filter(c=>c.mid!==mid);DB.merchants=DB.merchants.filter(x=>x.id!==mid);save();renderAdmin();toast('🗑️ Supprimé')}
+
+// === FUNNEL ===
+let funnelPlan='pro',funnelPay='baridimob';
+function openFunnel(plan){funnelPlan=plan||'pro';$('funnelStep1').style.display='block';$('funnelStep2').style.display='none';$('funnelSuccess').classList.remove('on');document.querySelectorAll('.fp').forEach(f=>f.classList.remove('sel'));if(funnelPlan==='premium')document.querySelectorAll('.fp')[1]?.classList.add('sel');else document.querySelectorAll('.fp')[0]?.classList.add('sel');let m=getM();if(m){$('fName').value=m.name;$('fPhone').value=m.phone||'';$('fEmail').value=m.email;$('fBiz').value=m.business}updateFunnelTotal();$('funnelOv').classList.add('on')}
+function closeFunnel(){$('funnelOv').classList.remove('on')}
+function selPlan(plan,el){funnelPlan=plan;document.querySelectorAll('.fp').forEach(f=>f.classList.remove('sel'));el.classList.add('sel');updateFunnelTotal()}
+function selPay(method,el){funnelPay=method;document.querySelectorAll('.pay-opt').forEach(p=>p.classList.remove('sel'));el.classList.add('sel')}
+function updateFunnelTotal(){let p=funnelPlan==='premium'?'9,000 DA':'4,500 DA';let pn=funnelPlan==='premium'?'Premium':'Pro';$('fTotalPrice').innerHTML=p+'<span>/mois · '+pn+'</span>'}
+function goFunnelStep2(){$('funnelStep1').style.display='none';$('funnelStep2').style.display='block'}
+function submitFunnel(){clearErr();let name=$('fName').value.trim(),phone=$('fPhone').value.trim();if(!name||!phone)return showErr('fErr','Remplissez nom et téléphone');save();$('funnelStep2').style.display='none';$('funnelSuccess').classList.add('on');toast('✅ Demande envoyée !')}
+
+// === PREVIEW ===
+let prevC={c1:'#FF6B35',c2:'#FF9A5C'};
+function upPrev(){let biz=$('brandName').value||'Mon Commerce';let rew=$('rewVal').value||'Récompense';$('prevCardWrap').innerHTML=buildCard({biz,c1:prevC.c1,c2:prevC.c2,pts:0,max:500,holder:'Votre client',reward:rew});$('prevRew').textContent=rew}
+function setCol(c1,c2,el){document.querySelectorAll('#prevColors .csw').forEach(s=>s.classList.remove('on'));el.classList.add('on');prevC={c1,c2};upPrev()}
+
+// === UTILS ===
+function toast(msg){let t=$('toastEl');t.textContent=msg;t.className='toast on';clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),3500)}
+function esc(s){return(s||'').replace(/'/g,"\\'")}
+function copyTxt(t){navigator.clipboard?.writeText(t).then(()=>toast('📋 Copié !'))}
+function shareWA(code,biz){let url=joinURL(code);window.open('https://wa.me/?text='+encodeURIComponent('🎯 Obtenez votre carte fidélité '+biz+' !\n\n👉 '+url),'_blank')}
+
+function initLanding(){
+$('hc1').innerHTML=buildCard({biz:'Salon Beauté 💇',c1:'#FF6B9D',c2:'#FFB3CD',pts:8,max:10,holder:'Amina C.',reward:'10 visites',cls:'card-sm'});
+$('hc2').innerHTML=buildCard({biz:'Boutique Mode 👗',c1:'#4D96FF',c2:'#6BBBFF',pts:320,max:500,holder:'Sarah M.',reward:'500pts',cls:'card-sm'});
+$('hc3').innerHTML=buildCard({biz:'Pizza Oran 🍕',c1:'#FF6B35',c2:'#FF9A5C',pts:1200,max:1000,holder:'Karim T.',reward:'1000pts',cls:'card-sm'});
+upPrev();setTimeout(()=>genQR(joinURL('DEMO-PREVIEW'),$('demoQR'),160),200)}
+
+// === HASH ROUTING ===
+function checkHash(){
+let h=location.hash;
+if(h.indexOf('#join/')===0){let code=h.replace('#join/','');openJoin(code)}
+else if(h.indexOf('#wallet/')===0){let ccid=h.replace('#wallet/','');openWalletView(ccid)}
+}
+
+// === BOOT ===
+load();initColorPickers();
+(function(){
+if(location.hash.indexOf('#join/')===0||location.hash.indexOf('#wallet/')===0){setTimeout(checkHash,200)}
+else if(DB.role==='admin'&&DB.cur==='ADMIN'){enterAdmin()}
+else{let m=getM();if(m&&m.status==='active')enterDash(m);else{setNav('landing');showP('landing');setTimeout(initLanding,100)}}
+})();
+window.addEventListener('hashchange',checkHash);
+setInterval(()=>{if(DB.role==='merchant'&&DB.cur){load();checkPendingPresence()}},3000);
+['lEmail','lPass'].forEach(id=>$(id)?.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()}));
+['sName','sBiz','sPhone','sEmail','sPass'].forEach(id=>$(id)?.addEventListener('keydown',e=>{if(e.key==='Enter')doSignup()}));
+$('cjPhone')?.addEventListener('keydown',e=>{if(e.key==='Enter')cjCheckPhone()});
+$('cjName')?.addEventListener('keydown',e=>{if(e.key==='Enter')cjCreateClient()});
+document.querySelectorAll('.ov').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('on')}));
+document.querySelectorAll('a[href^="#"]').forEach(a=>a.addEventListener('click',e=>{let t=document.querySelector(a.getAttribute('href'));if(t){e.preventDefault();t.scrollIntoView({behavior:'smooth'})}}));
+
+// PWA Service Worker (inline)
+if('serviceWorker' in navigator){
+let swCode='self.addEventListener("install",e=>self.skipWaiting());self.addEventListener("activate",e=>e.waitUntil(clients.claim()));self.addEventListener("fetch",e=>e.respondWith(fetch(e.request).catch(()=>new Response("Offline"))));';
+let swBlob=new Blob([swCode],{type:'application/javascript'});
+let swUrl=URL.createObjectURL(swBlob);
+navigator.serviceWorker.register(swUrl).catch(()=>{});
+}
+
+// Dynamic manifest for PWA
+let manifest={name:'Fidali',short_name:'Fidali',start_url:BASE,display:'standalone',background_color:'#FFFEF5',theme_color:'#FF6B35',icons:[{src:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🎯</text></svg>',sizes:'192x192',type:'image/svg+xml'}]};
+let mBlob=new Blob([JSON.stringify(manifest)],{type:'application/json'});
+$('pwaManifest')?.setAttribute('href',URL.createObjectURL(mBlob));
+
+console.log('🎯 Fidali v17 — WALLET + SAVE');
+console.log('🍕 Demo: karim@pizzaoran.dz / demo123');
+console.log('💇 Demo: amina@salonbeaute.dz / demo123');
+console.log('🛡️ Admin: admin@fidali.dz / admin123');
+console.log('📱 Test: add #join/PIZZA-ORAN-001 to URL');
+console.log('📱 Wallet: add #wallet/CC... to URL');
+</script>
+</body>
+</html>
