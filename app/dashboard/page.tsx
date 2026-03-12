@@ -366,9 +366,19 @@ export default function DashboardPage() {
                 ✦ Personnalisation
               </button>
             )}
+            {merchant?.plan === 'premium' && (
+              <button onClick={() => router.push('/dashboard/branches')} className="hidden md:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-slate-700 text-white hover:bg-slate-800 rounded-lg transition shadow-sm">
+                🏪 Branches
+              </button>
+            )}
+            {merchant?.plan === 'premium' && (
+              <button onClick={() => router.push('/dashboard/api')} className="hidden md:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-rose-600 text-white hover:bg-rose-700 rounded-lg transition shadow-sm">
+                🔑 API
+              </button>
+            )}
             {merchant?.plan !== 'premium' && (
               <button onClick={() => router.push('/dashboard/upgrade')} className="hidden md:flex px-3 py-1.5 text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg transition shadow-sm">
-                Upgrade
+                {merchant?.plan === 'pro' ? '⭐ Passer Premium' : 'Upgrade'}
               </button>
             )}
             <button onClick={handleLogout} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition">
