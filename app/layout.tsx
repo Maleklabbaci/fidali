@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import SplashProvider from '@/components/SplashProvider'
 
 export const metadata: Metadata = {
   title: 'Fidali',
@@ -9,6 +10,7 @@ export const metadata: Metadata = {
     apple: '/logo.png',
   },
 }
+
 export default function RootLayout({
   children,
 }: {
@@ -16,7 +18,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="fr">
-      <body>{children}</body>
+      <body>
+        <SplashProvider>
+          {children}
+        </SplashProvider>
+      </body>
     </html>
   )
 }
