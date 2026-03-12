@@ -91,4 +91,4 @@ export function isAuthError(result: AuthResult | NextResponse): result is NextRe
   return result instanceof NextResponse
 }
 
-export { getSupabaseAdmin as supabaseAdmin }
+export { getSupabaseAdmin }
