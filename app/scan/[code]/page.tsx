@@ -84,11 +84,9 @@ export default function ScanPage() {
 
   // Vérifier si push déjà activé
   useEffect(() => {
-    try {
-      if (typeof window !== 'undefined' && typeof Notification !== 'undefined') {
-        setPushEnabled(Notification.permission === 'granted')
-      }
-    } catch {}
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setPushEnabled(Notification.permission === 'granted')
+    }
   }, [])
 
   const loadCard = async () => {
@@ -125,7 +123,7 @@ export default function ScanPage() {
         .from('clients')
         .select('*')
         .eq('phone', clientPhone)
-        .single()
+        .maybeSingle()
 
       if (!client) { setStep('new_client'); return }
 
@@ -134,7 +132,7 @@ export default function ScanPage() {
         .select('*')
         .eq('client_id', client.id)
         .eq('card_id', cardData.id)
-        .single()
+        .maybeSingle()
 
       if (!clientCard) { setStep('new_client'); return }
 
@@ -153,7 +151,7 @@ export default function ScanPage() {
         .in('status', ['pending', 'confirmed'])
         .order('created_at', { ascending: false })
         .limit(1)
-        .single()
+        .maybeSingle()
 
       if (lastPresence) {
         const timeSince = Date.now() - new Date(lastPresence.created_at).getTime()
@@ -225,17 +223,14 @@ export default function ScanPage() {
         })
       }
 
-      try { localStorage.setItem(`fidali_phone_${cardCode}`, cleanPhone) } catch {}
-      try { localStorage.setItem('fidali_client', JSON.stringify(client)) } catch {}
+      localStorage.setItem(`fidali_phone_${cardCode}`, cleanPhone)
+      localStorage.setItem('fidali_client', JSON.stringify(client))
       setClientData({ client, clientCard })
       setPoints(clientCard.points || 0)
 
-      // Activer les push notifications — en arrière-plan, ne bloque pas le flow
-      enablePushForClient(client.id).then(() => {
-        try {
-          setPushEnabled(typeof Notification !== 'undefined' && Notification.permission === 'granted')
-        } catch {}
-      }).catch(() => {})
+      // Activer les push notifications
+      await enablePushForClient(client.id)
+      setPushEnabled(Notification.permission === 'granted')
 
       const { data: presence } = await supabase
         .from('pending_presences')
@@ -277,7 +272,7 @@ export default function ScanPage() {
         .in('status', ['pending', 'confirmed'])
         .order('created_at', { ascending: false })
         .limit(1)
-        .single()
+        .maybeSingle()
 
       if (lastPresence) {
         const timeSince = Date.now() - new Date(lastPresence.created_at).getTime()
@@ -666,3 +661,4 @@ export default function ScanPage() {
     </div>
   )
 }
+
