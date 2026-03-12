@@ -21,20 +21,13 @@ export default function PaymentsPage() {
 
   const load = async () => {
     try {
-      const { createClient } = await import('@supabase/supabase-js')
-      // Utiliser directement les variables env pour contourner tout cache
-      const client = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      )
-      const { data, error } = await client
+      const { supabase } = await import('@/database/supabase-client')
+      const { data, error } = await supabase
         .from('payment_requests')
         .select('*, merchants(business_name, email, name)')
         .order('created_at', { ascending: false })
 
-      if (error) {
-        console.error('Payments load error:', error)
-      }
+      if (error) console.error('Payments load error:', error)
       setPayments(data || [])
     } catch (e) {
       console.error(e)
