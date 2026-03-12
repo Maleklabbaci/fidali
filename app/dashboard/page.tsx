@@ -334,6 +334,11 @@ export default function DashboardPage() {
             <button onClick={handleExportPDF} disabled={exportingPDF} className="hidden md:flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition disabled:opacity-50">
               {exportingPDF ? 'Export...' : 'Export PDF'}
             </button>
+            {(merchant?.plan === 'pro' || merchant?.plan === 'premium') && (
+              <button onClick={() => router.push('/dashboard/personnalisation')} className="hidden md:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-violet-600 text-white hover:bg-violet-700 rounded-lg transition shadow-sm">
+                ✦ Personnalisation
+              </button>
+            )}
             {merchant?.plan !== 'premium' && (
               <button onClick={() => router.push('/dashboard/upgrade')} className="hidden md:flex px-3 py-1.5 text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg transition shadow-sm">
                 Upgrade
