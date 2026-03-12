@@ -15,20 +15,20 @@ export default function PaymentsPage() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'pending' | 'confirmed' | 'rejected'>('pending')
   const [actionLoading, setActionLoading] = useState<string | null>(null)
-  const [toast, setToast] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
 
   useEffect(() => { load() }, [])
 
   const load = async () => {
     try {
-      const { supabase } = await import('@/database/supabase-client')
-      const { data, error } = await supabase
-        .from('payment_requests')
-        .select('*, merchants(business_name, email, name)')
-        .order('created_at', { ascending: false })
-
-      if (error) console.error('Payments load error:', error)
-      setPayments(data || [])
+      const res = await fetch('/api/admin/payments')
+      const json = await res.json()
+      if (json.error) {
+        console.error('Payments error:', json.error)
+        setPayments([])
+      } else {
+        setPayments(json.data || [])
+      }
     } catch (e) {
       console.error(e)
     } finally {
@@ -36,23 +36,31 @@ export default function PaymentsPage() {
     }
   }
 
-  const showToast = (msg: string) => {
-    setToast(msg)
+  const showToast = (msg: string, ok = true) => {
+    setToast({ msg, ok })
     setTimeout(() => setToast(null), 3000)
   }
 
   const action = async (type: 'approve' | 'reject', p: any) => {
     setActionLoading(p.id + type)
     try {
-      const mod = await import('@/database/supabase-client')
-      if (type === 'approve') {
-        await mod.approvePayment(p.id, p.merchant_id, p.requested_plan)
-        showToast(`✓ Paiement confirmé — plan ${p.requested_plan} activé`)
+      const res = await fetch('/api/admin/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: type,
+          paymentId: p.id,
+          merchantId: p.merchant_id,
+          plan: p.requested_plan,
+        }),
+      })
+      const json = await res.json()
+      if (json.error) {
+        showToast('Erreur : ' + json.error, false)
       } else {
-        await mod.rejectPayment(p.id)
-        showToast('Paiement refusé')
+        showToast(type === 'approve' ? `✓ Paiement confirmé — plan ${p.requested_plan} activé` : 'Paiement refusé', type === 'approve')
+        await load()
       }
-      await load()
     } finally {
       setActionLoading(null)
     }
@@ -84,8 +92,12 @@ export default function PaymentsPage() {
     <div className="space-y-6">
 
       {toast && (
-        <div className="fixed top-5 right-5 z-50 px-5 py-3 rounded-xl text-sm font-semibold bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 shadow-2xl">
-          {toast}
+        <div className={`fixed top-5 right-5 z-50 px-5 py-3 rounded-xl text-sm font-semibold shadow-2xl border ${
+          toast.ok
+            ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-300'
+            : 'bg-red-500/20 border-red-500/30 text-red-300'
+        }`}>
+          {toast.msg}
         </div>
       )}
 
@@ -129,7 +141,7 @@ export default function PaymentsPage() {
       {/* Liste */}
       {filtered.length === 0 ? (
         <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl py-16 text-center text-white/20 text-sm">
-          Aucun paiement
+          Aucun paiement {filter !== 'all' ? `(${filter})` : ''}
         </div>
       ) : (
         <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl overflow-hidden">
