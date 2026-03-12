@@ -44,7 +44,28 @@ export default function DashboardPage() {
     setMerchant(m)
     loadData(m.id)
     loadMessages(m.id)
-    const interval = setInterval(() => { loadData(m.id); loadMessages(m.id) }, 15000)
+
+    // Vérifie si le plan a changé en DB (upgrade admin)
+    const checkPlanUpdate = async () => {
+      try {
+        const { supabase } = await import('@/database/supabase-client')
+        const { data } = await supabase.from('merchants').select('plan, status').eq('id', m.id).single()
+        if (data && data.plan !== m.plan) {
+          const updated = { ...m, plan: data.plan, status: data.status }
+          localStorage.setItem('merchant', JSON.stringify(updated))
+          sessionStorage.setItem('merchant', JSON.stringify(updated))
+          setMerchant(updated)
+        }
+      } catch {}
+    }
+
+    const interval = setInterval(() => {
+      loadData(m.id)
+      loadMessages(m.id)
+      checkPlanUpdate()
+    }, 15000)
+    // Vérif immédiate au chargement
+    checkPlanUpdate()
     return () => clearInterval(interval)
   }, [router])
 
