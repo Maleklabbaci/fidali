@@ -5,6 +5,38 @@ import { useParams, useRouter } from 'next/navigation'
 
 type Step = 'loading' | 'not_found' | 'new_client' | 'returning' | 'pending' | 'validated' | 'rejected' | 'cooldown' | 'error'
 
+// Helper pour convertir la clé VAPID
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
+  const rawData = window.atob(base64)
+  const outputArray = new Uint8Array(rawData.length)
+  for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i)
+  return outputArray
+}
+
+// Activer les notifications push pour un client
+async function enablePushForClient(clientId: string) {
+  try {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
+    const reg = await navigator.serviceWorker.register('/sw.js')
+    await navigator.serviceWorker.ready
+    const perm = await Notification.requestPermission()
+    if (perm !== 'granted') return
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!),
+    })
+    await fetch('/api/push/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subscription: sub.toJSON(), clientId }),
+    })
+  } catch (e) {
+    console.error('Push subscribe error:', e)
+  }
+}
+
 export default function ScanPage() {
   const params = useParams()
   const router = useRouter()
@@ -21,10 +53,9 @@ export default function ScanPage() {
   const [points, setPoints] = useState(0)
   const [maxPoints, setMaxPoints] = useState(0)
   const [cooldownMinutes, setCooldownMinutes] = useState(0)
+  const [pushEnabled, setPushEnabled] = useState(false)
 
-  useEffect(() => {
-    loadCard()
-  }, [cardCode])
+  useEffect(() => { loadCard() }, [cardCode])
 
   useEffect(() => {
     if (!presenceId) return
@@ -50,6 +81,13 @@ export default function ScanPage() {
     }, 60000)
     return () => clearInterval(interval)
   }, [step, cooldownMinutes])
+
+  // Vérifier si push déjà activé
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setPushEnabled(Notification.permission === 'granted')
+    }
+  }, [])
 
   const loadCard = async () => {
     try {
@@ -103,10 +141,8 @@ export default function ScanPage() {
       setName(client.name)
       setPhone(clientPhone)
 
-      // Sauvegarder le client en local
       localStorage.setItem('fidali_client', JSON.stringify(client))
 
-      // Vérifier cooldown — check la dernière présence confirmée
       const { data: lastPresence } = await supabase
         .from('pending_presences')
         .select('created_at')
@@ -144,7 +180,6 @@ export default function ScanPage() {
     try {
       const { supabase } = await import('@/database/supabase-client')
 
-      // Créer ou trouver le client
       let { data: client } = await supabase
         .from('clients')
         .select('*')
@@ -161,7 +196,6 @@ export default function ScanPage() {
         client = newClient
       }
 
-      // Créer ou trouver la client_card
       let { data: clientCard } = await supabase
         .from('client_cards')
         .select('*')
@@ -178,7 +212,6 @@ export default function ScanPage() {
         if (ccErr) { setError('Erreur: ' + ccErr.message); setLoading(false); return }
         clientCard = newCC
 
-        // Log activité
         await supabase.from('activities').insert({
           merchant_id: card.merchant_id,
           card_id: card.id,
@@ -190,13 +223,15 @@ export default function ScanPage() {
         })
       }
 
-      // Sauvegarder
       localStorage.setItem(`fidali_phone_${cardCode}`, cleanPhone)
       localStorage.setItem('fidali_client', JSON.stringify(client))
       setClientData({ client, clientCard })
       setPoints(clientCard.points || 0)
 
-      // Créer présence en attente
+      // Activer les push notifications
+      await enablePushForClient(client.id)
+      setPushEnabled(Notification.permission === 'granted')
+
       const { data: presence } = await supabase
         .from('pending_presences')
         .insert({
@@ -229,7 +264,6 @@ export default function ScanPage() {
     try {
       const { supabase } = await import('@/database/supabase-client')
 
-      // Double check cooldown
       const { data: lastPresence } = await supabase
         .from('pending_presences')
         .select('created_at')
@@ -274,6 +308,12 @@ export default function ScanPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleEnablePush = async () => {
+    if (!clientData?.client?.id) return
+    await enablePushForClient(clientData.client.id)
+    setPushEnabled(Notification.permission === 'granted')
   }
 
   const progressPct = maxPoints > 0 ? Math.min((points / maxPoints) * 100, 100) : 0
@@ -339,6 +379,16 @@ export default function ScanPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
                     <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required placeholder="0555 00 00 00" className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm" />
                   </div>
+
+                  {/* Push notification opt-in */}
+                  <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3 flex items-start gap-3">
+                    <span className="text-xl">🔔</span>
+                    <div>
+                      <p className="text-xs font-semibold text-indigo-800">Activer les notifications</p>
+                      <p className="text-xs text-indigo-600 mt-0.5">Recevez une alerte quand vous gagnez des points ou débloquez une récompense.</p>
+                    </div>
+                  </div>
+
                   <button type="submit" disabled={loading} className="w-full py-3.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition disabled:opacity-50 text-sm">
                     {loading ? 'Inscription...' : '✅ Rejoindre & confirmer ma visite'}
                   </button>
@@ -350,7 +400,6 @@ export default function ScanPage() {
           {/* RETURNING CLIENT */}
           {step === 'returning' && card && (
             <div className="space-y-4">
-              {/* Carte fidélité du client */}
               <div
                 className="rounded-3xl p-6 relative overflow-hidden shadow-2xl"
                 style={{ background: `linear-gradient(135deg, ${card.color1 || '#4f46e5'}, ${card.color2 || '#7c3aed'})`, minHeight: '200px' }}
@@ -362,9 +411,9 @@ export default function ScanPage() {
                   <div className="flex items-start justify-between mb-2">
                     <div>
                       <div className="flex items-center gap-2">
-  <img src="/logo-white.png" alt="" className="w-5 h-5 object-contain opacity-50" />
-  <p className="text-[10px] text-white/40 uppercase tracking-[0.2em]">Carte de fidélité</p>
-</div>
+                        <img src="/logo-white.png" alt="" className="w-5 h-5 object-contain opacity-50" />
+                        <p className="text-[10px] text-white/40 uppercase tracking-[0.2em]">Carte de fidélité</p>
+                      </div>
                       <h2 className="text-xl font-bold mt-0.5">{card.business_name}</h2>
                     </div>
                     <div className="bg-white/15 backdrop-blur px-3 py-1.5 rounded-full border border-white/10">
@@ -372,13 +421,11 @@ export default function ScanPage() {
                     </div>
                   </div>
 
-                  {/* Info client */}
                   <div className="bg-white/10 backdrop-blur rounded-xl p-3 mb-4">
                     <p className="text-sm font-semibold">👤 {name}</p>
                     <p className="text-xs text-white/60">{phone}</p>
                   </div>
 
-                  {/* Progress dots */}
                   <div className="flex gap-[5px] mb-3">
                     {Array.from({ length: Math.min(maxPoints, 15) }).map((_, i) => (
                       <div
@@ -408,7 +455,6 @@ export default function ScanPage() {
                 </div>
               </div>
 
-              {/* Stats sous la carte */}
               <div className="bg-white/10 backdrop-blur rounded-2xl mx-4 -mt-2 p-4 border border-white/10">
                 <div className="grid grid-cols-3 gap-3 text-center text-white">
                   <div>
@@ -426,7 +472,6 @@ export default function ScanPage() {
                 </div>
               </div>
 
-              {/* Confirmer visite */}
               <div className="bg-white rounded-3xl p-6 shadow-2xl text-center">
                 <p className="text-4xl mb-3">🛍️</p>
                 <h3 className="text-lg font-bold text-gray-900 mb-2">Confirmer votre visite</h3>
@@ -440,12 +485,17 @@ export default function ScanPage() {
                   {loading ? 'Envoi...' : '✅ Oui, confirmer ma visite'}
                 </button>
 
-                {/* Bouton avis */}
+                {/* Activer push si pas encore fait */}
+                {!pushEnabled && (
+                  <button onClick={handleEnablePush} className="w-full py-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold rounded-2xl transition flex items-center justify-center gap-2 text-sm border border-indigo-100 mb-3">
+                    🔔 Activer les notifications push
+                  </button>
+                )}
+
                 <button onClick={() => router.push(`/avis/${card.code}`)} className="w-full py-3 bg-amber-50 hover:bg-amber-100 text-amber-700 font-semibold rounded-2xl transition flex items-center justify-center gap-2 text-sm border border-amber-100">
                   ⭐ Donner mon avis
                 </button>
 
-                {/* Voir mes cartes */}
                 {phone && (
                   <button onClick={() => router.push(`/client/${encodeURIComponent(phone)}`)} className="w-full mt-2 py-2.5 text-indigo-600 hover:bg-indigo-50 rounded-xl text-xs font-semibold transition">
                     💳 Voir toutes mes cartes
@@ -516,7 +566,6 @@ export default function ScanPage() {
 
                 <p className="text-sm text-gray-400 mb-4">Merci pour votre fidélité !</p>
 
-                {/* Boutons après validation */}
                 <div className="space-y-2">
                   <button onClick={() => router.push(`/avis/${card.code}`)} className="w-full py-3 bg-amber-50 hover:bg-amber-100 text-amber-700 font-semibold rounded-2xl transition flex items-center justify-center gap-2 text-sm border border-amber-100">
                     ⭐ Donner mon avis sur {card.business_name}
@@ -547,7 +596,6 @@ export default function ScanPage() {
           {/* COOLDOWN */}
           {step === 'cooldown' && card && (
             <div className="space-y-4">
-              {/* Carte du client quand même */}
               <div
                 className="rounded-3xl p-6 relative overflow-hidden shadow-2xl"
                 style={{ background: `linear-gradient(135deg, ${card.color1 || '#4f46e5'}, ${card.color2 || '#7c3aed'})` }}
@@ -575,7 +623,6 @@ export default function ScanPage() {
                 </div>
               </div>
 
-              {/* Message cooldown */}
               <div className="bg-white rounded-3xl p-6 shadow-2xl text-center">
                 <p className="text-4xl mb-3">⏰</p>
                 <h3 className="text-lg font-bold text-gray-900 mb-2">Trop tôt !</h3>
@@ -586,7 +633,6 @@ export default function ScanPage() {
                   <p className="text-xs text-amber-600 mt-1">avant la prochaine validation</p>
                 </div>
 
-                {/* Quand même proposer l'avis */}
                 <button onClick={() => router.push(`/avis/${card.code}`)} className="w-full py-3 bg-amber-50 hover:bg-amber-100 text-amber-700 font-semibold rounded-2xl transition flex items-center justify-center gap-2 text-sm border border-amber-100">
                   ⭐ Donner mon avis en attendant
                 </button>
