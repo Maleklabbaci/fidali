@@ -84,9 +84,11 @@ export default function ScanPage() {
 
   // Vérifier si push déjà activé
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      setPushEnabled(Notification.permission === 'granted')
-    }
+    try {
+      if (typeof window !== 'undefined' && 'Notification' in window) {
+        setPushEnabled((window as any).Notification.permission === 'granted')
+      }
+    } catch {}
   }, [])
 
   const loadCard = async () => {
@@ -97,7 +99,7 @@ export default function ScanPage() {
         .select('*')
         .eq('code', cardCode)
         .eq('is_active', true)
-        .single()
+        .maybeSingle()
 
       if (!cardData) { setStep('not_found'); return }
       setCard(cardData)
@@ -123,7 +125,7 @@ export default function ScanPage() {
         .from('clients')
         .select('*')
         .eq('phone', clientPhone)
-        .maybeSingle()
+        .single()
 
       if (!client) { setStep('new_client'); return }
 
@@ -132,7 +134,7 @@ export default function ScanPage() {
         .select('*')
         .eq('client_id', client.id)
         .eq('card_id', cardData.id)
-        .maybeSingle()
+        .single()
 
       if (!clientCard) { setStep('new_client'); return }
 
@@ -151,7 +153,7 @@ export default function ScanPage() {
         .in('status', ['pending', 'confirmed'])
         .order('created_at', { ascending: false })
         .limit(1)
-        .maybeSingle()
+        .single()
 
       if (lastPresence) {
         const timeSince = Date.now() - new Date(lastPresence.created_at).getTime()
@@ -228,9 +230,9 @@ export default function ScanPage() {
       setClientData({ client, clientCard })
       setPoints(clientCard.points || 0)
 
-      // Activer les push notifications
-      await enablePushForClient(client.id)
-      setPushEnabled(Notification.permission === 'granted')
+      // Activer les push notifications (non-bloquant, Safari safe)
+      try { enablePushForClient(client.id).catch(() => {}) } catch {}
+      try { if ('Notification' in window) setPushEnabled((window as any).Notification.permission === 'granted') } catch {}
 
       const { data: presence } = await supabase
         .from('pending_presences')
@@ -272,7 +274,7 @@ export default function ScanPage() {
         .in('status', ['pending', 'confirmed'])
         .order('created_at', { ascending: false })
         .limit(1)
-        .maybeSingle()
+        .single()
 
       if (lastPresence) {
         const timeSince = Date.now() - new Date(lastPresence.created_at).getTime()
@@ -312,8 +314,8 @@ export default function ScanPage() {
 
   const handleEnablePush = async () => {
     if (!clientData?.client?.id) return
-    await enablePushForClient(clientData.client.id)
-    setPushEnabled(Notification.permission === 'granted')
+    try { enablePushForClient(clientData.client.id).catch(() => {}) } catch {}
+    try { if ('Notification' in window) setPushEnabled((window as any).Notification.permission === 'granted') } catch {}
   }
 
   const progressPct = maxPoints > 0 ? Math.min((points / maxPoints) * 100, 100) : 0
@@ -661,4 +663,3 @@ export default function ScanPage() {
     </div>
   )
 }
-
