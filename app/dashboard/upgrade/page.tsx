@@ -80,19 +80,6 @@ export default function UpgradePage() {
     try {
       const { requestUpgrade, supabase } = await import('@/database/supabase-client')
 
-      let proofUrl: string | undefined
-      if (proofFile) {
-        const ext = proofFile.name.split('.').pop() || 'jpg'
-        const fileName = `${merchant.id}-${Date.now()}.${ext}`
-        const { data: up, error: upErr } = await supabase.storage
-          .from('payment-proofs')
-          .upload(fileName, proofFile, { upsert: true, contentType: proofFile.type })
-        if (!upErr && up) {
-          const { data: urlData } = supabase.storage.from('payment-proofs').getPublicUrl(up.path)
-          proofUrl = urlData.publicUrl
-        }
-      }
-
       const plan = PLANS.find(p => p.id === selectedPlan)!
       const amount = getPrice(plan.monthlyPrice)
 
@@ -103,7 +90,6 @@ export default function UpgradePage() {
         phone: form.contact_phone,
         email: merchant.email,
         note: `[${billing === 'annual' ? 'Annuel' : 'Mensuel'}] ${form.note}`,
-        proofUrl,
         amount,
       })
       setStep('done')
