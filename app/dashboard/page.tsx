@@ -560,6 +560,8 @@ export default function DashboardPage() {
                   onShowQR={() => { if (cards[0]) setShowQR(cards[0].code) }}
                   onGoValidations={() => setActiveTab('pending')}
                   merchantName={merchant?.name}
+                  plan={merchant?.plan}
+                  onUpgrade={() => router.push('/dashboard/upgrade')}
                 />
                 {cards.length > 0 && (
                   <div className="space-y-3">
@@ -744,6 +746,8 @@ export default function DashboardPage() {
               onShowQR={() => { if (cards[0]) setShowQR(cards[0].code) }}
               onGoValidations={() => setActiveTab('pending')}
               merchantName={merchant?.name}
+              plan={merchant?.plan}
+              onUpgrade={() => router.push('/dashboard/upgrade')}
             />
             {cards.length > 0 && (
               <div className="grid md:grid-cols-2 gap-5">
