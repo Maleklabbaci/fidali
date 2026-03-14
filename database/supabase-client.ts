@@ -688,21 +688,29 @@ export async function requestUpgrade(merchantId: string, data: {
 }) {
   const amount = data.amount ?? (data.plan === 'premium' ? 5000 : 2500)
 
-  const result = await safeQuery(() =>
-    supabase.from('payment_requests').insert({
-      merchant_id: merchantId,
-      requested_plan: data.plan,
-      payment_method: data.paymentMethod,
-      amount_dzd: amount,
-      contact_name: data.name,
-      contact_phone: data.phone,
-      contact_email: data.email,
-      note: data.note || null,
-      proof_url: data.proofUrl || null,
-    })
-  )
+  // Use supabaseAdmin if available, fallback to supabase
+  const client = typeof window === 'undefined'
+    ? supabase
+    : supabase
 
-  return result !== null ? { success: true as const } : { success: false as const, error: 'Erreur' }
+  const { error } = await client.from('payment_requests').insert({
+    merchant_id: merchantId,
+    requested_plan: data.plan,
+    payment_method: data.paymentMethod,
+    amount_dzd: amount,
+    contact_name: data.name,
+    contact_phone: data.phone,
+    contact_email: data.email,
+    note: data.note || null,
+    proof_url: data.proofUrl || null,
+  })
+
+  if (error) {
+    console.error('requestUpgrade error:', error)
+    return { success: false as const, error: error.message }
+  }
+
+  return { success: true as const }
 }
 
 // ============================================
@@ -813,20 +821,52 @@ export async function getPendingPayments() {
 }
 
 export async function approvePayment(paymentId: string, merchantId: string, plan: string) {
+  const now = new Date()
+
+  // Detect billing period from payment note (annual vs monthly)
+  const { data: payReq } = await supabase
+    .from('payment_requests')
+    .select('note, amount_dzd')
+    .eq('id', paymentId)
+    .maybeSingle()
+
+  const isAnnual = payReq?.note?.includes('[Annuel]') || false
+  const subStart = now.toISOString()
+  const subEnd = new Date(now)
+  if (isAnnual) {
+    subEnd.setFullYear(subEnd.getFullYear() + 1)
+  } else {
+    subEnd.setMonth(subEnd.getMonth() + 1)
+  }
+
   // 1. Confirmer le paiement
   await safeQuery(() =>
-    supabase.from('payment_requests').update({ status: 'confirmed', processed_at: new Date().toISOString() }).eq('id', paymentId)
+    supabase.from('payment_requests').update({
+      status: 'confirmed',
+      processed_at: now.toISOString(),
+    }).eq('id', paymentId)
   )
-  // 2. Mettre à jour le plan
-  await changeMerchantPlan(merchantId, plan)
-  // 3. Notifier le commerçant via notifications table
+
+  // 2. Mettre à jour le plan + dates d'abonnement
+  await safeQuery(() =>
+    supabase.from('merchants').update({
+      plan,
+      sub_start: subStart,
+      sub_end: subEnd.toISOString(),
+      sub_billing: isAnnual ? 'annual' : 'monthly',
+      updated_at: now.toISOString(),
+    }).eq('id', merchantId)
+  )
+
+  // 3. Notification au commerçant
+  const endLabel = subEnd.toLocaleDateString('fr-DZ', { day: 'numeric', month: 'long', year: 'numeric' })
   await safeQuery(() =>
     supabase.from('notifications').insert({
       merchant_id: merchantId,
       type: 'plan_upgraded',
-      title: 'Plan mis à jour',
-      message: `Votre plan a été mis à jour vers ${plan}. Profitez de vos nouvelles fonctionnalités !`,
-      created_at: new Date().toISOString(),
+      title: `✅ Plan ${plan.charAt(0).toUpperCase() + plan.slice(1)} activé !`,
+      message: `Votre abonnement ${isAnnual ? 'annuel' : 'mensuel'} est actif jusqu'au ${endLabel}. Profitez de toutes vos fonctionnalités !`,
+      created_at: now.toISOString(),
     })
   )
 }
