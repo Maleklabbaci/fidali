@@ -46,13 +46,22 @@ export default function DashboardPage() {
     if (!stored) { router.push('/login'); return }
     const m = JSON.parse(stored)
 
-    // Vérifier si le profil est complété — si non, rediriger immédiatement
+    // Vérifier profil + status avant d'accéder au dashboard
     const init = async () => {
       try {
         const { getMerchantProfile } = await import('@/database/supabase-client')
         const profile = await getMerchantProfile(m.id)
         if (!profile) {
           router.push('/complete-profile')
+          return
+        }
+        // Profil soumis mais en attente ou rejeté
+        if (profile.status === 'pending') {
+          router.push('/dashboard/pending')
+          return
+        }
+        if (profile.status === 'rejected') {
+          router.push('/dashboard/pending?rejected=1')
           return
         }
       } catch (e) {
@@ -68,9 +77,9 @@ export default function DashboardPage() {
     const checkPlanUpdate = async () => {
       try {
         const { supabase } = await import('@/database/supabase-client')
-        const { data } = await supabase.from('merchants').select('plan, status').eq('id', m.id).maybeSingle()
-        if (data && data.plan !== m.plan) {
-          const updated = { ...m, plan: data.plan, status: data.status }
+        const { data } = await supabase.from('merchants').select('plan, status, sub_start, sub_end, sub_billing').eq('id', m.id).maybeSingle()
+        if (data && (data.plan !== m.plan || data.sub_end !== m.sub_end)) {
+          const updated = { ...m, plan: data.plan, status: data.status, sub_start: data.sub_start, sub_end: data.sub_end, sub_billing: data.sub_billing }
           localStorage.setItem('merchant', JSON.stringify(updated))
           sessionStorage.setItem('merchant', JSON.stringify(updated))
           setMerchant(updated)
@@ -365,6 +374,18 @@ export default function DashboardPage() {
                 <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${merchant?.plan === 'premium' ? 'bg-violet-100 text-violet-600' : merchant?.plan === 'pro' ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-500'}`}>
                   {merchant?.plan || 'starter'}
                 </span>
+                {merchant?.sub_end && merchant?.plan !== 'starter' && (() => {
+                  const end = new Date(merchant.sub_end)
+                  const now = new Date()
+                  const daysLeft = Math.ceil((end.getTime() - now.getTime()) / 86400000)
+                  const isExpired = daysLeft <= 0
+                  const isWarning = daysLeft <= 7 && daysLeft > 0
+                  return (
+                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${isExpired ? 'bg-red-100 text-red-600' : isWarning ? 'bg-amber-100 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                      {isExpired ? '⚠️ Expiré' : isWarning ? `⚠️ ${daysLeft}j` : `✓ ${daysLeft}j`}
+                    </span>
+                  )
+                })()}
                 <span className="hidden sm:flex items-center gap-1"><span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" /> en ligne</span>
               </p>
             </div>
