@@ -74,16 +74,25 @@ export default function UpgradePage() {
     monthlyPrice * 12 - monthlyPrice * 10
 
 
-  const handleSubmit = async () => {
+ const handleSubmit = async () => {
     if (!selectedPlan || !merchant) return
     setLoading(true)
     try {
-      const { requestUpgrade, supabase } = await import('@/database/supabase-client')
-
+      const { requestUpgrade } = await import('@/database/supabase-client')
+ 
       const plan = PLANS.find(p => p.id === selectedPlan)!
       const amount = getPrice(plan.monthlyPrice)
-
-      await requestUpgrade(merchant.id, {
+ 
+      console.log('🚀 [Upgrade] Submitting payment request:', {
+        merchantId: merchant.id,
+        plan: selectedPlan,
+        method,
+        name: form.contact_name,
+        phone: form.contact_phone,
+        amount,
+      })
+ 
+      const result = await requestUpgrade(merchant.id, {
         plan: selectedPlan as any,
         paymentMethod: method,
         name: form.contact_name,
@@ -92,14 +101,24 @@ export default function UpgradePage() {
         note: `[${billing === 'annual' ? 'Annuel' : 'Mensuel'}] ${form.note}`,
         amount,
       })
+ 
+      // ── Vérifier le résultat ──
+      if (!result.success) {
+        console.error('❌ [Upgrade] Request failed:', result.error)
+        alert(`❌ Erreur lors de l'envoi de la demande:\n\n${result.error}\n\nContacte-nous si le problème persiste.`)
+        return
+      }
+ 
+      console.log('✅ [Upgrade] Request sent successfully')
       setStep('done')
-    } catch (e) {
-      console.error(e)
-      alert('Erreur. Réessaie ou contacte-nous.')
+    } catch (e: any) {
+      console.error('💥 [Upgrade] Unexpected error:', e)
+      alert(`❌ Erreur inattendue:\n\n${e.message}\n\nContacte-nous si le problème persiste.`)
     } finally {
       setLoading(false)
     }
   }
+
 
   const plan = PLANS.find(p => p.id === selectedPlan)
   const currentPlan = merchant?.plan || 'starter'
