@@ -6,6 +6,7 @@ import QRCode from 'react-qr-code'
 import { exportDashboardPDF } from '@/lib/export-pdf'
 import ShareModal from '@/components/ShareModal'
 import OnboardingGuide from '@/components/OnboardingGuide'
+import MobileNav from '@/components/MobileNav'
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -15,7 +16,7 @@ export default function DashboardPage() {
   const [clients, setClients] = useState<any[]>([])
   const [pending, setPending] = useState<any[]>([])
   const [activities, setActivities] = useState<any[]>([])
-  const [stats, setStats] = useState({ total_clients: 0, total_points: 0, total_rewards: 0 })
+  const [stats, setStats] = useState({ total_clients: 0, total_points: 0, total_points_earned: 0, total_rewards: 0 })
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('overview')
   const [exportingPDF, setExportingPDF] = useState(false)
@@ -121,8 +122,9 @@ export default function DashboardPage() {
       setActivities(activitiesData || [])
       const totalClients = new Set(clientCardsData.map((c: any) => c.client_id)).size
       const totalPoints = clientCardsData.reduce((sum: number, c: any) => sum + (c.points || 0), 0)
+      const totalPointsEarned = clientCardsData.reduce((sum: number, c: any) => sum + (c.total_points_earned || 0), 0)
       const totalRewards = clientCardsData.reduce((sum: number, c: any) => sum + (c.total_rewards_redeemed || 0), 0)
-      setStats({ total_clients: totalClients, total_points: totalPoints, total_rewards: totalRewards })
+      setStats({ total_clients: totalClients, total_points: totalPoints, total_points_earned: totalPointsEarned, total_rewards: totalRewards })
     } catch (err) { console.error('Error:', err) }
     finally { setLoading(false); setRefreshing(false) }
   }
@@ -406,10 +408,11 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <div className="bg-white border-b border-slate-200 sticky top-[61px] z-10">
+      {/* Desktop tabs — hidden on mobile */}
+      <div className="hidden md:block bg-white border-b border-slate-200 sticky top-[61px] z-10">
         <div className="max-w-[1300px] mx-auto px-5 md:px-8 flex gap-0 overflow-x-auto">
           {[
-            { id: 'overview', label: 'Vue d\'ensemble', icon: '📊' },
+            { id: 'overview', label: 'Vue d'ensemble', icon: '📊' },
             { id: 'pending', label: 'Validations', icon: '🔔', count: pending.length },
             { id: 'cards', label: 'Cartes', icon: '💳', count: cards.length },
             { id: 'clients', label: 'Clients', icon: '👤', count: stats.total_clients },
@@ -424,6 +427,8 @@ export default function DashboardPage() {
           ))}
         </div>
       </div>
+      {/* Mobile bottom nav */}
+      <MobileNav activeTab={activeTab} onTabChange={setActiveTab} pendingCount={pending.length} />
 
       {/* MODALS */}
       {shareCard && <ShareModal card={shareCard} onClose={() => setShareCard(null)} />}
@@ -510,7 +515,7 @@ export default function DashboardPage() {
       )}
 
       {/* CONTENT */}
-      <main className="max-w-[1300px] mx-auto px-5 md:px-8 py-6">
+      <main className="max-w-[1300px] mx-auto px-5 md:px-8 py-6 pb-24 md:pb-6">
 
         {activeTab === 'overview' && (
           <div className="space-y-6">
@@ -550,7 +555,7 @@ export default function DashboardPage() {
                 <OnboardingGuide
                   cards={cards}
                   clients={clients}
-                  totalPoints={stats.total_points}
+                  totalPoints={stats.total_points_earned}
                   onCreateCard={() => router.push('/dashboard/create-card')}
                   onShowQR={() => { if (cards[0]) setShowQR(cards[0].code) }}
                   onGoValidations={() => setActiveTab('pending')}
@@ -671,29 +676,53 @@ export default function DashboardPage() {
 
         {activeTab === 'pending' && (
           <div className="space-y-3">
-            <h2 className="text-sm font-bold text-slate-800">Visites en attente</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-bold text-slate-800">Visites en attente</h2>
+              {pending.length > 0 && (
+                <span className="bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full">{pending.length}</span>
+              )}
+            </div>
             {pending.length === 0 ? (
               <div className="bg-white border border-slate-100 rounded-2xl p-12 text-center">
-                <p className="text-3xl mb-3">✅</p>
-                <p className="text-slate-700 font-bold text-sm">Tout est à jour</p>
+                <p className="text-4xl mb-3">✅</p>
+                <p className="text-slate-700 font-bold text-sm">Tout est validé</p>
+                <p className="text-slate-400 text-xs mt-1">Les nouvelles visites apparaîtront ici</p>
               </div>
             ) : (
               pending.map((p) => (
-                <div key={p.id} className="bg-white border border-slate-100 rounded-2xl p-5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-400 rounded-xl flex items-center justify-center text-white font-bold text-sm">
-                        {(p.clients?.name || '?')[0]?.toUpperCase()}
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-slate-800">{p.clients?.name || p.client_name}</p>
-                        <p className="text-[11px] text-slate-400">{p.loyalty_cards?.business_name} · {timeAgo(p.created_at)}</p>
-                      </div>
+                <div key={p.id} className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+                  {/* Client info */}
+                  <div className="flex items-center gap-3 p-4 pb-3">
+                    <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-sm shadow-amber-200 shrink-0">
+                      {(p.clients?.name || p.client_name || '?')[0]?.toUpperCase()}
                     </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => handlePresence(p.id, 'validated')} className="px-4 py-2 bg-emerald-500 text-white rounded-xl text-xs font-semibold hover:bg-emerald-600 transition">Confirmer</button>
-                      <button onClick={() => handlePresence(p.id, 'rejected')} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-semibold hover:bg-red-50 hover:text-red-500 transition">Refuser</button>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-base font-bold text-slate-800 truncate">{p.clients?.name || p.client_name}</p>
+                      <p className="text-xs text-slate-400 truncate">{p.clients?.phone || p.client_phone}</p>
+                      <p className="text-[11px] text-slate-300 mt-0.5">{p.loyalty_cards?.business_name} · {timeAgo(p.created_at)}</p>
                     </div>
+                    <div className="shrink-0 text-right">
+                      <span className="text-xs bg-amber-50 text-amber-600 font-semibold px-2 py-1 rounded-lg border border-amber-100">
+                        En attente
+                      </span>
+                    </div>
+                  </div>
+                  {/* Big action buttons on mobile */}
+                  <div className="grid grid-cols-2 border-t border-slate-100">
+                    <button
+                      onClick={() => handlePresence(p.id, 'rejected')}
+                      className="py-4 text-sm font-bold text-slate-500 hover:bg-red-50 hover:text-red-500 transition flex items-center justify-center gap-2 border-r border-slate-100 active:scale-95"
+                    >
+                      <span className="text-lg">✕</span>
+                      <span>Refuser</span>
+                    </button>
+                    <button
+                      onClick={() => handlePresence(p.id, 'validated')}
+                      className="py-4 text-sm font-bold text-emerald-600 hover:bg-emerald-50 transition flex items-center justify-center gap-2 active:scale-95"
+                    >
+                      <span className="text-lg">✓</span>
+                      <span>Valider</span>
+                    </button>
                   </div>
                 </div>
               ))
@@ -710,7 +739,7 @@ export default function DashboardPage() {
             <OnboardingGuide
               cards={cards}
               clients={clients}
-              totalPoints={stats.total_points}
+              totalPoints={stats.total_points_earned}
               onCreateCard={() => router.push('/dashboard/create-card')}
               onShowQR={() => { if (cards[0]) setShowQR(cards[0].code) }}
               onGoValidations={() => setActiveTab('pending')}
