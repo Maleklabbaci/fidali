@@ -52,15 +52,16 @@ export default function AdminDashboard() {
           if (p.eventType === 'INSERT') {
             showToast('💳 Nouveau paiement reçu !')
             // Notification browser
-            if ('Notification' in window && Notification.permission === 'granted') {
-              const n = new Notification('💳 Fidali Admin — Nouveau paiement', {
-                body: `Une nouvelle demande de paiement vient d'arriver.`,
-                icon: '/logo.png',
-                badge: '/logo.png',
-                tag: 'fidali-payment',
-                requireInteraction: true,
-              })
-              n.onclick = () => { window.focus(); n.close() }
+            if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+              try {
+                const n = new Notification('💳 Fidali Admin — Nouveau paiement', {
+                  body: 'Une nouvelle demande de paiement vient d'arriver.',
+                  icon: '/logo.png',
+                  tag: 'fidali-payment',
+                  requireInteraction: true,
+                })
+                n.onclick = () => { window.focus(); n.close() }
+              } catch {}
             }
             // Badge sur l'onglet
             document.title = '(1) Admin Fidali — Nouveau paiement'
@@ -70,13 +71,15 @@ export default function AdminDashboard() {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, (p) => {
           if (p.eventType === 'INSERT') {
             showToast('💬 Nouveau message !')
-            if ('Notification' in window && Notification.permission === 'granted') {
-              const n = new Notification('💬 Fidali Admin — Nouveau message', {
-                body: `Un commerçant vous a envoyé un message.`,
-                icon: '/logo.png',
-                tag: 'fidali-message',
-              })
-              n.onclick = () => { window.focus(); n.close() }
+            if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+              try {
+                const n = new Notification('💬 Fidali Admin — Nouveau message', {
+                  body: 'Un commerçant vous a envoyé un message.',
+                  icon: '/logo.png',
+                  tag: 'fidali-message',
+                })
+                n.onclick = () => { window.focus(); n.close() }
+              } catch {}
             }
           }
           loadData()
@@ -87,8 +90,8 @@ export default function AdminDashboard() {
     setup()
 
     // Demander permission notifications browser
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission()
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {})
     }
 
     return () => { realtimeRef.current?.unsubscribe() }
@@ -158,18 +161,18 @@ export default function AdminDashboard() {
   const PLAN_COLOR: any = { starter: 'text-slate-400', pro: 'text-blue-400', premium: 'text-violet-400' }
   const METHOD: any = { baridimob: 'Baridi Mob', ccp: 'CCP', especes: 'Espèces', virement: 'Virement' }
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="w-5 h-5 border-2 border-white/10 border-t-white/60 rounded-full animate-spin" />
-    </div>
-  )
-
   // Reset tab title when focused
   useEffect(() => {
     const reset = () => { if (document.title.startsWith('(')) document.title = 'Admin Fidali' }
     window.addEventListener('focus', reset)
     return () => window.removeEventListener('focus', reset)
   }, [])
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="w-5 h-5 border-2 border-white/10 border-t-white/60 rounded-full animate-spin" />
+    </div>
+  )
 
   const tabs = [
     { id: 'overview' as Tab, label: "Vue d'ensemble", badge: 0 },
