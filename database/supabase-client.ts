@@ -688,7 +688,7 @@ export async function requestUpgrade(merchantId: string, data: {
 }) {
   // Passe par l'API route server-side pour bypasser le RLS
   try {
-    const res = await fetch('/api/payment/request', {
+    const res = await fetch('/api/admin/payments', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
