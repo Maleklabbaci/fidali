@@ -686,31 +686,32 @@ export async function requestUpgrade(merchantId: string, data: {
   proofUrl?: string
   amount?: number
 }) {
-  const amount = data.amount ?? (data.plan === 'premium' ? 5000 : 2500)
-
-  // Use supabaseAdmin if available, fallback to supabase
-  const client = typeof window === 'undefined'
-    ? supabase
-    : supabase
-
-  const { error } = await client.from('payment_requests').insert({
-    merchant_id: merchantId,
-    requested_plan: data.plan,
-    payment_method: data.paymentMethod,
-    amount_dzd: amount,
-    contact_name: data.name,
-    contact_phone: data.phone,
-    contact_email: data.email,
-    note: data.note || null,
-    proof_url: data.proofUrl || null,
-  })
-
-  if (error) {
-    console.error('requestUpgrade error:', error)
-    return { success: false as const, error: error.message }
+  // Passe par l'API route server-side pour bypasser le RLS
+  try {
+    const res = await fetch('/api/payment/request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        merchantId,
+        plan: data.plan,
+        paymentMethod: data.paymentMethod,
+        name: data.name,
+        phone: data.phone,
+        email: data.email,
+        note: data.note,
+        amount: data.amount,
+      }),
+    })
+    const json = await res.json()
+    if (!res.ok || json.error) {
+      console.error('requestUpgrade API error:', json.error)
+      return { success: false as const, error: json.error || 'Erreur serveur' }
+    }
+    return { success: true as const }
+  } catch (e: any) {
+    console.error('requestUpgrade fetch error:', e)
+    return { success: false as const, error: e.message }
   }
-
-  return { success: true as const }
 }
 
 // ============================================
