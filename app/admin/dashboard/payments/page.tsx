@@ -177,7 +177,66 @@ export default function PaymentsPage() {
                         <span>{timeAgo(p.created_at)}</span>
                       </div>
                       {p.merchants?.business_name && (
-                        <p className="text-[10px] text-white/20 mt-0.5">Commerce : {p.merchants.business_name}</p>
+                        <div className="mt-2 space-y-1.5">
+                          <p className="text-[10px] font-bold text-white/20 uppercase tracking-wider">Détails commerçant</p>
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px]">
+                            <div>
+                              <span className="text-white/30">Commerce:</span>
+                              <span className="text-white/60 ml-1.5 font-medium">{p.merchants.business_name}</span>
+                            </div>
+                            {p.merchants.sector && (
+                              <div>
+                                <span className="text-white/30">Secteur:</span>
+                                <span className="text-white/60 ml-1.5">{p.merchants.sector}</span>
+                              </div>
+                            )}
+                            {p.merchants.email && (
+                              <div>
+                                <span className="text-white/30">Email:</span>
+                                <span className="text-white/60 ml-1.5">{p.merchants.email}</span>
+                              </div>
+                            )}
+                            {p.merchants.phone && (
+                              <div>
+                                <span className="text-white/30">Tél commerce:</span>
+                                <span className="text-white/60 ml-1.5">{p.merchants.phone}</span>
+                              </div>
+                            )}
+                            {p.merchants.plan && (
+                              <div>
+                                <span className="text-white/30">Plan actuel:</span>
+                                <span className={`ml-1.5 font-semibold ${
+                                  p.merchants.plan === 'starter' ? 'text-slate-400' :
+                                  p.merchants.plan === 'pro' ? 'text-blue-400' :
+                                  'text-violet-400'
+                                }`}>{p.merchants.plan}</span>
+                              </div>
+                            )}
+                            {p.merchants.sub_start && (
+                              <div>
+                                <span className="text-white/30">Début abonnement:</span>
+                                <span className="text-white/60 ml-1.5">{new Date(p.merchants.sub_start).toLocaleDateString('fr-FR')}</span>
+                              </div>
+                            )}
+                            {p.merchants.sub_end && (
+                              <div>
+                                <span className="text-white/30">Fin abonnement:</span>
+                                <span className={`ml-1.5 font-medium ${
+                                  new Date(p.merchants.sub_end) < new Date() ? 'text-rose-400' : 'text-emerald-400'
+                                }`}>
+                                  {new Date(p.merchants.sub_end).toLocaleDateString('fr-FR')}
+                                  {new Date(p.merchants.sub_end) < new Date() && ' (expiré)'}
+                                </span>
+                              </div>
+                            )}
+                            {p.merchants.sub_billing && (
+                              <div>
+                                <span className="text-white/30">Facturation:</span>
+                                <span className="text-white/60 ml-1.5">{p.merchants.sub_billing === 'monthly' ? 'Mensuel' : 'Annuel'}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       )}
                       {p.note && (
                         <div className="mt-2 bg-white/[0.03] border border-white/[0.06] rounded-lg px-3 py-2">
