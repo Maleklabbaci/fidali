@@ -20,7 +20,6 @@ export default function PrintPage() {
 
   const loadData = async () => {
     try {
-      // D'abord essayer de récupérer depuis localStorage (plus rapide, pas de join)
       const stored = localStorage.getItem('merchant') || sessionStorage.getItem('merchant')
       const merchantData = stored ? JSON.parse(stored) : null
 
@@ -63,7 +62,6 @@ export default function PrintPage() {
 
   return (
     <>
-      {/* Écran de contrôle */}
       <div className="print:hidden min-h-screen bg-gray-50 p-8">
         <div className="max-w-4xl mx-auto">
           <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
@@ -79,35 +77,24 @@ export default function PrintPage() {
 
           <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
             <h2 className="font-semibold text-gray-900 mb-4">Choisissez le format</h2>
-            
             <div className="grid grid-cols-2 gap-4">
               <button
                 onClick={() => setMode('large')}
-                className={`p-6 border-2 rounded-xl transition ${
-                  mode === 'large'
-                    ? 'border-indigo-600 bg-indigo-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
+                className={`p-6 border-2 rounded-xl transition ${mode === 'large' ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200 hover:border-gray-300'}`}
               >
                 <div className="text-4xl mb-2">📄</div>
                 <h3 className="font-bold text-gray-900 mb-1">Grand QR A4</h3>
                 <p className="text-sm text-gray-600">Pour afficher en vitrine</p>
               </button>
-
               <button
                 onClick={() => setMode('mini')}
-                className={`p-6 border-2 rounded-xl transition ${
-                  mode === 'mini'
-                    ? 'border-indigo-600 bg-indigo-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
+                className={`p-6 border-2 rounded-xl transition ${mode === 'mini' ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200 hover:border-gray-300'}`}
               >
                 <div className="text-4xl mb-2">🎴</div>
                 <h3 className="font-bold text-gray-900 mb-1">8 Mini Cartes</h3>
                 <p className="text-sm text-gray-600">À découper et distribuer</p>
               </button>
             </div>
-
             <button
               onClick={handlePrint}
               className="w-full mt-6 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-6 rounded-xl transition flex items-center justify-center gap-2"
@@ -116,9 +103,9 @@ export default function PrintPage() {
             </button>
           </div>
 
-          <div className="bg-gray-100 rounded-2xl p-8">
-            <p className="text-sm text-gray-600 mb-4 text-center">Aperçu</p>
-            <div className="bg-white rounded-xl shadow-lg p-8 transform scale-50 origin-top">
+          <div className="bg-gray-100 rounded-2xl p-6">
+            <p className="text-sm text-gray-600 mb-4 text-center font-medium">Aperçu</p>
+            <div style={{ transform: 'scale(0.42)', transformOrigin: 'top center', height: '380px', overflow: 'hidden' }}>
               {mode === 'large' ? (
                 <LargeQRTemplate card={card} qrUrl={qrUrl} />
               ) : (
@@ -129,7 +116,6 @@ export default function PrintPage() {
         </div>
       </div>
 
-      {/* Page d'impression */}
       <div className="hidden print:block">
         {mode === 'large' ? (
           <LargeQRTemplate card={card} qrUrl={qrUrl} />
@@ -151,40 +137,61 @@ export default function PrintPage() {
 function LargeQRTemplate({ card, qrUrl }: any) {
   return (
     <div
-      className="w-[210mm] h-[297mm] flex flex-col items-center justify-center p-16 relative overflow-hidden"
-      style={{
-        background: `linear-gradient(135deg, ${card.color1 || '#4f46e5'}, ${card.color2 || '#7c3aed'})`,
-      }}
+      className="w-[210mm] h-[297mm] flex flex-col items-center justify-between py-10 px-14 relative overflow-hidden"
+      style={{ background: `linear-gradient(150deg, ${card.color1 || '#4f46e5'} 0%, ${card.color2 || '#7c3aed'} 100%)` }}
     >
-      <div
-        className="absolute inset-0 opacity-[0.05]"
-        style={{
-          backgroundImage: 'radial-gradient(circle at 3px 3px, rgba(255,255,255,0.3) 2px, transparent 0)',
-          backgroundSize: '40px 40px',
-        }}
-      />
-      <div className="absolute -top-32 -right-32 w-96 h-96 bg-white/[0.08] rounded-full" />
-      <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] bg-white/[0.08] rounded-full" />
+      <div className="absolute -top-28 -right-28 w-[380px] h-[380px] bg-white/[0.07] rounded-full" />
+      <div className="absolute -bottom-36 -left-36 w-[480px] h-[480px] bg-white/[0.07] rounded-full" />
 
+      {/* Header */}
+      <div className="relative z-10 text-center w-full">
+        <p className="text-white/50 text-xs uppercase tracking-[0.3em] font-semibold mb-2">Programme de fidélité</p>
+        <h1 className="text-[58px] font-black text-white leading-none mb-4">{card.business_name}</h1>
+        <div className="inline-flex items-center gap-2 bg-white/15 border border-white/25 rounded-2xl px-6 py-2.5">
+          <span className="text-xl">🎁</span>
+          <span className="text-white font-bold text-lg">{card.reward}</span>
+        </div>
+      </div>
+
+      {/* QR Code */}
       <div className="relative z-10 text-center">
-        <h1 className="text-6xl font-black text-white mb-4">{card.business_name}</h1>
-        <p className="text-2xl text-white/80 mb-16">{card.reward}</p>
-
-        <div className="bg-white p-12 rounded-3xl shadow-2xl mb-12 inline-block">
-          <QRCodeSVG value={qrUrl} size={400} level="H" />
+        <div className="bg-white p-7 rounded-[28px] shadow-2xl shadow-black/30 inline-block">
+          <QRCodeSVG value={qrUrl} size={290} level="H" />
         </div>
+        <p className="text-white/40 text-xs font-mono mt-3 tracking-widest">{card.code}</p>
+      </div>
 
-        <div className="bg-white/10 backdrop-blur-sm border-2 border-white/20 rounded-3xl p-8 max-w-2xl mx-auto">
-          <h2 className="text-3xl font-bold text-white mb-4">📱 Scannez ici</h2>
-          <p className="text-xl text-white/90 mb-2">Pour obtenir votre carte de fidélité</p>
-          <p className="text-lg text-white/70">
-            {card.max_points} {card.points_per_visit === 1 ? 'visites' : 'points'} = 1 récompense
-          </p>
+      {/* Instructions */}
+      <div className="relative z-10 w-full">
+        <div className="bg-white/10 border-2 border-white/20 rounded-3xl p-6">
+          <p className="text-white font-black text-xl text-center mb-4">📱 Comment utiliser votre carte ?</p>
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="bg-white/10 rounded-2xl p-4 text-center">
+              <p className="text-2xl mb-2">1️⃣</p>
+              <p className="text-white text-[11px] font-semibold leading-snug">
+                Scannez ce QR code lors de votre <strong>1er achat</strong> pour rejoindre le programme
+              </p>
+            </div>
+            <div className="bg-white/10 rounded-2xl p-4 text-center">
+              <p className="text-2xl mb-2">2️⃣</p>
+              <p className="text-white text-[11px] font-semibold leading-snug">
+                Rescannez ce même code à <strong>chaque achat</strong> pour cumuler vos points
+              </p>
+            </div>
+            <div className="bg-white/10 rounded-2xl p-4 text-center">
+              <p className="text-2xl mb-2">3️⃣</p>
+              <p className="text-white text-[11px] font-semibold leading-snug">
+                Après <strong>{card.max_points} visites</strong>, réclamez votre récompense gratuite !
+              </p>
+            </div>
+          </div>
+          <div className="bg-white/20 rounded-2xl py-3 px-6 text-center">
+            <p className="text-white font-black text-lg">
+              {card.max_points} visites = <span className="text-yellow-300">{card.reward}</span> 🎉
+            </p>
+          </div>
         </div>
-
-        <div className="mt-16 text-white/50 text-sm">
-          <p>Propulsé par Fidali 💙</p>
-        </div>
+        <p className="text-white/25 text-[10px] text-center mt-3">Propulsé par Fidali 💙</p>
       </div>
     </div>
   )
@@ -192,8 +199,8 @@ function LargeQRTemplate({ card, qrUrl }: any) {
 
 function MiniCardsTemplate({ card, qrUrl }: any) {
   return (
-    <div className="w-[210mm] h-[297mm] p-4">
-      <div className="grid grid-cols-2 gap-4 h-full">
+    <div className="w-[210mm] h-[297mm] p-3 bg-white">
+      <div className="grid grid-cols-2 gap-3 h-full">
         {Array.from({ length: 8 }).map((_, index) => (
           <MiniCard key={index} card={card} qrUrl={qrUrl} />
         ))}
@@ -205,39 +212,63 @@ function MiniCardsTemplate({ card, qrUrl }: any) {
 function MiniCard({ card, qrUrl }: any) {
   return (
     <div
-      className="rounded-2xl p-6 relative overflow-hidden border-2"
+      className="rounded-2xl p-4 relative overflow-hidden flex flex-col justify-between"
       style={{
         background: `linear-gradient(135deg, ${card.color1 || '#4f46e5'}, ${card.color2 || '#7c3aed'})`,
-        borderColor: card.color1 || '#4f46e5',
+        border: '2px dashed rgba(255,255,255,0.25)',
       }}
     >
-      <div
-        className="absolute inset-0 opacity-[0.06]"
-        style={{
-          backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(255,255,255,0.3) 1px, transparent 0)',
-          backgroundSize: '16px 16px',
-        }}
-      />
-      <div className="absolute -top-8 -right-8 w-24 h-24 bg-white/[0.08] rounded-full" />
+      <div className="absolute -top-6 -right-6 w-20 h-20 bg-white/[0.07] rounded-full" />
+      <div className="absolute -bottom-6 -left-6 w-24 h-24 bg-white/[0.07] rounded-full" />
 
       <div className="relative z-10">
-        <div className="mb-6">
-          <p className="text-[8px] text-white/40 uppercase tracking-wider mb-1">Carte de fidélité</p>
-          <h3 className="text-base font-bold text-white leading-tight">{card.business_name}</h3>
+        {/* Header */}
+        <div className="flex items-start justify-between mb-3">
+          <div>
+            <p className="text-white/40 text-[8px] uppercase tracking-wider font-semibold">Carte de fidélité</p>
+            <h3 className="text-white font-black text-sm leading-tight">{card.business_name}</h3>
+          </div>
+          <div className="bg-white/20 rounded-lg px-2 py-1 text-center">
+            <p className="text-white font-black text-xs">{card.max_points}</p>
+            <p className="text-white/60 text-[7px]">visites</p>
+          </div>
         </div>
 
-        <div className="bg-white p-3 rounded-xl mb-4 inline-block">
-          <QRCodeSVG value={qrUrl} size={100} level="H" />
+        {/* QR + instructions */}
+        <div className="flex items-center gap-3">
+          <div className="bg-white p-2 rounded-xl flex-shrink-0">
+            <QRCodeSVG value={qrUrl} size={78} level="H" />
+          </div>
+          <div className="flex-1">
+            <p className="text-white font-black text-[11px] mb-2">📱 Scannez à chaque achat !</p>
+            <div className="space-y-1.5">
+              <div className="flex items-start gap-1.5">
+                <span className="text-white/50 text-[9px] leading-tight mt-0.5">①</span>
+                <p className="text-white/75 text-[9px] leading-tight">
+                  <strong className="text-white">1er scan</strong> : rejoindre le programme
+                </p>
+              </div>
+              <div className="flex items-start gap-1.5">
+                <span className="text-white/50 text-[9px] leading-tight mt-0.5">②</span>
+                <p className="text-white/75 text-[9px] leading-tight">
+                  <strong className="text-white">Chaque achat</strong> = 1 point cumulé
+                </p>
+              </div>
+              <div className="flex items-start gap-1.5 bg-white/15 rounded-lg px-2 py-1">
+                <span className="text-yellow-300 text-[9px] leading-tight mt-0.5">★</span>
+                <p className="text-yellow-200 text-[9px] font-bold leading-tight">
+                  {card.max_points} visites = {card.reward}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
 
-        <div className="space-y-1">
-          <p className="text-sm font-bold text-white">📱 Scannez ici</p>
-          <p className="text-[10px] text-white/80 leading-tight">
-            {card.max_points} {card.points_per_visit === 1 ? 'visites' : 'points'} = {card.reward}
-          </p>
-        </div>
-
-        <p className="text-[8px] text-white/30 font-mono mt-4">{card.code}</p>
+      {/* Footer */}
+      <div className="relative z-10 mt-2 pt-2 border-t border-white/15 flex items-center justify-between">
+        <p className="text-white/30 text-[7px] font-mono">{card.code}</p>
+        <p className="text-white/25 text-[7px]">fidali.app 💙</p>
       </div>
     </div>
   )
