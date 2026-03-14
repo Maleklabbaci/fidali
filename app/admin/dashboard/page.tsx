@@ -48,12 +48,49 @@ export default function AdminDashboard() {
     const setup = async () => {
       const { supabase } = await import('@/database/supabase-client')
       realtimeRef.current = supabase.channel('admin-rt')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'payment_requests' }, (p) => { if (p.eventType === 'INSERT') showToast('💳 Nouveau paiement !'); loadData() })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, (p) => { if (p.eventType === 'INSERT') showToast('💬 Nouveau message !'); loadData() })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'payment_requests' }, (p) => {
+          if (p.eventType === 'INSERT') {
+            showToast('💳 Nouveau paiement reçu !')
+            // Notification browser
+            if ('Notification' in window && Notification.permission === 'granted') {
+              const n = new Notification('💳 Fidali Admin — Nouveau paiement', {
+                body: `Une nouvelle demande de paiement vient d'arriver.`,
+                icon: '/logo.png',
+                badge: '/logo.png',
+                tag: 'fidali-payment',
+                requireInteraction: true,
+              })
+              n.onclick = () => { window.focus(); n.close() }
+            }
+            // Badge sur l'onglet
+            document.title = '(1) Admin Fidali — Nouveau paiement'
+          }
+          loadData()
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, (p) => {
+          if (p.eventType === 'INSERT') {
+            showToast('💬 Nouveau message !')
+            if ('Notification' in window && Notification.permission === 'granted') {
+              const n = new Notification('💬 Fidali Admin — Nouveau message', {
+                body: `Un commerçant vous a envoyé un message.`,
+                icon: '/logo.png',
+                tag: 'fidali-message',
+              })
+              n.onclick = () => { window.focus(); n.close() }
+            }
+          }
+          loadData()
+        })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'merchants' }, () => loadData())
         .subscribe()
     }
     setup()
+
+    // Demander permission notifications browser
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission()
+    }
+
     return () => { realtimeRef.current?.unsubscribe() }
   }, [loadData])
 
@@ -127,8 +164,15 @@ export default function AdminDashboard() {
     </div>
   )
 
+  // Reset tab title when focused
+  useEffect(() => {
+    const reset = () => { if (document.title.startsWith('(')) document.title = 'Admin Fidali' }
+    window.addEventListener('focus', reset)
+    return () => window.removeEventListener('focus', reset)
+  }, [])
+
   const tabs = [
-    { id: 'overview' as Tab, label: 'Vue d\'ensemble', badge: 0 },
+    { id: 'overview' as Tab, label: "Vue d'ensemble", badge: 0 },
     { id: 'merchants' as Tab, label: 'Commerçants', badge: pendingMerchants.length },
     { id: 'payments' as Tab, label: 'Paiements', badge: pendingPayments.length },
     { id: 'messages' as Tab, label: 'Messages', badge: unread },
