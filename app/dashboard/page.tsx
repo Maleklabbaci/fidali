@@ -525,8 +525,7 @@ export default function DashboardPage() {
                   <div className="grid grid-cols-3 gap-3 mb-4">
                     <button onClick={() => handleCopyLink(card.code)} className="py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-xl text-xs font-semibold transition">{copied ? 'Copié !' : 'Copier'}</button>
                     <button onClick={() => handleShare(card)} className="py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-xl text-xs font-semibold transition">Partager</button>
-                    <button onClick={() => handlePrintQR(card)} className="py-2.5 bg-violet-50 hover:bg-violet-100 text-violet-600 rounded-xl text-xs font-semibold transition">Imprimer</button>
-                  </div>
+<button onClick={() => router.push(`/dashboard/print/${card.id}`)} className="py-2.5 bg-violet-50 hover:bg-violet-100 text-violet-600 rounded-xl text-xs font-semibold transition">🖨️ Imprimer</button>                  </div>
                   <button onClick={() => setShowQR(null)} className="w-full py-2.5 text-sm text-slate-400 hover:text-slate-600 transition">Fermer</button>
                 </>
               )
@@ -800,9 +799,10 @@ export default function DashboardPage() {
                           </div>
                         </div>
                         <div className="flex gap-2 pt-3 border-t border-slate-100">
-                          <button onClick={() => setShareCard(card)} className="flex-1 py-2 text-xs font-semibold text-emerald-600 hover:bg-emerald-50 rounded-xl transition">Partager</button>
-                          <button onClick={() => openEditCard(card)} className="flex-1 py-2 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 rounded-xl transition">Modifier</button>
-                          <button onClick={() => setConfirmDelete({ type: 'card', id: card.id, name: card.business_name })} className="flex-1 py-2 text-xs font-semibold text-red-500 hover:bg-red-50 rounded-xl transition">Supprimer</button>
+                          <button onClick={() => router.push(`/dashboard/print/${card.id}`)} className="flex-1 py-2 text-xs font-semibold text-violet-600 hover:bg-violet-50 rounded-xl transition">🖨️ Imprimer</button>
+<button onClick={() => setShareCard(card)} className="flex-1 py-2 text-xs font-semibold text-emerald-600 hover:bg-emerald-50 rounded-xl transition">Partager</button>
+<button onClick={() => openEditCard(card)} className="flex-1 py-2 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 rounded-xl transition">Modifier</button>
+<button onClick={() => setConfirmDelete({ type: 'card', id: card.id, name: card.business_name })} className="flex-1 py-2 text-xs font-semibold text-red-500 hover:bg-red-50 rounded-xl transition">Supprimer</button>
                         </div>
                       </div>
                     </div>
