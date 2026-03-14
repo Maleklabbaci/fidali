@@ -55,7 +55,7 @@ export default function AdminDashboard() {
             if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
               try {
                 const n = new Notification('💳 Fidali Admin — Nouveau paiement', {
-                  body: 'Une nouvelle demande de paiement vient d'arriver.',
+                  body: "Une nouvelle demande de paiement vient d'arriver.",
                   icon: '/logo.png',
                   tag: 'fidali-payment',
                   requireInteraction: true,
