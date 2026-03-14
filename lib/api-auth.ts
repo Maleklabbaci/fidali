@@ -55,7 +55,7 @@ export async function authenticateApiKey(req: NextRequest): Promise<AuthResult |
     .select('id, merchant_id, is_active')
     .eq('key_hash', keyHash)
     .eq('is_active', true)
-    .single()
+    .maybeSingle()
 
   if (error || !apiKey) {
     return NextResponse.json(
@@ -69,7 +69,7 @@ export async function authenticateApiKey(req: NextRequest): Promise<AuthResult |
     .from('merchants')
     .select('plan, status')
     .eq('id', apiKey.merchant_id)
-    .single()
+    .maybeSingle()
 
   if (!merchant || merchant.plan !== 'premium' || merchant.status !== 'active') {
     return NextResponse.json(
