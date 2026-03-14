@@ -17,7 +17,7 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
       .eq('code', code.toUpperCase())
       .eq('merchant_id', auth.merchantId)
       .eq('is_active', true)
-      .single()
+      .maybeSingle()
 
     if (!card) {
       return NextResponse.json({ error: 'Card not found' }, { status: 404 })
