@@ -692,6 +692,7 @@ export async function requestUpgrade(merchantId: string, data: {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        action: 'create',
         merchantId,
         plan: data.plan,
         paymentMethod: data.paymentMethod,
