@@ -371,6 +371,15 @@ export default function AdminDashboard() {
                           </span>
                         </div>
                         <p className="text-[11px] text-white/30 truncate">{m.email} · {m.phone || 'N/A'} · {timeAgo(m.created_at)}</p>
+                        {m.sub_end && m.plan !== 'starter' && (() => {
+                          const d = Math.ceil((new Date(m.sub_end).getTime() - Date.now()) / 86400000)
+                          const end = new Date(m.sub_end).toLocaleDateString('fr-DZ', { day: 'numeric', month: 'short', year: 'numeric' })
+                          return (
+                            <p className={`text-[10px] mt-0.5 font-medium ${d <= 0 ? 'text-red-400' : d <= 7 ? 'text-amber-400' : 'text-emerald-400/70'}`}>
+                              📅 {m.sub_billing === 'annual' ? 'Annuel' : 'Mensuel'} · expire le {end} {d <= 0 ? '⚠️ EXPIRÉ' : `(${d}j)`}
+                            </p>
+                          )
+                        })()}
                       </div>
                     </div>
 
@@ -470,7 +479,12 @@ export default function AdminDashboard() {
                             <span>·</span>
                             <span>{timeAgo(p.created_at)}</span>
                           </div>
-                          {p.note && <p className="text-[11px] text-white/40 mt-1 italic">"{p.note}"</p>}
+                          {p.note && p.note.replace(/\[.*?\]\s*/, '') && (
+                            <p className="text-[11px] text-white/40 mt-1 italic">"{p.note.replace(/\[.*?\]\s*/, '')}"</p>
+                          )}
+                          <span className={`inline-block mt-1 text-[9px] px-2 py-0.5 rounded-full font-bold ${p.note?.includes('[Annuel]') ? 'bg-violet-500/15 text-violet-400' : 'bg-blue-500/15 text-blue-400'}`}>
+                            {p.note?.includes('[Annuel]') ? '📅 Annuel — 12 mois' : '📅 Mensuel — 1 mois'}
+                          </span>
                           {p.proof_url && (
                             <a href={p.proof_url} target="_blank" rel="noopener noreferrer"
                               className="inline-flex items-center gap-1 mt-1.5 text-[10px] text-blue-400 hover:text-blue-300 transition">
