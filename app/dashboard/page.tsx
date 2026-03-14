@@ -547,17 +547,16 @@ export default function DashboardPage() {
                   <h3 className="text-sm font-bold text-slate-800">Mes cartes de fidélité</h3>
                   <button onClick={() => setActiveTab('cards')} className="text-xs text-indigo-600 hover:underline font-medium">Voir tout</button>
                 </div>
-                {cards.length === 0 ? (
-                  <OnboardingGuide
-                    cards={cards}
-                    clients={clients}
-                    totalPoints={stats.total_points}
-                    onCreateCard={() => router.push('/dashboard/create-card')}
-                    onShowQR={() => { if (cards[0]) setShowQR(cards[0].code) }}
-                    onGoValidations={() => setActiveTab('pending')}
-                    merchantName={merchant?.name}
-                  />
-                ) : (
+                <OnboardingGuide
+                  cards={cards}
+                  clients={clients}
+                  totalPoints={stats.total_points}
+                  onCreateCard={() => router.push('/dashboard/create-card')}
+                  onShowQR={() => { if (cards[0]) setShowQR(cards[0].code) }}
+                  onGoValidations={() => setActiveTab('pending')}
+                  merchantName={merchant?.name}
+                />
+                {cards.length > 0 && (
                   <div className="space-y-3">
                     {cards.map((card) => {
                       const cc = clients.filter((c) => c.card_id === card.id)
@@ -708,17 +707,16 @@ export default function DashboardPage() {
               <h2 className="text-sm font-bold text-slate-800">Mes cartes</h2>
               <button onClick={() => router.push('/dashboard/create-card')} className="px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-xl hover:bg-indigo-700 transition">+ Nouvelle carte</button>
             </div>
-            {cards.length === 0 ? (
-              <OnboardingGuide
-                cards={cards}
-                clients={clients}
-                totalPoints={stats.total_points}
-                onCreateCard={() => router.push('/dashboard/create-card')}
-                onShowQR={() => { if (cards[0]) setShowQR(cards[0].code) }}
-                onGoValidations={() => setActiveTab('pending')}
-                merchantName={merchant?.name}
-              />
-            ) : (
+            <OnboardingGuide
+              cards={cards}
+              clients={clients}
+              totalPoints={stats.total_points}
+              onCreateCard={() => router.push('/dashboard/create-card')}
+              onShowQR={() => { if (cards[0]) setShowQR(cards[0].code) }}
+              onGoValidations={() => setActiveTab('pending')}
+              merchantName={merchant?.name}
+            />
+            {cards.length > 0 && (
               <div className="grid md:grid-cols-2 gap-5">
                 {cards.map((card) => {
                   const cc = clients.filter((c) => c.card_id === card.id)
