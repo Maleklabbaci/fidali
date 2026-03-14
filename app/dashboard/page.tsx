@@ -43,15 +43,30 @@ export default function DashboardPage() {
     const stored = localStorage.getItem('merchant') || sessionStorage.getItem('merchant')
     if (!stored) { router.push('/login'); return }
     const m = JSON.parse(stored)
-    setMerchant(m)
-    loadData(m.id)
-    loadMessages(m.id)
+
+    // Vérifier si le profil est complété — si non, rediriger immédiatement
+    const init = async () => {
+      try {
+        const { getMerchantProfile } = await import('@/database/supabase-client')
+        const profile = await getMerchantProfile(m.id)
+        if (!profile) {
+          router.push('/complete-profile')
+          return
+        }
+      } catch (e) {
+        console.warn('Vérification profil échouée:', e)
+      }
+      setMerchant(m)
+      loadData(m.id)
+      loadMessages(m.id)
+    }
+    init()
 
     // Vérifie si le plan a changé en DB (upgrade admin)
     const checkPlanUpdate = async () => {
       try {
         const { supabase } = await import('@/database/supabase-client')
-        const { data } = await supabase.from('merchants').select('plan, status').eq('id', m.id).single()
+        const { data } = await supabase.from('merchants').select('plan, status').eq('id', m.id).maybeSingle()
         if (data && data.plan !== m.plan) {
           const updated = { ...m, plan: data.plan, status: data.status }
           localStorage.setItem('merchant', JSON.stringify(updated))
