@@ -40,7 +40,8 @@ const PLANS = [
 const METHODS = [
   { id: 'baridimob', label: 'Baridi Mob', labelAr: 'بريدي موب', icon: '📱', soon: false },
   { id: 'ccp', label: 'CCP', labelAr: 'حساب بريدي', icon: '🏦', soon: false },
-  { id: 'virement', label: 'Virement bancaire', labelAr: 'تحويل بنكي', icon: '🏛️', soon: false },
+  { id: 'virement', label: 'Virement DZ', labelAr: 'تحويل بنكي', icon: '🏛️', soon: false },
+  { id: 'devise', label: 'Devise étrangère', labelAr: 'عملة أجنبية', icon: '💶', soon: false, foreign: true },
 ]
 
 const SOON_METHODS = [
@@ -56,8 +57,6 @@ export default function UpgradePage() {
   const [method, setMethod] = useState<string>('baridimob')
   const [step, setStep] = useState<'plans' | 'contact' | 'done'>('plans')
   const [loading, setLoading] = useState(false)
-  const [proofFile, setProofFile] = useState<File | null>(null)
-  const [proofPreview, setProofPreview] = useState<string | null>(null)
   const [form, setForm] = useState({ contact_name: '', contact_phone: '', note: '' })
 
   useEffect(() => {
@@ -74,14 +73,6 @@ export default function UpgradePage() {
   const getSaving = (monthlyPrice: number) =>
     monthlyPrice * 12 - monthlyPrice * 10
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setProofFile(file)
-    const reader = new FileReader()
-    reader.onload = (ev) => setProofPreview(ev.target?.result as string)
-    reader.readAsDataURL(file)
-  }
 
   const handleSubmit = async () => {
     if (!selectedPlan || !merchant) return
@@ -181,13 +172,7 @@ export default function UpgradePage() {
               className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-2xl transition text-sm">
               Retour au dashboard
             </button>
-            <a href="https://wa.me/213XXXXXXXXX" target="_blank" rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 w-full py-3 bg-emerald-600/20 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-600/30 font-semibold rounded-2xl transition text-sm">
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.890-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-              </svg>
-              Nous contacter sur WhatsApp
-            </a>
+
           </div>
         </div>
 
@@ -384,7 +369,7 @@ export default function UpgradePage() {
             {/* Méthode paiement */}
             <div className="bg-white rounded-2xl border border-slate-200 p-5">
               <p className="text-sm font-black text-slate-700 mb-4">Méthode de paiement préférée</p>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 {METHODS.map(m => (
                   <button key={m.id} onClick={() => setMethod(m.id)}
                     className={`flex flex-col items-center gap-1.5 py-4 px-2 rounded-2xl border-2 text-xs font-bold transition ${
@@ -396,6 +381,20 @@ export default function UpgradePage() {
                   </button>
                 ))}
               </div>
+
+              {/* Devise info */}
+              {method === 'devise' && (
+                <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex gap-3">
+                  <span className="text-xl shrink-0">💶</span>
+                  <div>
+                    <p className="text-blue-800 font-black text-sm">Paiement en devise étrangère</p>
+                    <p className="text-blue-600 text-xs mt-1 leading-relaxed">
+                      Notre équipe vous contactera pour vous communiquer les coordonnées bancaires
+                      (Visa, Mastercard, virement SWIFT, PayPal, etc.) selon votre pays.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Soon methods */}
               <div className="mt-3">
@@ -421,30 +420,7 @@ export default function UpgradePage() {
               </div>
             </div>
 
-            {/* Upload preuve (optionnel) */}
-            <div className="bg-white rounded-2xl border-2 border-dashed border-slate-200 p-5">
-              <p className="text-sm font-black text-slate-700 mb-1">
-                📸 Preuve de paiement <span className="text-slate-400 font-normal text-xs">(optionnel)</span>
-              </p>
-              <p className="text-xs text-slate-400 mb-4">
-                Si vous avez déjà effectué le virement, joignez la capture d'écran pour accélérer la validation.
-              </p>
-              {proofPreview ? (
-                <div className="relative">
-                  <img src={proofPreview} alt="Preuve" className="w-full max-h-40 object-contain rounded-xl border border-slate-200 bg-slate-50" />
-                  <button onClick={() => { setProofFile(null); setProofPreview(null) }}
-                    className="absolute top-2 right-2 w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center text-xs font-bold">✕</button>
-                  <p className="text-xs text-emerald-600 font-bold mt-2 text-center">✓ Image prête</p>
-                </div>
-              ) : (
-                <label className="flex flex-col items-center justify-center gap-2 py-5 cursor-pointer rounded-xl bg-slate-50 hover:bg-slate-100 transition border border-slate-200">
-                  <span className="text-2xl">📁</span>
-                  <span className="text-xs font-semibold text-slate-500">Choisir une image</span>
-                  <span className="text-[10px] text-slate-300">JPG, PNG — max 5 MB</span>
-                  <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
-                </label>
-              )}
-            </div>
+
 
             {/* Note */}
             <div className="bg-white rounded-2xl border border-slate-200 p-4">
