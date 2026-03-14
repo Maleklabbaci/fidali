@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
     const supabaseAdmin = getAdmin()
     const { data, error } = await supabaseAdmin
       .from('payment_requests')
-      .select('*, merchants(business_name, email, name)')
+      .select('*, merchants(business_name, email, name, phone, plan, sub_start, sub_end, sub_billing, sector)')
       .order('created_at', { ascending: false })
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ data })
