@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
       .eq('code', card_code.toUpperCase())
       .eq('merchant_id', auth.merchantId)
       .eq('is_active', true)
-      .single()
+      .maybeSingle()
 
     if (!card) {
       return NextResponse.json({ error: 'Card not found or does not belong to your account' }, { status: 404 })
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
       .from('clients')
       .select('id, name')
       .eq('phone', phone)
-      .single()
+      .maybeSingle()
 
     if (!client) {
       return NextResponse.json({ error: 'Client not found' }, { status: 404 })
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
       .select('id, points, total_rewards_redeemed')
       .eq('client_id', client.id)
       .eq('card_id', card.id)
-      .single()
+      .maybeSingle()
 
     if (!clientCard) {
       return NextResponse.json({ error: 'Client has not joined this card' }, { status: 404 })
