@@ -79,7 +79,7 @@ export default function OnboardingGuide({
           {merchantName ? `Bonjour ${merchantName.split(' ')[0]} 👋 —` : '👋'} 
           {completedCount === 0 && ' Commençons par créer votre carte.'}
           {completedCount === 1 && ' Super ! Partagez maintenant votre QR code.'}
-          {completedCount === 2 && ' Excellent ! Plus qu'une étape pour finir.'}
+          {completedCount === 2 && " Excellent ! Plus qu'une étape pour finir."}
         </p>
       </div>
 
