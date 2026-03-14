@@ -102,7 +102,7 @@ export async function loginMerchant(email: string, password: string) {
     if (error) return { success: false as const, error: error.message }
 
     const merchantData = await safeQuery(() =>
-      supabase.from('merchants').select('*').eq('auth_user_id', data.user.id).single()
+      supabase.from('merchants').select('*').eq('auth_user_id', data.user.id).maybeSingle()
     )
 
     if (!merchantData) return { success: false as const, error: 'Profil commerçant introuvable' }
@@ -132,7 +132,7 @@ export async function loginAdmin(email: string, password: string) {
 
     if (!rpcError && verified) {
       const adminData = await safeQuery(() =>
-        supabase.from('admins').select('id, email, name').eq('email', email).single()
+        supabase.from('admins').select('id, email, name').eq('email', email).maybeSingle()
       )
 
       return {
@@ -192,7 +192,7 @@ export async function signupMerchant(data: {
       .from('merchants')
       .select('*')
       .eq('auth_user_id', authData.user.id)
-      .single()
+      .maybeSingle()
 
     if (merchantData) {
       localStorage.setItem('merchant', JSON.stringify(merchantData))
@@ -221,16 +221,14 @@ export async function getMerchantProfile(merchantId: string) {
       .from('merchant_profiles')
       .select('*')
       .eq('merchant_id', merchantId)
-      .single()
+      .maybeSingle()
 
     if (error) {
-      // PGRST116 = row not found → pas de profil
-      if (error.code === 'PGRST116') return null
       console.warn('getMerchantProfile error:', error.message)
       return null
     }
 
-    return data
+    return data || null
   } catch (err) {
     console.error('getMerchantProfile error:', err)
     return null
@@ -260,7 +258,7 @@ export async function createMerchantProfile(profile: {
         { onConflict: 'merchant_id' }
       )
       .select()
-      .single()
+      .maybeSingle()
 
     if (error) {
       console.error('createMerchantProfile error:', error)
@@ -426,7 +424,7 @@ export async function createCard(merchantId: string, data: {
   try {
     // Check plan card limit
     const merchantData = await safeQuery(() =>
-      supabase.from('merchants').select('plan').eq('id', merchantId).single()
+      supabase.from('merchants').select('plan').eq('id', merchantId).maybeSingle()
     )
     const plan = (merchantData as any)?.plan || 'starter'
     const limits = PLAN_LIMITS[plan as keyof typeof PLAN_LIMITS] || PLAN_LIMITS.starter
@@ -457,7 +455,7 @@ export async function createCard(merchantId: string, data: {
         max_points: data.maxPoints,
         welcome_message: data.welcomeMessage,
         code,
-      }).select().single()
+      }).select().maybeSingle()
     )
 
     if (!cardData) return { success: false as const, error: 'Erreur création carte' }
@@ -483,7 +481,7 @@ export async function deleteCard(cardId: string) {
 
 export async function getCardByCode(code: string) {
   return await safeQuery(() =>
-    supabase.from('loyalty_cards').select('*').eq('code', code.toUpperCase()).eq('is_active', true).single()
+    supabase.from('loyalty_cards').select('*').eq('code', code.toUpperCase()).eq('is_active', true).maybeSingle()
   )
 }
 
@@ -495,7 +493,7 @@ export async function joinCard(cardCode: string, clientName: string, clientPhone
   try {
     // Check client limit for this merchant
     const cardData = await safeQuery(() =>
-      supabase.from('loyalty_cards').select('merchant_id, merchants(plan)').eq('code', cardCode).single()
+      supabase.from('loyalty_cards').select('merchant_id, merchants(plan)').eq('code', cardCode).maybeSingle()
     )
     if (cardData) {
       const plan = (cardData as any)?.merchants?.plan || 'starter'
@@ -528,12 +526,12 @@ export async function joinCard(cardCode: string, clientName: string, clientPhone
 
 export async function findClientByPhone(phone: string, cardId: string) {
   const client = await safeQuery(() =>
-    supabase.from('clients').select('*').eq('phone', phone).single()
+    supabase.from('clients').select('*').eq('phone', phone).maybeSingle()
   )
   if (!client) return null
 
   const clientCard = await safeQuery(() =>
-    supabase.from('client_cards').select('*').eq('client_id', (client as any).id).eq('card_id', cardId).single()
+    supabase.from('client_cards').select('*').eq('client_id', (client as any).id).eq('card_id', cardId).maybeSingle()
   )
   if (!clientCard) return null
 
@@ -574,7 +572,7 @@ export async function createPendingPresence(data: {
         merchant_id: data.merchantId,
         client_name: data.clientName,
         client_phone: data.clientPhone,
-      }).select().single()
+      }).select().maybeSingle()
     )
 
     return result
@@ -640,7 +638,7 @@ export async function getMerchantDashboard(merchantId: string) {
 
 export async function getMerchantStats(merchantId: string) {
   return await safeQuery(() =>
-    supabase.from('merchant_stats').select('*').eq('merchant_id', merchantId).single()
+    supabase.from('merchant_stats').select('*').eq('merchant_id', merchantId).maybeSingle()
   )
 }
 
@@ -857,7 +855,7 @@ export async function createBranch(merchantId: string, branchData: {
     supabase.from('branches').insert({
       merchant_id: merchantId,
       ...branchData,
-    }).select().single()
+    }).select().maybeSingle()
   )
 }
 
@@ -869,7 +867,7 @@ export async function updateBranch(branchId: string, branchData: Partial<{
   manager_name: string
 }>) {
   return await safeQuery(() =>
-    supabase.from('branches').update({ ...branchData, updated_at: new Date().toISOString() }).eq('id', branchId).select().single()
+    supabase.from('branches').update({ ...branchData, updated_at: new Date().toISOString() }).eq('id', branchId).select().maybeSingle()
   )
 }
 
