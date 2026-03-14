@@ -92,7 +92,7 @@ export async function getMerchantProfile(authUserId: string) {
     .from('merchants')
     .select('*')
     .eq('auth_user_id', authUserId)
-    .single()
+    .maybeSingle()
   return { data, error }
 }
 
@@ -113,7 +113,7 @@ export async function createMerchantProfile(profile: {
       status: 'pending',
     })
     .select()
-    .single()
+    .maybeSingle()
   return { data, error }
 }
 
@@ -128,7 +128,7 @@ export async function updateMerchantProfile(merchantId: string, updates: {
     .update({ ...updates, updated_at: new Date().toISOString() })
     .eq('id', merchantId)
     .select()
-    .single()
+    .maybeSingle()
   return { data, error }
 }
 
@@ -163,7 +163,7 @@ export async function createCard(card: {
     .from('loyalty_cards')
     .insert(card)
     .select()
-    .single()
+    .maybeSingle()
   return { data, error }
 }
 
@@ -181,7 +181,7 @@ export async function getCardByCode(code: string) {
     .select('*')
     .eq('code', code.toUpperCase())
     .eq('is_active', true)
-    .single()
+    .maybeSingle()
   return { data, error }
 }
 
@@ -204,7 +204,7 @@ export async function findClientByPhone(phone: string, cardId: string) {
     .from('clients')
     .select('*')
     .eq('phone', phone)
-    .single()
+    .maybeSingle()
 
   if (!client) return { client: null, clientCard: null }
 
@@ -214,7 +214,7 @@ export async function findClientByPhone(phone: string, cardId: string) {
     .select('*')
     .eq('client_id', client.id)
     .eq('card_id', cardId)
-    .single()
+    .maybeSingle()
 
   return { client, clientCard }
 }
@@ -280,7 +280,7 @@ export async function createPendingPresence(data: {
     .from('pending_presences')
     .insert(data)
     .select()
-    .single()
+    .maybeSingle()
   return { data: presence, error }
 }
 
@@ -315,7 +315,7 @@ export async function getMerchantStats(merchantId: string) {
     .from('merchant_stats')
     .select('*')
     .eq('merchant_id', merchantId)
-    .single()
+    .maybeSingle()
   return { data, error }
 }
 
@@ -424,7 +424,7 @@ export async function getPlatformOverview() {
   const { data, error } = await supabase
     .from('platform_overview')
     .select('*')
-    .single()
+    .maybeSingle()
   return { data, error }
 }
 
@@ -458,7 +458,7 @@ export async function createPaymentRequest(request: {
     .from('payment_requests')
     .insert(request)
     .select()
-    .single()
+    .maybeSingle()
   return { data, error }
 }
 
