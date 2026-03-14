@@ -412,7 +412,7 @@ export default function DashboardPage() {
       <div className="hidden md:block bg-white border-b border-slate-200 sticky top-[61px] z-10">
         <div className="max-w-[1300px] mx-auto px-5 md:px-8 flex gap-0 overflow-x-auto">
           {[
-            { id: 'overview', label: 'Vue d'ensemble', icon: '📊' },
+            { id: 'overview', label: "Vue d'ensemble", icon: '📊' },
             { id: 'pending', label: 'Validations', icon: '🔔', count: pending.length },
             { id: 'cards', label: 'Cartes', icon: '💳', count: cards.length },
             { id: 'clients', label: 'Clients', icon: '👤', count: stats.total_clients },
