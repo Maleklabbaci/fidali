@@ -350,22 +350,22 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-slate-50">
 
       {toast && (
-        <div className={`fixed top-5 right-5 z-50 px-5 py-3 rounded-xl shadow-lg text-sm font-medium ${toast.type === 'success' ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}`}>
+        <div className={`fixed top-4 left-4 right-4 md:left-auto md:top-5 md:right-5 md:w-auto z-50 px-5 py-3 rounded-xl shadow-lg text-sm font-medium text-center ${toast.type === 'success' ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}`}>
           {toast.message}
         </div>
       )}
 
-      <header className="bg-white border-b border-slate-200 px-5 md:px-8 py-4 sticky top-0 z-20">
+      <header className="bg-white border-b border-slate-200 px-4 md:px-8 py-3 md:py-4 sticky top-0 z-20">
         <div className="flex items-center justify-between max-w-[1300px] mx-auto">
-          <div className="flex items-center gap-3">
-<img src="/logo.png" alt="Fidali" className="w-9 h-9 rounded-xl shadow-md shadow-indigo-200 object-contain" />
-            <div>
-              <h1 className="text-[15px] font-bold text-slate-900">{merchant?.business_name}</h1>
-              <p className="text-[11px] text-slate-400 flex items-center gap-1.5">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <img src="/logo.png" alt="Fidali" className="w-8 h-8 md:w-9 md:h-9 rounded-xl shadow-md shadow-indigo-200 object-contain shrink-0" />
+            <div className="min-w-0">
+              <h1 className="text-[14px] md:text-[15px] font-bold text-slate-900 truncate max-w-[140px] md:max-w-none">{merchant?.business_name}</h1>
+              <p className="text-[10px] md:text-[11px] text-slate-400 flex items-center gap-1.5">
                 <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${merchant?.plan === 'premium' ? 'bg-violet-100 text-violet-600' : merchant?.plan === 'pro' ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-500'}`}>
                   {merchant?.plan || 'starter'}
                 </span>
-                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" /> en ligne</span>
+                <span className="hidden sm:flex items-center gap-1"><span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" /> en ligne</span>
               </p>
             </div>
           </div>
@@ -501,7 +501,7 @@ export default function DashboardPage() {
                   <div className="bg-slate-50 rounded-2xl p-8 flex items-center justify-center mb-5">
                     <QRCode value={getCardURL(card.code)} size={200} level="H" />
                   </div>
-                  <div className="grid grid-cols-3 gap-2 mb-4">
+                  <div className="grid grid-cols-3 gap-3 mb-4">
                     <button onClick={() => handleCopyLink(card.code)} className="py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-xl text-xs font-semibold transition">{copied ? 'Copié !' : 'Copier'}</button>
                     <button onClick={() => handleShare(card)} className="py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-xl text-xs font-semibold transition">Partager</button>
                     <button onClick={() => handlePrintQR(card)} className="py-2.5 bg-violet-50 hover:bg-violet-100 text-violet-600 rounded-xl text-xs font-semibold transition">Imprimer</button>
@@ -515,7 +515,7 @@ export default function DashboardPage() {
       )}
 
       {/* CONTENT */}
-      <main className="max-w-[1300px] mx-auto px-5 md:px-8 py-6 pb-24 md:pb-6">
+      <main className="max-w-[1300px] mx-auto px-4 md:px-8 py-4 md:py-6 pb-28 md:pb-6">
 
         {activeTab === 'overview' && (
           <div className="space-y-6">
@@ -546,7 +546,7 @@ export default function DashboardPage() {
               ))}
             </div>
 
-            <div className="grid lg:grid-cols-3 gap-6">
+            <div className="grid lg:grid-cols-3 gap-4">
               <div className="lg:col-span-2 space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-bold text-slate-800">Mes cartes de fidélité</h3>
@@ -890,7 +890,7 @@ export default function DashboardPage() {
       {/* Bouton flottant */}
       <button
         onClick={() => { setChatOpen(!chatOpen); if (!chatOpen) setChatStep('list') }}
-        className="fixed bottom-6 right-6 z-30 w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg shadow-indigo-300 flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+        className="fixed bottom-6 md:bottom-6 right-6 z-30 w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg shadow-indigo-300 flex items-center justify-center transition-all hover:scale-110 active:scale-95" style={{ bottom: "calc(env(safe-area-inset-bottom) + 88px)" }}
       >
         {chatOpen ? (
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -906,7 +906,7 @@ export default function DashboardPage() {
 
       {/* Fenêtre chat */}
       {chatOpen && (
-        <div className="fixed bottom-24 right-6 z-40 w-[380px] max-w-[calc(100vw-48px)] bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col" style={{ height: '520px' }}>
+        <div className="fixed z-40 bg-white shadow-2xl border-slate-200 overflow-hidden flex flex-col inset-0 md:inset-auto md:bottom-28 md:right-6 md:w-[380px] md:rounded-2xl md:border" style={{ height: "100%", maxHeight: "100dvh" }} >
 
           {/* Header chat */}
           <div className="bg-indigo-600 px-5 py-4 flex items-center justify-between flex-shrink-0">
