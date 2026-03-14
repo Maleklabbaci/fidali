@@ -49,7 +49,7 @@ function MiniCard({ color1, color2, name, points, max, reward }: any) {
   )
 }
 
-export default function LandingPage() {
+export default function GoPage() {
   const router = useRouter()
   const [scrolled, setScrolled] = useState(false)
   const [activeTestimonial, setActiveTestimonial] = useState(0)
