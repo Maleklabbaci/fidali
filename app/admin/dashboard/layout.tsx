@@ -38,15 +38,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     const loadBadges = async () => {
       try {
-        const { supabase } = await import('@/database/supabase-client')
-        const [{ count: pending }, { count: payments }, { count: messages }] = await Promise.all([
-          supabase.from('merchants').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
-          supabase.from('payment_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
-          supabase.from('messages').select('id', { count: 'exact', head: true }).eq('status', 'unread'),
-        ])
-        setPendingCount(pending || 0)
-        setPaymentCount(payments || 0)
-        setMessageCount(messages || 0)
+        const res = await fetch('/api/admin/badges')
+        if (res.ok) {
+          const { pending, payments, messages } = await res.json()
+          setPendingCount(pending || 0)
+          setPaymentCount(payments || 0)
+          setMessageCount(messages || 0)
+        }
       } catch {}
     }
     loadBadges()
