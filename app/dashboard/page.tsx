@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import QRCode from 'react-qr-code'
 import { exportDashboardPDF } from '@/lib/export-pdf'
 import ShareModal from '@/components/ShareModal'
+import OnboardingGuide from '@/components/OnboardingGuide'
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -547,11 +548,7 @@ export default function DashboardPage() {
                   <button onClick={() => setActiveTab('cards')} className="text-xs text-indigo-600 hover:underline font-medium">Voir tout</button>
                 </div>
                 {cards.length === 0 ? (
-                  <div className="bg-white border-2 border-dashed border-slate-200 rounded-2xl p-10 text-center">
-                    <p className="text-4xl mb-3">💳</p>
-                    <p className="text-slate-800 font-bold mb-1">Créez votre première carte</p>
-                    <button onClick={() => router.push('/dashboard/create-card')} className="px-5 py-2.5 bg-indigo-600 text-white text-xs font-semibold rounded-xl hover:bg-indigo-700 transition shadow-md shadow-indigo-200 mt-3">+ Créer une carte</button>
-                  </div>
+                  <OnboardingGuide onCreateCard={() => router.push('/dashboard/create-card')} merchantName={merchant?.name} />
                 ) : (
                   <div className="space-y-3">
                     {cards.map((card) => {
@@ -704,11 +701,7 @@ export default function DashboardPage() {
               <button onClick={() => router.push('/dashboard/create-card')} className="px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-xl hover:bg-indigo-700 transition">+ Nouvelle carte</button>
             </div>
             {cards.length === 0 ? (
-              <div className="bg-white border-2 border-dashed border-slate-200 rounded-2xl p-12 text-center">
-                <p className="text-4xl mb-3">💳</p>
-                <p className="text-slate-800 font-bold">Aucune carte</p>
-                <button onClick={() => router.push('/dashboard/create-card')} className="px-6 py-2.5 bg-indigo-600 text-white text-xs font-semibold rounded-xl mt-4">Créer une carte</button>
-              </div>
+              <OnboardingGuide onCreateCard={() => router.push('/dashboard/create-card')} merchantName={merchant?.name} />
             ) : (
               <div className="grid md:grid-cols-2 gap-5">
                 {cards.map((card) => {
