@@ -682,8 +682,11 @@ export async function requestUpgrade(merchantId: string, data: {
   name: string
   phone: string
   email?: string
+  note?: string
+  proofUrl?: string
+  amount?: number
 }) {
-  const amount = data.plan === 'premium' ? 5000 : 2500
+  const amount = data.amount ?? (data.plan === 'premium' ? 5000 : 2500)
 
   const result = await safeQuery(() =>
     supabase.from('payment_requests').insert({
@@ -694,6 +697,8 @@ export async function requestUpgrade(merchantId: string, data: {
       contact_name: data.name,
       contact_phone: data.phone,
       contact_email: data.email,
+      note: data.note || null,
+      proof_url: data.proofUrl || null,
     })
   )
 
