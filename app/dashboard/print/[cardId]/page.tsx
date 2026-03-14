@@ -20,18 +20,22 @@ export default function PrintPage() {
 
   const loadData = async () => {
     try {
+      // D'abord essayer de récupérer depuis localStorage (plus rapide, pas de join)
+      const stored = localStorage.getItem('merchant') || sessionStorage.getItem('merchant')
+      const merchantData = stored ? JSON.parse(stored) : null
+
       const { supabase } = await import('@/database/supabase-client')
       
       const { data: cardData, error: cardErr } = await supabase
         .from('loyalty_cards')
-        .select('*, merchants(*)')
+        .select('*')
         .eq('id', cardId)
         .single()
 
       if (cardErr) throw cardErr
 
       setCard(cardData)
-      setMerchant(cardData.merchants)
+      setMerchant(merchantData)
     } catch (err) {
       console.error(err)
       alert('Erreur lors du chargement')
