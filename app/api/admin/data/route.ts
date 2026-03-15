@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
 
       case 'overview': {
         const [merchants, clients, cards, actsToday, actsWeek, points, rewards] = await Promise.all([
-          supabase.from('merchants').select('id, status, plan'),
+          supabase.from('merchants').select('id, status, plan').returns<{ id: string; status: string; plan: string }[]>(),
           supabase.from('clients').select('id', { count: 'exact', head: true }),
           supabase.from('loyalty_cards').select('id', { count: 'exact', head: true }).eq('is_active', true),
           supabase.from('activities').select('id', { count: 'exact', head: true }).gte('created_at', new Date().toISOString().split('T')[0]),
