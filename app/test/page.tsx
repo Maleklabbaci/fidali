@@ -1,38 +1,32 @@
 'use client'
 
-import { useState } from 'react'
+// ⚠️ Page de test — désactivée en production
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
 export default function TestPage() {
-  const [result, setResult] = useState('')
+  const router = useRouter()
 
-  const testConnection = async () => {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  useEffect(() => {
+    // Rediriger vers le dashboard en production
+    if (process.env.NODE_ENV === 'production') {
+      router.replace('/dashboard')
+    }
+  }, [router])
 
-    setResult(JSON.stringify({
-      url_exists: !!url,
-      url_start: url?.substring(0, 30) + '...',
-      key_exists: !!key,
-      key_length: key?.length || 0,
-      key_start: key?.substring(0, 20) + '...',
-    }, null, 2))
+  if (process.env.NODE_ENV === 'production') {
+    return null
   }
 
+  // Afficher seulement en développement local
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
       <div className="bg-white rounded-2xl shadow p-8 max-w-lg w-full">
-        <h1 className="text-2xl font-bold mb-4">🔧 Test Supabase</h1>
-        <button
-          onClick={testConnection}
-          className="px-6 py-3 bg-blue-600 text-white rounded-xl font-bold mb-4"
-        >
-          Tester la connexion
-        </button>
-        {result && (
-          <pre className="bg-gray-100 p-4 rounded-xl text-sm overflow-auto">
-            {result}
-          </pre>
-        )}
+        <h1 className="text-2xl font-bold mb-2">🔧 Page de test</h1>
+        <p className="text-gray-500 text-sm mb-6">Disponible uniquement en développement local.</p>
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-700">
+          ⚠️ Cette page est automatiquement désactivée en production.
+        </div>
       </div>
     </div>
   )
