@@ -42,13 +42,13 @@ export default function LoginPage() {
             router.push('/complete-profile')
           } else if (profile.status === 'pending') {
             // En attente de validation admin
-            router.push('/complete-profile')
-          } else if (profile.status === 'approved') {
-            // Approuvé → dashboard
+            router.push('/dashboard/pending')
+          } else if (profile.status === 'approved' || profile.status === 'active') {
+            // Approuvé ou actif → dashboard
             router.push('/dashboard')
           } else if (profile.status === 'rejected') {
-            // Refusé → peut refaire sa demande
-            router.push('/complete-profile')
+            // Refusé
+            router.push('/dashboard/pending?rejected=1')
           } else {
             router.push('/dashboard')
           }
