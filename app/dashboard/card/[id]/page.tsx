@@ -101,7 +101,7 @@ export default function CardDetailPage() {
         .from('client_cards')
         .select('points')
         .eq('id', presence.client_card_id)
-        .single()
+        .maybeSingle()
 
       const newPoints = clientCard?.points || 0
       const maxPts = card?.max_points || 10
