@@ -3,11 +3,18 @@ import './globals.css'
 import SplashProvider from '@/components/SplashProvider'
 
 export const metadata: Metadata = {
-  title: 'Fidali',
-  description: 'Cartes de fidélité digitales',
+  title: 'Fidali — Cartes de fidélité digitales',
+  description: 'Remplacez les cartes papier par une solution digitale. Vos clients collectent des points en scannant un QR code.',
+  manifest: '/manifest.json',
   icons: {
     icon: '/logo.png',
     apple: '/logo.png',
+  },
+  themeColor: '#2563eb',
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
   },
 }
 
