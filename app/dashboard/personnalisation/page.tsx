@@ -37,6 +37,12 @@ interface Form {
 export default function PersonnalisationPage() {
   const router = useRouter()
   const fileRef = useRef<HTMLInputElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [cropSrc, setCropSrc] = useState<string | null>(null)
+  const [cropImg, setCropImg] = useState<HTMLImageElement | null>(null)
+  const [crop, setCrop] = useState({ x: 0, y: 0, size: 0 })
+  const [dragging, setDragging] = useState(false)
+  const [dragStart, setDragStart] = useState({ mx: 0, my: 0, cx: 0, cy: 0 })
 
   const [merchant, setMerchant] = useState<any>(null)
   const [cards, setCards] = useState<any[]>([])
@@ -132,7 +138,7 @@ export default function PersonnalisationPage() {
     })
   }
 
-  const handleLogoUpload = async (file: File) => {
+  const handleLogoUpload = async (file: File | Blob) => {
     if (!file || !selectedCard) return
     setUploadingLogo(true)
     try {
@@ -227,8 +233,136 @@ export default function PersonnalisationPage() {
     { id: 'points',     icon: '⚡', label: 'Points' },
   ]
 
+  // ── CROP HELPERS ──────────────────────────────────────────
+  const CANVAS_SIZE = 320 // taille affichée du canvas crop
+
+  const getScale = () => {
+    if (!cropImg) return 1
+    return CANVAS_SIZE / Math.max(cropImg.width, cropImg.height)
+  }
+
+  const drawCrop = (c = crop) => {
+    const canvas = canvasRef.current
+    if (!canvas || !cropImg) return
+    const ctx = canvas.getContext('2d')!
+    const scale = getScale()
+    ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE)
+    // Image complète assombrie
+    ctx.globalAlpha = 0.35
+    ctx.drawImage(cropImg, 0, 0, cropImg.width * scale, cropImg.height * scale)
+    ctx.globalAlpha = 1
+    // Zone sélectionnée nette
+    const sx = c.x, sy = c.y, ss = c.size
+    ctx.drawImage(cropImg, sx, sy, ss, ss, sx * scale, sy * scale, ss * scale, ss * scale)
+    // Bordure
+    ctx.strokeStyle = '#fff'
+    ctx.lineWidth = 2
+    ctx.strokeRect(sx * scale, sy * scale, ss * scale, ss * scale)
+  }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  if (cropImg) setTimeout(() => drawCrop(), 0)
+
+  const onMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const rect = canvasRef.current!.getBoundingClientRect()
+    const scale = getScale()
+    const mx = (e.clientX - rect.left) / scale
+    const my = (e.clientY - rect.top) / scale
+    if (mx >= crop.x && mx <= crop.x + crop.size && my >= crop.y && my <= crop.y + crop.size) {
+      setDragging(true)
+      setDragStart({ mx, my, cx: crop.x, cy: crop.y })
+    }
+  }
+
+  const onMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!dragging || !cropImg) return
+    const rect = canvasRef.current!.getBoundingClientRect()
+    const scale = getScale()
+    const mx = (e.clientX - rect.left) / scale
+    const my = (e.clientY - rect.top) / scale
+    const finalC = {
+      size: crop.size,
+      x: Math.max(0, Math.min(cropImg.width  - crop.size, dragStart.cx + (mx - dragStart.mx))),
+      y: Math.max(0, Math.min(cropImg.height - crop.size, dragStart.cy + (my - dragStart.my))),
+    }
+    setCrop(finalC)
+    drawCrop(finalC)
+  }
+
+  const onMouseUp = () => setDragging(false)
+
+  const changeSize = (delta: number) => {
+    if (!cropImg) return
+    const newSize = Math.max(50, Math.min(Math.min(cropImg.width, cropImg.height), crop.size + delta))
+    const c = {
+      size: newSize,
+      x: Math.max(0, Math.min(cropImg.width  - newSize, crop.x)),
+      y: Math.max(0, Math.min(cropImg.height - newSize, crop.y)),
+    }
+    setCrop(c)
+    drawCrop(c)
+  }
+
+  const confirmCrop = async () => {
+    if (!cropImg) return
+    // Dessiner la zone rognée dans un canvas carré 400×400
+    const out = document.createElement('canvas')
+    out.width = 400; out.height = 400
+    out.getContext('2d')!.drawImage(cropImg, crop.x, crop.y, crop.size, crop.size, 0, 0, 400, 400)
+    out.toBlob(async blob => {
+      if (!blob) return
+      setCropSrc(null)
+      setCropImg(null)
+      await handleLogoUpload(blob)
+    }, 'image/webp', 0.85)
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
+
+      {/* ── MODAL CROP ── */}
+      {cropSrc && cropImg && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-sm">
+            <h3 className="font-black text-slate-900 text-lg mb-1">✂️ Rogner le logo</h3>
+            <p className="text-slate-500 text-xs mb-4">Glissez le cadre blanc pour ajuster la zone</p>
+
+            <div className="flex justify-center mb-4">
+              <canvas
+                ref={canvasRef}
+                width={CANVAS_SIZE}
+                height={CANVAS_SIZE}
+                className="rounded-xl cursor-move border border-slate-200"
+                style={{ maxWidth: '100%' }}
+                onMouseDown={onMouseDown}
+                onMouseMove={onMouseMove}
+                onMouseUp={onMouseUp}
+                onMouseLeave={onMouseUp}
+              />
+            </div>
+
+            {/* Contrôle taille */}
+            <div className="flex items-center justify-center gap-3 mb-5">
+              <button onClick={() => changeSize(-30)}
+                className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 font-black text-slate-700 text-lg flex items-center justify-center">−</button>
+              <span className="text-slate-500 text-xs font-semibold">Taille du cadre</span>
+              <button onClick={() => changeSize(30)}
+                className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 font-black text-slate-700 text-lg flex items-center justify-center">+</button>
+            </div>
+
+            <div className="flex gap-3">
+              <button onClick={() => { setCropSrc(null); setCropImg(null) }}
+                className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50">
+                Annuler
+              </button>
+              <button onClick={confirmCrop}
+                className="flex-1 py-3 rounded-xl bg-indigo-600 text-white font-black text-sm hover:bg-indigo-700">
+                ✅ Valider
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Header */}
       <div className="bg-white border-b border-slate-200 px-4 sm:px-6 py-4 flex items-center justify-between sticky top-0 z-30">
@@ -317,7 +451,19 @@ export default function PersonnalisationPage() {
                       </div>
                       <div className="flex-1">
                         <input ref={fileRef} type="file" accept="image/*" className="hidden"
-                          onChange={e => e.target.files?.[0] && handleLogoUpload(e.target.files[0])} />
+                          onChange={e => {
+                          if (!e.target.files?.[0]) return
+                          const url = URL.createObjectURL(e.target.files[0])
+                          const img = new Image()
+                          img.onload = () => {
+                            const s = Math.min(img.width, img.height)
+                            setCropImg(img)
+                            setCropSrc(url)
+                            setCrop({ x: (img.width - s) / 2, y: (img.height - s) / 2, size: s })
+                          }
+                          img.src = url
+                          e.target.value = ''
+                        }} />
                         <button onClick={() => fileRef.current?.click()} disabled={uploadingLogo}
                           className="w-full px-3 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition disabled:opacity-50">
                           {uploadingLogo ? '⏳ Upload en cours…' : '📁 Choisir une image'}
