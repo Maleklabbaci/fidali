@@ -128,15 +128,22 @@ export default function AuthPage() {
         .fade-in { animation: fadeIn 0.4s cubic-bezier(0.33,1,0.68,1) 0.3s both; }
 
         @media (max-width: 1024px) {
-          .color-panel { display: none; }
-          .form-panel  { width: 100%; padding: 2.5rem 2rem; }
+          .color-panel { display: none !important; }
+          .auth-root { display: block; min-height: 100vh; }
+          .form-panel {
+            width: 100% !important;
+            padding: 2.5rem 2rem !important;
+            min-height: 100vh;
+          }
+          /* Cacher le panel inactif sur mobile */
+          .form-panel.hidden-mobile { display: none !important; }
         }
       `}</style>
 
       <div className="auth-root">
 
         {/* ── PANEL LOGIN (gauche, fixe) ── */}
-        <div className="form-panel">
+        <div className={`form-panel${!isLogin ? ' hidden-mobile' : ''}`}>
           <div style={{ maxWidth: 340, width: '100%', margin: '0 auto' }}>
             <div style={{ marginBottom: 36 }}>
               <h2 style={{ fontSize: 34, fontWeight: 800, color: '#111', marginBottom: 10, letterSpacing: '-0.03em' }}>
@@ -167,7 +174,7 @@ export default function AuthPage() {
         </div>
 
         {/* ── PANEL SIGNUP (droite, fixe) ── */}
-        <div className="form-panel" style={{ borderLeft: '1px solid #f3f4f6' }}>
+        <div className={`form-panel${isLogin ? ' hidden-mobile' : ''}`} style={{ borderLeft: '1px solid #f3f4f6' }}>
           <div style={{ maxWidth: 340, width: '100%', margin: '0 auto' }}>
             <div style={{ marginBottom: 28 }}>
               <h2 style={{ fontSize: 34, fontWeight: 800, color: '#111', marginBottom: 10, letterSpacing: '-0.03em' }}>
