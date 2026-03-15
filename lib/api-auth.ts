@@ -71,7 +71,7 @@ export async function authenticateApiKey(req: NextRequest): Promise<AuthResult |
     .eq('id', apiKey.merchant_id)
     .maybeSingle()
 
-  if (!merchant || merchant.plan !== 'premium' || merchant.status !== 'active') {
+  if (!merchant || merchant.plan !== 'premium' || (merchant.status !== 'active' && merchant.status !== 'approved')) {
     return NextResponse.json(
       { error: 'API access requires an active Premium plan' },
       { status: 403 }
