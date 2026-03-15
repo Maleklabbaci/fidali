@@ -523,80 +523,179 @@ export default function DashboardPage() {
       {/* MODALS */}
       {shareCard && <ShareModal card={shareCard} onClose={() => setShareCard(null)} />}
 
+      {/* Modal Delete Premium */}
       {confirmDelete && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 flex items-center justify-center p-4" onClick={() => setConfirmDelete(null)}>
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setConfirmDelete(null)}>
+          <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl transform scale-100 animate-in zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
+            
+            {/* Icon */}
+            <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-red-200">
+              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
             </div>
-            <h3 className="text-base font-bold text-slate-900 text-center mb-1">Supprimer ?</h3>
-            <p className="text-sm text-slate-500 text-center mb-6">Voulez-vous supprimer <strong>{confirmDelete.name}</strong> ?</p>
+
+            {/* Text */}
+            <h3 className="text-2xl font-black text-slate-900 text-center mb-2">Confirmer la suppression</h3>
+            <p className="text-sm text-slate-600 text-center mb-8">
+              Voulez-vous vraiment supprimer <strong className="text-slate-900">{confirmDelete.name}</strong> ?
+              <br />
+              <span className="text-xs text-red-600 font-medium">Cette action est irréversible.</span>
+            </p>
+
+            {/* Actions */}
             <div className="flex gap-3">
-              <button onClick={() => setConfirmDelete(null)} className="flex-1 py-2.5 text-sm font-medium text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200 transition">Annuler</button>
-              <button onClick={() => confirmDelete.type === 'client' ? handleDeleteClient(confirmDelete.id) : handleDeleteCard(confirmDelete.id)} disabled={actionLoading} className="flex-1 py-2.5 text-sm font-medium text-white bg-red-500 rounded-xl hover:bg-red-600 transition disabled:opacity-50">
-                {actionLoading ? 'Suppression...' : 'Supprimer'}
+              <button 
+                onClick={() => setConfirmDelete(null)} 
+                className="flex-1 py-3.5 text-sm font-bold text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200 transition">
+                Annuler
+              </button>
+              <button 
+                onClick={() => confirmDelete.type === 'client' ? handleDeleteClient(confirmDelete.id) : handleDeleteCard(confirmDelete.id)} 
+                disabled={actionLoading} 
+                className="flex-1 py-3.5 text-sm font-black text-white bg-gradient-to-r from-red-600 to-rose-600 rounded-xl hover:from-red-700 hover:to-rose-700 transition disabled:opacity-50 shadow-lg shadow-red-200">
+                {actionLoading ? '⏳ Suppression...' : '🗑️ Supprimer'}
               </button>
             </div>
+
           </div>
         </div>
       )}
 
+      {/* Modal Edit Card Premium */}
       {editCard && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 flex items-center justify-center p-4" onClick={() => setEditCard(null)}>
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-base font-bold text-slate-900 mb-1">Modifier la carte</h3>
-            <p className="text-sm text-slate-400 mb-5">{editCard.business_name} — {editCard.code}</p>
-            <div className="space-y-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setEditCard(null)}>
+          <div className="bg-white rounded-3xl p-8 max-w-lg w-full shadow-2xl transform scale-100 animate-in zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
+            
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6">
               <div>
-                <label className="text-xs font-semibold text-slate-600 mb-1.5 block">Récompense</label>
-                <input type="text" value={editForm.reward} onChange={(e) => setEditForm({ ...editForm, reward: e.target.value })} className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <h3 className="text-2xl font-black text-slate-900 mb-1">Modifier la carte</h3>
+                <p className="text-sm text-slate-500">{editCard.business_name} — {editCard.code}</p>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold text-slate-600 mb-1.5 block">Points max</label>
-                  <input type="number" value={editForm.max_points} onChange={(e) => setEditForm({ ...editForm, max_points: parseInt(e.target.value) || 0 })} className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-600 mb-1.5 block">Points/visite</label>
-                  <input type="number" value={editForm.points_per_visit} onChange={(e) => setEditForm({ ...editForm, points_per_visit: parseInt(e.target.value) || 1 })} className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                </div>
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-slate-600 mb-1.5 block">Message de bienvenue</label>
-                <input type="text" value={editForm.welcome_message} onChange={(e) => setEditForm({ ...editForm, welcome_message: e.target.value })} className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-              </div>
-            </div>
-            <div className="flex gap-3 mt-6">
-              <button onClick={() => setEditCard(null)} className="flex-1 py-2.5 text-sm font-medium text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200 transition">Annuler</button>
-              <button onClick={handleEditCard} disabled={actionLoading} className="flex-1 py-2.5 text-sm font-medium text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition disabled:opacity-50">
-                {actionLoading ? 'Sauvegarde...' : 'Sauvegarder'}
+              <button onClick={() => setEditCard(null)} className="p-2 hover:bg-slate-100 rounded-lg transition">
+                <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
+
+            {/* Form */}
+            <div className="space-y-5">
+              <div>
+                <label className="text-sm font-bold text-slate-700 mb-2 block">Récompense offerte</label>
+                <input 
+                  type="text" 
+                  value={editForm.reward} 
+                  onChange={(e) => setEditForm({ ...editForm, reward: e.target.value })} 
+                  className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition" 
+                  placeholder="Ex: Un café offert"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-bold text-slate-700 mb-2 block">Points max</label>
+                  <input 
+                    type="number" 
+                    value={editForm.max_points} 
+                    onChange={(e) => setEditForm({ ...editForm, max_points: parseInt(e.target.value) || 0 })} 
+                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition" 
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-bold text-slate-700 mb-2 block">Points/visite</label>
+                  <input 
+                    type="number" 
+                    value={editForm.points_per_visit} 
+                    onChange={(e) => setEditForm({ ...editForm, points_per_visit: parseInt(e.target.value) || 1 })} 
+                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition" 
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="text-sm font-bold text-slate-700 mb-2 block">Message de bienvenue</label>
+                <input 
+                  type="text" 
+                  value={editForm.welcome_message} 
+                  onChange={(e) => setEditForm({ ...editForm, welcome_message: e.target.value })} 
+                  className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition" 
+                  placeholder="Ex: Bienvenue dans notre programme !"
+                />
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 mt-8">
+              <button 
+                onClick={() => setEditCard(null)} 
+                className="flex-1 py-3.5 text-sm font-bold text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200 transition">
+                Annuler
+              </button>
+              <button 
+                onClick={handleEditCard} 
+                disabled={actionLoading} 
+                className="flex-1 py-3.5 text-sm font-black text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition disabled:opacity-50 shadow-lg shadow-indigo-200">
+                {actionLoading ? '⏳ Sauvegarde...' : '✓ Sauvegarder'}
+              </button>
+            </div>
+
           </div>
         </div>
       )}
 
+      {/* Modal QR Premium */}
       {showQR && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 flex items-center justify-center p-4" onClick={() => setShowQR(null)}>
-          <div className="bg-white rounded-2xl p-7 max-w-sm w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setShowQR(null)}>
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl transform scale-100 animate-in zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
             {(() => {
               const card = cards.find((c) => c.code === showQR)
               if (!card) return null
               return (
                 <>
-                  <div className="text-center mb-5">
-                    <h3 className="text-lg font-bold text-slate-900">{card.business_name}</h3>
-                    <p className="text-xs text-slate-400 mt-0.5">Scannez pour rejoindre</p>
+                  {/* Header */}
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl overflow-hidden bg-slate-100 flex items-center justify-center">
+                        {card.logo_emoji || '💳'}
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-black text-slate-900">{card.business_name}</h3>
+                        <p className="text-xs text-slate-500">Code: {card.code}</p>
+                      </div>
+                    </div>
+                    <button onClick={() => setShowQR(null)} className="p-2 hover:bg-slate-100 rounded-lg transition">
+                      <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
                   </div>
-                  <div className="bg-slate-50 rounded-2xl p-8 flex items-center justify-center mb-5">
-                    <QRCode value={getCardURL(card.code)} size={200} level="H" />
+
+                  {/* QR Code */}
+                  <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-3xl p-8 flex items-center justify-center mb-6 border-2 border-slate-200">
+                    <QRCode value={getCardURL(card.code)} size={240} level="H" />
                   </div>
+
+                  {/* Actions */}
                   <div className="grid grid-cols-3 gap-3 mb-4">
-                    <button onClick={() => handleCopyLink(card.code)} className="py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-xl text-xs font-semibold transition">{copied ? 'Copié !' : 'Copier'}</button>
-                    <button onClick={() => handleShare(card)} className="py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-xl text-xs font-semibold transition">Partager</button>
-                    <button onClick={() => handlePrintQR(card)} className="py-2.5 bg-violet-50 hover:bg-violet-100 text-violet-600 rounded-xl text-xs font-semibold transition">Imprimer</button>
+                    <button onClick={() => handleCopyLink(card.code)} className="py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold transition shadow-lg shadow-indigo-200">
+                      {copied ? '✓ Copié' : '📋 Copier'}
+                    </button>
+                    <button onClick={() => handleShare(card)} className="py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold transition shadow-lg shadow-emerald-200">
+                      📤 Partager
+                    </button>
+                    <button onClick={() => handlePrintQR(card)} className="py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-sm font-bold transition shadow-lg shadow-violet-200">
+                      🖨️ Print
+                    </button>
                   </div>
-                  <button onClick={() => setShowQR(null)} className="w-full py-2.5 text-sm text-slate-400 hover:text-slate-600 transition">Fermer</button>
+
+                  {/* Info */}
+                  <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
+                    <p className="text-xs text-slate-600 text-center">
+                      Scannez ce QR pour rejoindre le programme de fidélité
+                    </p>
+                  </div>
                 </>
               )
             })()}
@@ -648,17 +747,28 @@ export default function DashboardPage() {
               </div>
             )}
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* KPI Cards Premium */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
               {[
-                { label: 'Clients actifs', value: stats.total_clients, icon: '👤', bg: 'bg-blue-50', text: 'text-blue-600' },
-                { label: 'Cartes actives', value: cards.length, icon: '💳', bg: 'bg-violet-50', text: 'text-violet-600' },
-                { label: 'Points distribués', value: stats.total_points, icon: '⭐', bg: 'bg-amber-50', text: 'text-amber-600' },
-                { label: 'Récompenses', value: stats.total_rewards, icon: '🎁', bg: 'bg-emerald-50', text: 'text-emerald-600' },
+                { label: 'Clients actifs', value: stats.total_clients, icon: '👤', gradient: 'from-blue-500 to-cyan-500', shadow: 'shadow-blue-200' },
+                { label: 'Cartes actives', value: cards.length, icon: '💳', gradient: 'from-violet-500 to-purple-500', shadow: 'shadow-violet-200' },
+                { label: 'Points distribués', value: stats.total_points, icon: '⭐', gradient: 'from-amber-500 to-orange-500', shadow: 'shadow-amber-200' },
+                { label: 'Récompenses', value: stats.total_rewards, icon: '🎁', gradient: 'from-emerald-500 to-teal-500', shadow: 'shadow-emerald-200' },
               ].map((s, i) => (
-                <div key={i} className="bg-white rounded-2xl border border-slate-100 p-5 hover:shadow-md transition">
-                  <div className={`w-10 h-10 ${s.bg} rounded-xl flex items-center justify-center text-lg mb-3`}>{s.icon}</div>
-                  <p className={`text-3xl font-extrabold ${s.text}`}>{s.value.toLocaleString()}</p>
-                  <p className="text-xs text-slate-400 mt-1">{s.label}</p>
+                <div key={i} className="group bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-2xl hover:scale-105 transition-all duration-300 cursor-pointer relative overflow-hidden">
+                  {/* Gradient Background on Hover */}
+                  <div className={`absolute inset-0 bg-gradient-to-br ${s.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-300`} />
+                  
+                  <div className="relative z-10">
+                    <div className={`w-14 h-14 bg-gradient-to-br ${s.gradient} rounded-2xl flex items-center justify-center text-2xl mb-4 shadow-lg ${s.shadow} group-hover:scale-110 transition-transform duration-300`}>
+                      {s.icon}
+                    </div>
+                    <p className="text-4xl font-black text-slate-900 mb-1">{s.value.toLocaleString()}</p>
+                    <p className="text-sm text-slate-500 font-medium">{s.label}</p>
+                  </div>
+
+                  {/* Decorative Circle */}
+                  <div className={`absolute -right-6 -top-6 w-24 h-24 bg-gradient-to-br ${s.gradient} rounded-full opacity-5 group-hover:opacity-10 transition-opacity duration-300`} />
                 </div>
               ))}
             </div>
