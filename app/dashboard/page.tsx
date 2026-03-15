@@ -61,8 +61,9 @@ export default function DashboardPage() {
           router.push('/dashboard/pending')
           return
         }
-        if (profile.status !== 'active' && profile.status !== 'approved' && profile.status !== 'pending') {
-          // statut inconnu ou rejected
+        if (profile.status === 'suspended') {
+          router.push('/dashboard/suspended')
+          return
         }
         if (profile.status === 'rejected') {
           router.push('/dashboard/pending?rejected=1')
@@ -753,31 +754,10 @@ export default function DashboardPage() {
         {activeTab === 'overview' && (
           <div className="space-y-6">
 
-            {/* 🛡️ Bannière sécurité */}
-            <div className="bg-gradient-to-r from-slate-800 to-slate-900 rounded-2xl p-4 border border-slate-700">
-              <div className="flex items-start gap-3">
-                <span className="text-2xl shrink-0">🛡️</span>
-                <div className="flex-1">
-                  <p className="text-white font-bold text-sm mb-3">Système anti-fraude Fidali — Actif</p>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    {[
-                      { icon: '🔄', title: 'QR Dynamique', desc: 'Le lien change toutes les 10 min. Une photo du QR devient invalide rapidement.' },
-                      { icon: '⏱️', title: 'Auto-validation 2 min', desc: 'Sans action de ta part, le point est ajouté après 2 min. Tu peux refuser avant.' },
-                      { icon: '⏰', title: 'Cooldown 8h', desc: 'Impossible de gagner 2 points en moins de 8h avec le même numéro.' },
-                      { icon: '📊', title: 'Traçabilité complète', desc: 'Dans Clients : auto 🤖 = sans toi, manuel ✋ = tu as validé toi-même.' },
-                    ].map((item, i) => (
-                      <div key={i} className="bg-white/5 rounded-xl p-3 border border-white/10">
-                        <p className="text-xl mb-1.5">{item.icon}</p>
-                        <p className="text-white text-[11px] font-bold mb-1">{item.title}</p>
-                        <p className="text-white/40 text-[10px] leading-snug">{item.desc}</p>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-white/30 text-[10px] mt-3 leading-relaxed">
-                    💡 Onglet Clients : <span className="text-amber-400 font-semibold">⚠️ Tous auto</span> = client jamais validé manuellement, peut être suspect. Bouton <span className="text-amber-400 font-semibold">-1pt</span> pour corriger une fraude détectée.
-                  </p>
-                </div>
-              </div>
+            {/* 🛡️ Badge anti-fraude discret */}
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200">
+              <span className="text-sm">🛡️</span>
+              <p className="text-slate-500 text-xs">Protection anti-fraude active — QR dynamique · Cooldown 8h · Traçabilité</p>
             </div>
             {pending.length > 0 && (
               <div className="bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl p-4 flex items-center justify-between cursor-pointer hover:shadow-lg transition shadow-md shadow-amber-200" onClick={() => setActiveTab('pending')}>
