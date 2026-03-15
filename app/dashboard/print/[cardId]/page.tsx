@@ -70,9 +70,7 @@ export default function PrintPage() {
 
       if (error) {
         console.error('Erreur Supabase qr_tokens:', error)
-        alert('Erreur lors de la génération des QR codes : ' + error.message + '
-
-Vérifiez que la table "qr_tokens" existe dans votre base Supabase (voir database/schema.sql).')
+        alert('Erreur lors de la génération des QR codes : ' + error.message + '\n\nVérifiez que la table "qr_tokens" existe dans votre base Supabase (voir database/schema.sql).')
         return false
       }
 
