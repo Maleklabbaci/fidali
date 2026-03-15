@@ -32,7 +32,7 @@ export default function AvisPage() {
         .select('*, merchants(*)')
         .eq('code', code)
         .eq('is_active', true)
-        .single()
+        .maybeSingle()
 
       if (!cardData) { setError('Commerce introuvable'); setLoading(false); return }
       setCard(cardData)
@@ -74,6 +74,21 @@ export default function AvisPage() {
         clientId = client.id
       }
 
+      // Anti-spam : vérifier si ce client a déjà posté un avis sur cette carte
+      if (clientId) {
+        const { data: existing } = await supabase
+          .from('reviews')
+          .select('id')
+          .eq('card_id', card.id)
+          .eq('client_id', clientId)
+          .maybeSingle()
+        if (existing) {
+          setError('Vous avez déjà laissé un avis pour ce commerce.')
+          setSubmitting(false)
+          return
+        }
+      }
+
       const { error: insertError } = await supabase.from('reviews').insert({
         merchant_id: card.merchant_id,
         card_id: card.id,
@@ -87,6 +102,8 @@ export default function AvisPage() {
 
       await supabase.from('activities').insert({
         merchant_id: card.merchant_id,
+        card_id: card.id,
+        client_id: clientId || null,
         type: 'review',
         description: `⭐ ${name.trim()} a laissé un avis ${rating}/5${comment.trim() ? ': "' + comment.trim().slice(0, 50) + '..."' : ''}`,
       })
