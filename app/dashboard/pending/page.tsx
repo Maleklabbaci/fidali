@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
-export default function PendingPage() {
+function PendingContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const rejected = searchParams.get('rejected')
@@ -78,5 +78,17 @@ export default function PendingPage() {
         </button>
       </div>
     </div>
+  )
+}
+
+export default function PendingPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-indigo-900 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-white/20 border-t-white rounded-full animate-spin" />
+      </div>
+    }>
+      <PendingContent />
+    </Suspense>
   )
 }
