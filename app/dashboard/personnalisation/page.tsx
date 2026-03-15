@@ -263,23 +263,32 @@ export default function PersonnalisationPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   if (cropImg) setTimeout(() => drawCrop(), 0)
 
-  const onMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  // ── Helpers communs souris + touch ──────────────────────────
+  const getEventPos = (e: React.MouseEvent | React.TouchEvent, rect: DOMRect, scale: number) => {
+    if ('touches' in e) {
+      const t = e.touches[0]
+      return { mx: (t.clientX - rect.left) / scale, my: (t.clientY - rect.top) / scale }
+    }
+    return { mx: ((e as React.MouseEvent).clientX - rect.left) / scale, my: ((e as React.MouseEvent).clientY - rect.top) / scale }
+  }
+
+  const handleDragStart = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if ('touches' in e) e.preventDefault()
     const rect = canvasRef.current!.getBoundingClientRect()
     const scale = getScale()
-    const mx = (e.clientX - rect.left) / scale
-    const my = (e.clientY - rect.top) / scale
+    const { mx, my } = getEventPos(e, rect, scale)
     if (mx >= crop.x && mx <= crop.x + crop.size && my >= crop.y && my <= crop.y + crop.size) {
       setDragging(true)
       setDragStart({ mx, my, cx: crop.x, cy: crop.y })
     }
   }
 
-  const onMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handleDragMove = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if ('touches' in e) e.preventDefault()
     if (!dragging || !cropImg) return
     const rect = canvasRef.current!.getBoundingClientRect()
     const scale = getScale()
-    const mx = (e.clientX - rect.left) / scale
-    const my = (e.clientY - rect.top) / scale
+    const { mx, my } = getEventPos(e, rect, scale)
     const finalC = {
       size: crop.size,
       x: Math.max(0, Math.min(cropImg.width  - crop.size, dragStart.cx + (mx - dragStart.mx))),
@@ -289,7 +298,12 @@ export default function PersonnalisationPage() {
     drawCrop(finalC)
   }
 
-  const onMouseUp = () => setDragging(false)
+  const handleDragEnd = () => setDragging(false)
+
+  // Alias souris (pour compatibilité JSX)
+  const onMouseDown = handleDragStart as React.MouseEventHandler<HTMLCanvasElement>
+  const onMouseMove = handleDragMove as React.MouseEventHandler<HTMLCanvasElement>
+  const onMouseUp   = handleDragEnd
 
   const changeSize = (delta: number) => {
     if (!cropImg) return
@@ -338,6 +352,9 @@ export default function PersonnalisationPage() {
                 onMouseMove={onMouseMove}
                 onMouseUp={onMouseUp}
                 onMouseLeave={onMouseUp}
+                onTouchStart={handleDragStart as React.TouchEventHandler<HTMLCanvasElement>}
+                onTouchMove={handleDragMove as React.TouchEventHandler<HTMLCanvasElement>}
+                onTouchEnd={handleDragEnd}
               />
             </div>
 
