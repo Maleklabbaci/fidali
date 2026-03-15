@@ -118,6 +118,19 @@ export default function ScanPage() {
   const autoValidatePresence = async () => {
     if (!presenceId) return
     try {
+      const { supabase } = await import('@/database/supabase-client')
+      // Vérifier que la présence est encore en 'pending' avant d'auto-valider
+      // Évite le double-point si le commerçant a déjà validé/refusé
+      const { data: presence } = await supabase
+        .from('pending_presences')
+        .select('status')
+        .eq('id', presenceId)
+        .maybeSingle()
+
+      if (presence?.status === 'confirmed') { setStep('validated'); return }
+      if (presence?.status === 'rejected')  { setStep('rejected');  return }
+      if (presence?.status !== 'pending')   { return } // statut inconnu, ne rien faire
+
       await fetch('/api/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -385,7 +398,7 @@ export default function ScanPage() {
         <p className="text-3xl font-bold mb-3">Point ajouté !</p>
         <p className="text-white/80 mb-2">{name}</p>
         <p className="text-white/60 mb-6">
-          {points + 1}/{maxPoints} points
+          {Math.min(points + (card?.points_per_visit || 1), maxPoints)}/{maxPoints} points
         </p>
         <button
           onClick={() => router.push(`/client/${encodeURIComponent(phone)}`)}
