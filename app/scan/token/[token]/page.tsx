@@ -90,6 +90,13 @@ export default function ScanTokenPage() {
         }
       }
 
+      // Marquer le token comme utilisé EN PREMIER — évite la réutilisation si le reste échoue
+      const { error: tokenErr } = await supabase
+        .from('qr_tokens')
+        .update({ used: true, used_at: new Date().toISOString(), used_by_client_id: client.id })
+        .eq('token', token)
+      if (tokenErr) throw tokenErr
+
       // Ajouter le point directement (pas de validation manuelle pour livraison)
       const maxPts = card.max_points || 10
       const newPts = Math.min((cc.points || 0) + (card.points_per_visit || 1), maxPts)
@@ -100,9 +107,6 @@ export default function ScanTokenPage() {
         total_points_earned: (cc.total_points_earned || 0) + (card.points_per_visit || 1),
         auto_validated_points: (cc.auto_validated_points || 0) + (card.points_per_visit || 1),
       }).eq('id', cc.id)
-
-      // Marquer le token comme utilisé
-      await supabase.from('qr_tokens').update({ used: true, used_at: new Date().toISOString(), used_by_client_id: client.id }).eq('token', token)
 
       // Activity
       await supabase.from('activities').insert({
