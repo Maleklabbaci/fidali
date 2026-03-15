@@ -48,7 +48,7 @@ export default function CreateCardPage() {
   })
 
   useEffect(() => {
-    const stored = localStorage.getItem('merchant')
+    const stored = localStorage.getItem('merchant') || sessionStorage.getItem('merchant')
     if (!stored) { router.push('/login'); return }
     const m = JSON.parse(stored)
     setMerchant(m)
