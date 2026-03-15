@@ -10,105 +10,46 @@ function getAdmin() {
 }
 
 export async function GET(req: NextRequest) {
-  // Vérifier que c'est bien un admin connecté
   const adminId = req.headers.get('x-admin-id')
   if (!adminId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   try {
-    const supabaseAdmin = getAdmin()
-    const { data, error } = await supabaseAdmin
-      .from('payment_requests')
-      .select('*, merchants(business_name, email, name, phone, plan, sub_start, sub_end, sub_billing, sector)')
-      .order('created_at', { ascending: false })
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json({ data })
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
-  }
-}
-
-export async function POST(req: NextRequest) {
-  // Vérifier que c'est bien un admin connecté
-  const adminId = req.headers.get('x-admin-id')
-  if (!adminId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  try {
-    const body = await req.json()
-    const { action } = body
     const supabase = getAdmin()
 
-    // ── Création d'une demande de paiement (depuis le marchand) ──
-    if (action === 'create') {
-      const { merchantId, plan, paymentMethod, name, phone, email, note, amount } = body
-      if (!merchantId || !plan || !paymentMethod || !name || !phone) {
-        return NextResponse.json({ error: 'Champs manquants' }, { status: 400 })
-      }
-      const { data, error } = await supabase
-        .from('payment_requests')
-        .insert({
-          merchant_id: merchantId,
-          requested_plan: plan,
-          payment_method: paymentMethod,
-          amount_dzd: amount ?? (plan === 'premium' ? 5000 : 2500),
-          contact_name: name,
-          contact_phone: phone,
-          contact_email: email || null,
-          note: note || null,
-          status: 'pending',
-        })
-        .select()
-        .maybeSingle()
-      if (error) {
-        console.error('[payments/create]', error)
-        return NextResponse.json({ error: error.message }, { status: 500 })
-      }
-      return NextResponse.json({ success: true, data })
-    }
+    const [
+      { count: totalMerchants },
+      { count: activeMerchants },
+      { count: pendingMerchants },
+      { count: totalClients },
+      { count: totalCards },
+      { count: pendingPayments },
+      { count: unreadMessages },
+      { count: totalScansToday },
+    ] = await Promise.all([
+      supabase.from('merchants').select('id', { count: 'exact', head: true }),
+      supabase.from('merchants').select('id', { count: 'exact', head: true }).in('status', ['active', 'approved']),
+      supabase.from('merchants').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+      supabase.from('clients').select('id', { count: 'exact', head: true }),
+      supabase.from('loyalty_cards').select('id', { count: 'exact', head: true }).eq('is_active', true),
+      supabase.from('payment_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+      supabase.from('messages').select('id', { count: 'exact', head: true }).eq('status', 'unread'),
+      supabase.from('activities').select('id', { count: 'exact', head: true })
+        .gte('created_at', new Date().toISOString().split('T')[0]),
+    ])
 
-    // ── Approbation d'un paiement (depuis l'admin) ──
-    if (action === 'approve') {
-      const { paymentId, merchantId, plan, note: payNote } = body
-      const now = new Date()
-      const isAnnual = payNote?.includes('[Annuel]') || false
-      const subEnd = new Date(now)
-      isAnnual ? subEnd.setFullYear(subEnd.getFullYear() + 1) : subEnd.setMonth(subEnd.getMonth() + 1)
-
-      await supabase.from('payment_requests')
-        .update({ status: 'confirmed', processed_at: now.toISOString() })
-        .eq('id', paymentId)
-
-      await supabase.from('merchants')
-        .update({
-          plan,
-          sub_start: now.toISOString(),
-          sub_end: subEnd.toISOString(),
-          sub_billing: isAnnual ? 'annual' : 'monthly',
-          updated_at: now.toISOString(),
-        })
-        .eq('id', merchantId)
-
-      const endLabel = subEnd.toLocaleDateString('fr-DZ', { day: 'numeric', month: 'long', year: 'numeric' })
-      await supabase.from('notifications').insert({
-        merchant_id: merchantId,
-        type: 'plan_upgraded',
-        title: `✅ Plan ${plan.charAt(0).toUpperCase() + plan.slice(1)} activé !`,
-        message: `Votre abonnement ${isAnnual ? 'annuel' : 'mensuel'} est actif jusqu'au ${endLabel}.`,
-        created_at: now.toISOString(),
-      })
-      return NextResponse.json({ success: true })
-    }
-
-    // ── Refus d'un paiement ──
-    if (action === 'reject') {
-      const { paymentId } = body
-      await supabase.from('payment_requests')
-        .update({ status: 'rejected', processed_at: new Date().toISOString() })
-        .eq('id', paymentId)
-      return NextResponse.json({ success: true })
-    }
-
-    return NextResponse.json({ error: 'Action inconnue' }, { status: 400 })
+    return NextResponse.json({
+      // Badges alertes (pour les pastilles rouges)
+      pending:  pendingMerchants  || 0,
+      payments: pendingPayments   || 0,
+      messages: unreadMessages    || 0,
+      // Chiffres globaux (pour la sidebar)
+      totalMerchants: totalMerchants  || 0,
+      activeMerchants: activeMerchants || 0,
+      totalClients:   totalClients    || 0,
+      totalCards:     totalCards      || 0,
+      scansToday:     totalScansToday || 0,
+    })
   } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+    return NextResponse.json({ pending: 0, payments: 0, messages: 0, totalMerchants: 0, activeMerchants: 0, totalClients: 0, totalCards: 0, scansToday: 0 })
   }
 }
