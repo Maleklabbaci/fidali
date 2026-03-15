@@ -51,13 +51,13 @@ export default function PrintPage() {
     }
   }
 
-  // Générer et sauvegarder 8 tokens uniques pour livraison
+  // Générer et sauvegarder 12 tokens uniques pour livraison
   const generateDeliveryTokens = async (): Promise<boolean> => {
     if (!card) return false
     setSavingTokens(true)
     try {
       const { supabase } = await import('@/database/supabase-client')
-      const tokens = Array.from({ length: 8 }, (_, i) => generateUniqueToken(card.code, i))
+      const tokens = Array.from({ length: 12 }, (_, i) => generateUniqueToken(card.code, i))
 
       // Sauvegarder en base — on vérifie l'erreur explicitement
       const { error } = await supabase.from('qr_tokens').insert(
@@ -232,7 +232,7 @@ export default function PrintPage() {
                     <h3 className="font-black text-slate-900 text-xl">Mini Étiquettes</h3>
                     <span className="bg-orange-100 text-orange-700 text-xs font-bold px-2 py-0.5 rounded-full">COLIS</span>
                   </div>
-                  <p className="text-slate-500 text-sm">8 QR uniques à découper pour livraisons</p>
+                  <p className="text-slate-500 text-sm">12 QR uniques à découper pour livraisons</p>
                 </div>
               </div>
 
@@ -240,7 +240,7 @@ export default function PrintPage() {
               <div className="space-y-3 mb-5">
                 {[
                   { icon: '💀', title: 'Usage Unique', desc: 'Mort après 1 seul scan' },
-                  { icon: '8️⃣', title: '8 QR Uniques', desc: 'Générés à chaque impression' },
+                  { icon: '🔢', title: '12 QR Uniques', desc: 'Générés à chaque impression' },
                   { icon: '✂️', title: 'À Découper', desc: '1 étiquette dans chaque colis' },
                   { icon: '🔒', title: 'Sécurisé', desc: 'Impossible de réutiliser' },
                 ].map((item, i) => (
@@ -269,7 +269,7 @@ export default function PrintPage() {
                     <div className={`w-2 h-2 rounded-full ${mode === 'delivery' ? (tokensReady ? 'bg-green-500 animate-pulse' : 'bg-orange-500 animate-pulse') : 'bg-slate-300'}`} />
                     <p className={`text-xs font-bold ${mode === 'delivery' ? 'text-orange-700' : 'text-slate-500'}`}>
                       {mode === 'delivery' 
-                        ? (tokensReady ? '✓ 8 QR générés' : '⚡ Génération au clic') 
+                        ? (tokensReady ? '✓ 12 QR générés' : '⚡ Génération au clic') 
                         : 'Cliquez pour activer'}
                     </p>
                   </div>
@@ -302,7 +302,7 @@ export default function PrintPage() {
             ) : (
               <div className="grid grid-cols-3 gap-3">
                 {[
-                  { step: '1', title: 'Imprimez 8 QR', desc: 'Découpez chaque étiquette et glissez 1 par colis' },
+                  { step: '1', title: 'Imprimez 12 QR', desc: 'Découpez chaque étiquette et glissez 1 par colis' },
                   { step: '2', title: 'Client reçoit', desc: 'Il trouve le QR dans son colis et le scanne' },
                   { step: '3', title: 'Point ajouté', desc: 'Le QR meurt après usage — impossible de réutiliser' },
                 ].map((s, i) => (
@@ -341,7 +341,7 @@ export default function PrintPage() {
                   <span className="text-white">
                     {mode === 'large' 
                       ? '🖨️ Imprimer le Grand Format Vitrine' 
-                      : (tokensReady ? '🖨️ Imprimer les 8 Étiquettes' : '⚡ Générer 8 QR et Imprimer')}
+                      : (tokensReady ? '🖨️ Imprimer les 12 Étiquettes' : '⚡ Générer 12 QR et Imprimer')}
                   </span>
                 </>
               )}
@@ -361,7 +361,7 @@ export default function PrintPage() {
                 <div>
                   <p className="text-slate-900 font-black text-sm">Aperçu avant impression</p>
                   <p className="text-slate-500 text-xs">
-                    {mode === 'large' ? 'Format A4 — 210×297mm' : 'Page 8 étiquettes — À découper'}
+                    {mode === 'large' ? 'Format A4 — 210×297mm' : 'Page 12 étiquettes — À découper'}
                   </p>
                 </div>
               </div>
@@ -377,7 +377,7 @@ export default function PrintPage() {
                 {mode === 'large' ? (
                   <LargeTemplate card={card} qrUrl={dynamicQrUrl} />
                 ) : (
-                  <DeliveryTemplate card={card} tokens={uniqueTokens.length > 0 ? uniqueTokens : Array(8).fill('PREVIEW')} origin={origin} />
+                  <DeliveryTemplate card={card} tokens={uniqueTokens.length > 0 ? uniqueTokens : Array(12).fill('PREVIEW')} origin={origin} />
                 )}
               </div>
             </div>
@@ -473,8 +473,8 @@ function DeliveryTemplate({ card, tokens, origin }: { card: any; tokens: string[
           ✂️ Découpez chaque étiquette — 1 par colis — QR usage unique
         </p>
       </div>
-      <div className="grid grid-cols-2 gap-3" style={{ height: 'calc(100% - 40px)' }}>
-        {tokens.slice(0, 8).map((token, i) => (
+      <div className="grid grid-cols-3 gap-2" style={{ height: 'calc(100% - 40px)' }}>
+        {tokens.slice(0, 12).map((token, i) => (
           <DeliveryCard key={i} card={card} token={token} origin={origin} index={i + 1} />
         ))}
       </div>
