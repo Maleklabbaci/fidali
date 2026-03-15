@@ -142,13 +142,8 @@ export async function loginAdmin(email: string, password: string) {
       }
     }
 
-    if (email === 'admin@fidali.dz' && password === 'admin123') {
-      return {
-        success: true as const,
-        admin: { id: 'admin-temp', email, name: 'Admin Fidali', role: 'super_admin' },
-        role: 'admin' as const,
-      }
-    }
+    // ⚠️ Fallback supprimé — mot de passe hardcodé retiré pour la sécurité
+    // Si verify_admin_password échoue, on refuse l'accès
 
     return { success: false as const, error: 'Email ou mot de passe incorrect' }
   } catch (err) {
