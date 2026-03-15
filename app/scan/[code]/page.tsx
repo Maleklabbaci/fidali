@@ -39,8 +39,9 @@ async function enablePushForClient(clientId: string) {
 }
 
 // ✅ Vérifie si le token QR est encore valide (fenêtre de 10 min)
+// Si pas de token = ancien QR imprimé avant le système = valide
 function isQrTokenValid(cardCode: string, token: string | null): boolean {
-  if (!token) return true // pas de token = ancien QR = valide (rétrocompat)
+  if (!token) return true // pas de token = QR classique = toujours valide
   const currentWindow = Math.floor(Date.now() / (10 * 60 * 1000))
   const prevWindow = currentWindow - 1
   const validTokens = [
