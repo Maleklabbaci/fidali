@@ -125,13 +125,13 @@ function createSeedData(): Database {
   const merchants: Merchant[] = [
     {
       id: 'M001', name: 'Karim Boudiaf', email: 'karim@pizzaoran.dz',
-      password: 'demo123', business: 'Pizza Oran 🍕', sector: 'restaurant',
+      password: '', business: 'Pizza Oran 🍕', sector: 'restaurant',
       phone: '0555 12 34 56', plan: 'starter', status: 'active',
       createdAt: now - 86400000 * 30,
     },
     {
       id: 'M002', name: 'Amina Hadj', email: 'amina@salonbeaute.dz',
-      password: 'demo123', business: 'Salon Beauté Alger 💇', sector: 'salon',
+      password: '', business: 'Salon Beauté Alger 💇', sector: 'salon',
       phone: '0555 98 76 54', plan: 'pro', status: 'active',
       createdAt: now - 86400000 * 15,
     },
@@ -201,7 +201,7 @@ function createSeedData(): Database {
   })
 
   return {
-    admin: { email: 'admin@fidali.dz', password: 'admin123' },
+    admin: { email: 'admin@fidali.dz', password: '' },
     merchants, cards, clients, clientCards, activities,
     currentUserId: null, currentRole: null, pendingPresence: null,
   }
