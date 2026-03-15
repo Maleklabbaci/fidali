@@ -44,6 +44,25 @@ export default function AdminDashboard() {
   }, [])
 
   useEffect(() => {
+    // Vérifier que l'admin est bien connecté avant de charger quoi que ce soit
+    const stored = localStorage.getItem('admin')
+    if (!stored) {
+      router.push('/admin')
+      return
+    }
+    try {
+      const admin = JSON.parse(stored)
+      if (!admin?.id || !admin?.email) {
+        localStorage.removeItem('admin')
+        router.push('/admin')
+        return
+      }
+    } catch {
+      localStorage.removeItem('admin')
+      router.push('/admin')
+      return
+    }
+
     loadData()
     const setup = async () => {
       const { supabase } = await import('@/database/supabase-client')
