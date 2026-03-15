@@ -29,6 +29,7 @@ export default function DashboardPage() {
   const [shareCard, setShareCard] = useState<any>(null)
   const [actionLoading, setActionLoading] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+  const [globalMessage, setGlobalMessage] = useState<string | null>(null)
 
   // Chat states
   const [chatOpen, setChatOpen] = useState(false)
@@ -73,6 +74,24 @@ export default function DashboardPage() {
       setMerchant(m)
       loadData(m.id)
       loadMessages(m.id)
+
+      // Charger message global + mode maintenance
+      try {
+        const { supabase: sb } = await import('@/database/supabase-client')
+        const { data: settings } = await sb.from('platform_settings').select('key, value').in('key', ['global_message', 'maintenance'])
+        if (settings) {
+          const maint = settings.find((s: any) => s.key === 'maintenance')?.value
+          if (maint?.active) {
+            // Mode maintenance actif → déconnecter et afficher message
+            localStorage.removeItem('merchant')
+            sessionStorage.removeItem('merchant')
+            router.push('/login?maintenance=1')
+            return
+          }
+          const gm = settings.find((s: any) => s.key === 'global_message')?.value
+          if (gm?.active && gm?.text) setGlobalMessage(gm.text)
+        }
+      } catch {}
       // 🔔 Activer les push notifications pour le commerçant automatiquement
       setTimeout(() => enableMerchantPush(m.id), 2000)
     }
@@ -440,6 +459,17 @@ export default function DashboardPage() {
       {toast && (
         <div className={`fixed top-4 left-4 right-4 md:left-auto md:top-5 md:right-5 md:w-auto z-50 px-5 py-3 rounded-xl shadow-lg text-sm font-medium text-center ${toast.type === 'success' ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}`}>
           {toast.message}
+        </div>
+      )}
+
+      {/* Message global admin */}
+      {globalMessage && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 sm:px-6 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-amber-500">📢</span>
+            <p className="text-sm text-amber-800 font-medium">{globalMessage}</p>
+          </div>
+          <button onClick={() => setGlobalMessage(null)} className="text-amber-400 hover:text-amber-600 text-xl leading-none ml-4">×</button>
         </div>
       )}
 
