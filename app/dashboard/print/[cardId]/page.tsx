@@ -52,26 +52,37 @@ export default function PrintPage() {
   }
 
   // Générer et sauvegarder 8 tokens uniques pour livraison
-  const generateDeliveryTokens = async () => {
-    if (!card) return
+  const generateDeliveryTokens = async (): Promise<boolean> => {
+    if (!card) return false
     setSavingTokens(true)
     try {
       const { supabase } = await import('@/database/supabase-client')
       const tokens = Array.from({ length: 8 }, (_, i) => generateUniqueToken(card.code, i))
-      
-      // Sauvegarder en base
-      await supabase.from('qr_tokens').insert(
+
+      // Sauvegarder en base — on vérifie l'erreur explicitement
+      const { error } = await supabase.from('qr_tokens').insert(
         tokens.map(token => ({
           card_id: card.id,
           token,
           used: false,
         }))
       )
+
+      if (error) {
+        console.error('Erreur Supabase qr_tokens:', error)
+        alert('Erreur lors de la génération des QR codes : ' + error.message + '
+
+Vérifiez que la table "qr_tokens" existe dans votre base Supabase (voir database/schema.sql).')
+        return false
+      }
+
       setUniqueTokens(tokens)
       setTokensReady(true)
+      return true
     } catch (err) {
       console.error(err)
-      alert('Erreur génération tokens')
+      alert('Erreur inattendue lors de la génération des QR codes.')
+      return false
     } finally {
       setSavingTokens(false)
     }
@@ -85,7 +96,8 @@ export default function PrintPage() {
 
   const handlePrint = async () => {
     if (mode === 'delivery' && !tokensReady) {
-      await generateDeliveryTokens()
+      const success = await generateDeliveryTokens()
+      if (!success) return  // Bloquer l'impression si la sauvegarde a échoué
     }
     setTimeout(() => window.print(), 300)
   }
