@@ -392,74 +392,101 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <header className="bg-white border-b border-slate-200 px-4 md:px-8 py-3 md:py-4 sticky top-0 z-20">
-        <div className="flex items-center justify-between max-w-[1300px] mx-auto">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <img src="/logo.png" alt="Fidali" className="w-8 h-8 md:w-9 md:h-9 rounded-xl shadow-md shadow-indigo-200 object-contain shrink-0" />
-            <div className="min-w-0">
-              <h1 className="text-[14px] md:text-[15px] font-bold text-slate-900 truncate max-w-[140px] md:max-w-none">{merchant?.business_name}</h1>
-              <p className="text-[10px] md:text-[11px] text-slate-400 flex items-center gap-1.5">
-                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${merchant?.plan === 'premium' ? 'bg-violet-100 text-violet-600' : merchant?.plan === 'pro' ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-500'}`}>
-                  {merchant?.plan || 'starter'}
-                </span>
-                {merchant?.sub_end && merchant?.plan !== 'starter' && (() => {
-                  const end = new Date(merchant.sub_end)
-                  const now = new Date()
-                  const daysLeft = Math.ceil((end.getTime() - now.getTime()) / 86400000)
-                  const isExpired = daysLeft <= 0
-                  const isWarning = daysLeft <= 7 && daysLeft > 0
-                  return (
-                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${isExpired ? 'bg-red-100 text-red-600' : isWarning ? 'bg-amber-100 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                      {isExpired ? '⚠️ Expiré' : isWarning ? `⚠️ ${daysLeft}j` : `✓ ${daysLeft}j`}
-                    </span>
-                  )
-                })()}
-                <span className="hidden sm:flex items-center gap-1"><span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" /> en ligne</span>
-              </p>
+      {/* Header Premium - Mieux organisé */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm">
+        <div className="max-w-[1400px] mx-auto px-6 lg:px-8">
+          <div className="flex items-center justify-between h-20">
+            
+            {/* Left - Logo + Business Info */}
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200">
+                <img src="/logo.png" alt="Fidali" className="w-8 h-8 object-contain" />
+              </div>
+              <div>
+                <h1 className="text-lg font-black text-slate-900 mb-0.5">{merchant?.business_name}</h1>
+                <div className="flex items-center gap-2">
+                  <span className={`px-2.5 py-0.5 rounded-lg text-xs font-black ${merchant?.plan === 'premium' ? 'bg-violet-100 text-violet-700' : merchant?.plan === 'pro' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}`}>
+                    {merchant?.plan?.toUpperCase() || 'STARTER'}
+                  </span>
+                  {merchant?.sub_end && merchant?.plan !== 'starter' && (() => {
+                    const daysLeft = Math.ceil((new Date(merchant.sub_end).getTime() - Date.now()) / 86400000)
+                    const isExpired = daysLeft <= 0
+                    const isWarning = daysLeft <= 7 && daysLeft > 0
+                    return (
+                      <span className={`px-2.5 py-0.5 rounded-lg text-xs font-black ${isExpired ? 'bg-red-100 text-red-700' : isWarning ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                        {isExpired ? '⚠️ Expiré' : `${daysLeft}j restants`}
+                      </span>
+                    )
+                  })()}
+                  <div className="hidden lg:flex items-center gap-1.5 text-emerald-600">
+                    <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                    <span className="text-xs font-medium">En ligne</span>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button onClick={handleRefresh} className={`p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition ${refreshing ? 'animate-spin' : ''}`}>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-            </button>
-            <button onClick={handleExportPDF} disabled={exportingPDF} className="hidden md:flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition disabled:opacity-50">
-              {exportingPDF ? 'Export...' : 'Export PDF'}
-            </button>
-            {(merchant?.plan === 'pro' || merchant?.plan === 'premium') && (
-              <button onClick={() => router.push('/dashboard/stats')} className="hidden md:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg transition shadow-sm">
-                📊 Stats
+
+            {/* Right - Actions bien espacées */}
+            <div className="flex items-center gap-3">
+              
+              {/* Refresh */}
+              <button onClick={handleRefresh} className={`p-3 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition ${refreshing ? 'animate-spin' : ''}`} title="Actualiser">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
               </button>
-            )}
-            {(merchant?.plan === 'pro' || merchant?.plan === 'premium') && (
-              <button onClick={() => router.push('/dashboard/personnalisation')} className="hidden md:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-violet-600 text-white hover:bg-violet-700 rounded-lg transition shadow-sm">
-                ✦ Personnalisation
+
+              {/* Export PDF */}
+              <button onClick={handleExportPDF} disabled={exportingPDF} className="hidden lg:flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition disabled:opacity-50">
+                📄 {exportingPDF ? 'Export...' : 'PDF'}
               </button>
-            )}
-            {merchant?.plan === 'premium' && (
-              <button onClick={() => router.push('/dashboard/branches')} className="hidden md:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-slate-700 text-white hover:bg-slate-800 rounded-lg transition shadow-sm">
-                🏪 Branches
+
+              {/* Stats (Pro+) */}
+              {(merchant?.plan === 'pro' || merchant?.plan === 'premium') && (
+                <button onClick={() => router.push('/dashboard/stats')} className="hidden lg:flex items-center gap-2 px-4 py-2.5 text-sm font-black bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition shadow-lg shadow-emerald-200">
+                  📊 Stats
+                </button>
+              )}
+
+              {/* Personnalisation (Pro+) */}
+              {(merchant?.plan === 'pro' || merchant?.plan === 'premium') && (
+                <button onClick={() => router.push('/dashboard/personnalisation')} className="hidden lg:flex items-center gap-2 px-4 py-2.5 text-sm font-black bg-violet-600 hover:bg-violet-700 text-white rounded-xl transition shadow-lg shadow-violet-200">
+                  ✦ Style
+                </button>
+              )}
+
+              {/* Branches (Premium) */}
+              {merchant?.plan === 'premium' && (
+                <button onClick={() => router.push('/dashboard/branches')} className="hidden lg:flex items-center gap-2 px-4 py-2.5 text-sm font-black bg-slate-700 hover:bg-slate-800 text-white rounded-xl transition shadow-lg">
+                  🏪 Branches
+                </button>
+              )}
+
+              {/* API (Premium) */}
+              {merchant?.plan === 'premium' && (
+                <button onClick={() => router.push('/dashboard/api')} className="hidden lg:flex items-center gap-2 px-4 py-2.5 text-sm font-black bg-rose-600 hover:bg-rose-700 text-white rounded-xl transition shadow-lg shadow-rose-200">
+                  🔑 API
+                </button>
+              )}
+
+              {/* Upgrade */}
+              {merchant?.plan !== 'premium' && (
+                <button onClick={() => router.push('/dashboard/upgrade')} className="hidden lg:flex items-center gap-2 px-5 py-2.5 text-sm font-black bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl transition shadow-lg shadow-indigo-200">
+                  ⭐ {merchant?.plan === 'pro' ? 'Premium' : 'Upgrade'}
+                </button>
+              )}
+
+              {/* Logout */}
+              <button onClick={handleLogout} className="p-3 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition" title="Déconnexion">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
               </button>
-            )}
-            {merchant?.plan === 'premium' && (
-              <button onClick={() => router.push('/dashboard/api')} className="hidden md:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-rose-600 text-white hover:bg-rose-700 rounded-lg transition shadow-sm">
-                🔑 API
-              </button>
-            )}
-            {merchant?.plan !== 'premium' && (
-              <button onClick={() => router.push('/dashboard/upgrade')} className="hidden md:flex px-3 py-1.5 text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg transition shadow-sm">
-                {merchant?.plan === 'pro' ? '⭐ Passer Premium' : 'Upgrade'}
-              </button>
-            )}
-            <button onClick={handleLogout} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-            </button>
+
+            </div>
           </div>
         </div>
       </header>
 
-      {/* Desktop tabs — hidden on mobile */}
-      <div className="hidden md:block bg-white border-b border-slate-200 sticky top-[61px] z-10">
-        <div className="max-w-[1300px] mx-auto px-5 md:px-8 flex gap-0 overflow-x-auto">
+      {/* Desktop Tabs - Mieux espacées */}
+      <div className="hidden md:block bg-white border-b border-slate-200 sticky top-20 z-10">
+        <div className="max-w-[1400px] mx-auto px-6 lg:px-8 flex gap-1">
           {[
             { id: 'overview', label: "Vue d'ensemble", icon: '📊' },
             { id: 'pending', label: 'Validations', icon: '🔔', count: pending.length },
@@ -467,10 +494,24 @@ export default function DashboardPage() {
             { id: 'clients', label: 'Clients', icon: '👤', count: stats.total_clients },
             { id: 'activity', label: 'Activité', icon: '📋' },
           ].map((tab) => (
-            <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-1.5 px-4 py-3 text-[13px] font-medium whitespace-nowrap border-b-2 transition ${activeTab === tab.id ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>
-              <span className="text-sm">{tab.icon}</span> {tab.label}
+            <button 
+              key={tab.id} 
+              onClick={() => setActiveTab(tab.id)} 
+              className={`flex items-center gap-2 px-6 py-4 text-sm font-bold border-b-2 transition ${
+                activeTab === tab.id 
+                  ? 'border-indigo-600 text-indigo-600 bg-indigo-50/50' 
+                  : 'border-transparent text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+              }`}>
+              <span className="text-lg">{tab.icon}</span> 
+              {tab.label}
               {tab.count !== undefined && tab.count > 0 && (
-                <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${tab.id === 'pending' && tab.count > 0 ? 'bg-red-500 text-white' : 'bg-slate-100 text-slate-500'}`}>{tab.count}</span>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-black ${
+                  tab.id === 'pending' && tab.count > 0 
+                    ? 'bg-red-500 text-white animate-pulse' 
+                    : 'bg-slate-200 text-slate-700'
+                }`}>
+                  {tab.count}
+                </span>
               )}
             </button>
           ))}
@@ -563,8 +604,8 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* CONTENT */}
-      <main className="max-w-[1300px] mx-auto px-4 md:px-8 py-4 md:py-6 pb-28 md:pb-6">
+      {/* CONTENT - Mieux espacé */}
+      <main className="max-w-[1400px] mx-auto px-6 lg:px-8 py-8 pb-32 md:pb-8 space-y-8">
 
         {activeTab === 'overview' && (
           <div className="space-y-6">
