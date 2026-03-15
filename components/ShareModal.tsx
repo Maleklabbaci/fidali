@@ -30,7 +30,7 @@ export default function ShareModal({ card, onClose }: ShareModalProps) {
 
   const handleWhatsApp = () => {
     window.open(
-      `https://wa.me/?text=${encodeURIComponent(`🎁 Rejoins ma carte de fidélité ${card.business_name} sur Fidali !\n${pageUrl}`)}`,
+      `https://wa.me/?text=${encodeURIComponent(`🎁 Rejoins le programme de fidélité de ${card.business_name} !\n\n✨ ${card.reward} après ${card.max_points} visites\n\n👉 Inscris-toi ici : ${pageUrl}`)}`,
       '_blank'
     )
   }
