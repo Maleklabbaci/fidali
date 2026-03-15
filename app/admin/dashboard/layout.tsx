@@ -38,7 +38,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     const loadBadges = async () => {
       try {
-        const res = await fetch('/api/admin/badges')
+        const stored = localStorage.getItem('admin')
+        const adminId = stored ? JSON.parse(stored)?.id : null
+        const res = await fetch('/api/admin/badges', {
+          headers: { 'x-admin-id': adminId || '' }
+        })
         if (res.ok) {
           const { pending, payments, messages } = await res.json()
           setPendingCount(pending || 0)
