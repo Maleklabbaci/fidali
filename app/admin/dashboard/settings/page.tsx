@@ -63,8 +63,11 @@ export default function SettingsPage() {
 
   const loadSettings = async () => {
     try {
-      const { supabase } = await import('@/database/supabase-client')
-      const { data } = await supabase.from('platform_settings').select('*')
+      const stored = localStorage.getItem('admin')
+      const adminId = stored ? JSON.parse(stored)?.id : ''
+      const res = await fetch('/api/admin/data?type=settings', { headers: { 'x-admin-id': adminId } })
+      const json = await res.json()
+      const data = json.data
       if (!data) return
       const get = (key: string) => data.find((r: any) => r.key === key)?.value
 
@@ -91,12 +94,15 @@ export default function SettingsPage() {
   }
 
   const upsert = async (key: string, value: any) => {
-    const { supabase } = await import('@/database/supabase-client')
-    const { error } = await supabase.from('platform_settings').upsert(
-      { key, value, updated_at: new Date().toISOString() },
-      { onConflict: 'key' }
-    )
-    if (error) throw error
+    const stored = localStorage.getItem('admin')
+    const adminId = stored ? JSON.parse(stored)?.id : ''
+    const res = await fetch('/api/admin/data', {
+      method: 'POST',
+      headers: { 'x-admin-id': adminId, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'save_settings', key, value })
+    })
+    const json = await res.json()
+    if (!json.success) throw new Error(json.error)
   }
 
   const showSaved = (s: string) => { setSaved(s); setTimeout(() => setSaved(null), 2500) }
