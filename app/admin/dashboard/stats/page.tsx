@@ -10,8 +10,11 @@ export default function StatsPage() {
 
   const load = async () => {
     try {
-      const { getPlatformOverview } = await import('@/database/supabase-client')
-      setOverview(await getPlatformOverview())
+      const stored = localStorage.getItem('admin')
+      const adminId = stored ? JSON.parse(stored)?.id : ''
+      const res = await fetch('/api/admin/data?type=overview', { headers: { 'x-admin-id': adminId } })
+      const data = await res.json()
+      setOverview(data)
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }
