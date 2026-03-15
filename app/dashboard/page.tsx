@@ -392,90 +392,74 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Header Premium - Mieux organisé */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm">
-        <div className="max-w-[1400px] mx-auto px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
+      {/* Header Clean - Style Rise */}
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-20">
+        <div className="max-w-[1280px] mx-auto px-6">
+          <div className="flex items-center justify-between h-16">
             
-            {/* Left - Logo + Business Info */}
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200">
-                <img src="/logo.png" alt="Fidali" className="w-8 h-8 object-contain" />
-              </div>
+            {/* Left - Logo + Business */}
+            <div className="flex items-center gap-3">
+              <img src="/logo.png" alt="Fidali" className="w-10 h-10 rounded-lg object-contain" />
               <div>
-                <h1 className="text-lg font-black text-slate-900 mb-0.5">{merchant?.business_name}</h1>
-                <div className="flex items-center gap-2">
-                  <span className={`px-2.5 py-0.5 rounded-lg text-xs font-black ${merchant?.plan === 'premium' ? 'bg-violet-100 text-violet-700' : merchant?.plan === 'pro' ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}`}>
+                <h1 className="text-base font-bold text-gray-900">{merchant?.business_name}</h1>
+                <div className="flex items-center gap-2 text-xs">
+                  <span className={`px-2 py-0.5 rounded-md font-medium ${merchant?.plan === 'premium' ? 'bg-purple-100 text-purple-700' : merchant?.plan === 'pro' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-600'}`}>
                     {merchant?.plan?.toUpperCase() || 'STARTER'}
                   </span>
                   {merchant?.sub_end && merchant?.plan !== 'starter' && (() => {
                     const daysLeft = Math.ceil((new Date(merchant.sub_end).getTime() - Date.now()) / 86400000)
-                    const isExpired = daysLeft <= 0
-                    const isWarning = daysLeft <= 7 && daysLeft > 0
                     return (
-                      <span className={`px-2.5 py-0.5 rounded-lg text-xs font-black ${isExpired ? 'bg-red-100 text-red-700' : isWarning ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                        {isExpired ? '⚠️ Expiré' : `${daysLeft}j restants`}
+                      <span className={`px-2 py-0.5 rounded-md font-medium ${daysLeft <= 0 ? 'bg-red-100 text-red-700' : daysLeft <= 7 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                        {daysLeft <= 0 ? 'Expiré' : `${daysLeft}j`}
                       </span>
                     )
                   })()}
-                  <div className="hidden lg:flex items-center gap-1.5 text-emerald-600">
-                    <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                    <span className="text-xs font-medium">En ligne</span>
-                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Right - Actions bien espacées */}
-            <div className="flex items-center gap-3">
+            {/* Right - Actions */}
+            <div className="flex items-center gap-2">
               
-              {/* Refresh */}
-              <button onClick={handleRefresh} className={`p-3 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition ${refreshing ? 'animate-spin' : ''}`} title="Actualiser">
+              <button onClick={handleRefresh} className={`p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition ${refreshing ? 'animate-spin' : ''}`}>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
               </button>
 
-              {/* Export PDF */}
-              <button onClick={handleExportPDF} disabled={exportingPDF} className="hidden lg:flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition disabled:opacity-50">
+              <button onClick={handleExportPDF} disabled={exportingPDF} className="hidden lg:flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition">
                 📄 {exportingPDF ? 'Export...' : 'PDF'}
               </button>
 
-              {/* Stats (Pro+) */}
               {(merchant?.plan === 'pro' || merchant?.plan === 'premium') && (
-                <button onClick={() => router.push('/dashboard/stats')} className="hidden lg:flex items-center gap-2 px-4 py-2.5 text-sm font-black bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition shadow-lg shadow-emerald-200">
+                <button onClick={() => router.push('/dashboard/stats')} className="hidden lg:flex items-center gap-2 px-3 py-2 text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition">
                   📊 Stats
                 </button>
               )}
 
-              {/* Personnalisation (Pro+) */}
               {(merchant?.plan === 'pro' || merchant?.plan === 'premium') && (
-                <button onClick={() => router.push('/dashboard/personnalisation')} className="hidden lg:flex items-center gap-2 px-4 py-2.5 text-sm font-black bg-violet-600 hover:bg-violet-700 text-white rounded-xl transition shadow-lg shadow-violet-200">
+                <button onClick={() => router.push('/dashboard/personnalisation')} className="hidden lg:flex items-center gap-2 px-3 py-2 text-sm font-medium bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition">
                   ✦ Style
                 </button>
               )}
 
-              {/* Branches (Premium) */}
               {merchant?.plan === 'premium' && (
-                <button onClick={() => router.push('/dashboard/branches')} className="hidden lg:flex items-center gap-2 px-4 py-2.5 text-sm font-black bg-slate-700 hover:bg-slate-800 text-white rounded-xl transition shadow-lg">
+                <button onClick={() => router.push('/dashboard/branches')} className="hidden lg:flex items-center gap-2 px-3 py-2 text-sm font-medium bg-gray-700 hover:bg-gray-800 text-white rounded-lg transition">
                   🏪 Branches
                 </button>
               )}
 
-              {/* API (Premium) */}
               {merchant?.plan === 'premium' && (
-                <button onClick={() => router.push('/dashboard/api')} className="hidden lg:flex items-center gap-2 px-4 py-2.5 text-sm font-black bg-rose-600 hover:bg-rose-700 text-white rounded-xl transition shadow-lg shadow-rose-200">
+                <button onClick={() => router.push('/dashboard/api')} className="hidden lg:flex items-center gap-2 px-3 py-2 text-sm font-medium bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition">
                   🔑 API
                 </button>
               )}
 
-              {/* Upgrade */}
               {merchant?.plan !== 'premium' && (
-                <button onClick={() => router.push('/dashboard/upgrade')} className="hidden lg:flex items-center gap-2 px-5 py-2.5 text-sm font-black bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl transition shadow-lg shadow-indigo-200">
+                <button onClick={() => router.push('/dashboard/upgrade')} className="hidden lg:flex items-center gap-2 px-4 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition">
                   ⭐ {merchant?.plan === 'pro' ? 'Premium' : 'Upgrade'}
                 </button>
               )}
 
-              {/* Logout */}
-              <button onClick={handleLogout} className="p-3 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition" title="Déconnexion">
+              <button onClick={handleLogout} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
               </button>
 
@@ -484,9 +468,9 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {/* Desktop Tabs - Mieux espacées */}
-      <div className="hidden md:block bg-white border-b border-slate-200 sticky top-20 z-10">
-        <div className="max-w-[1400px] mx-auto px-6 lg:px-8 flex gap-1">
+      {/* Tabs Clean - Style Rise */}
+      <div className="hidden md:block bg-white border-b border-gray-200 sticky top-16 z-10">
+        <div className="max-w-[1280px] mx-auto px-6 flex gap-0">
           {[
             { id: 'overview', label: "Vue d'ensemble", icon: '📊' },
             { id: 'pending', label: 'Validations', icon: '🔔', count: pending.length },
@@ -497,18 +481,18 @@ export default function DashboardPage() {
             <button 
               key={tab.id} 
               onClick={() => setActiveTab(tab.id)} 
-              className={`flex items-center gap-2 px-6 py-4 text-sm font-bold border-b-2 transition ${
+              className={`flex items-center gap-2 px-5 py-3.5 text-sm font-medium border-b-2 transition ${
                 activeTab === tab.id 
-                  ? 'border-indigo-600 text-indigo-600 bg-indigo-50/50' 
-                  : 'border-transparent text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+                  ? 'border-indigo-600 text-indigo-600' 
+                  : 'border-transparent text-gray-500 hover:text-gray-900'
               }`}>
-              <span className="text-lg">{tab.icon}</span> 
+              <span>{tab.icon}</span> 
               {tab.label}
               {tab.count !== undefined && tab.count > 0 && (
-                <span className={`px-2 py-0.5 rounded-full text-xs font-black ${
+                <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${
                   tab.id === 'pending' && tab.count > 0 
-                    ? 'bg-red-500 text-white animate-pulse' 
-                    : 'bg-slate-200 text-slate-700'
+                    ? 'bg-red-100 text-red-700' 
+                    : 'bg-gray-100 text-gray-700'
                 }`}>
                   {tab.count}
                 </span>
@@ -523,38 +507,35 @@ export default function DashboardPage() {
       {/* MODALS */}
       {shareCard && <ShareModal card={shareCard} onClose={() => setShareCard(null)} />}
 
-      {/* Modal Delete Premium */}
+      {/* Modal Delete Clean */}
       {confirmDelete && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setConfirmDelete(null)}>
-          <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl transform scale-100 animate-in zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setConfirmDelete(null)}>
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl" onClick={(e) => e.stopPropagation()}>
             
-            {/* Icon */}
-            <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-red-200">
-              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-7 h-7 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
             </div>
 
-            {/* Text */}
-            <h3 className="text-2xl font-black text-slate-900 text-center mb-2">Confirmer la suppression</h3>
-            <p className="text-sm text-slate-600 text-center mb-8">
-              Voulez-vous vraiment supprimer <strong className="text-slate-900">{confirmDelete.name}</strong> ?
+            <h3 className="text-lg font-bold text-gray-900 text-center mb-2">Confirmer la suppression</h3>
+            <p className="text-sm text-gray-600 text-center mb-6">
+              Voulez-vous vraiment supprimer <strong className="text-gray-900">{confirmDelete.name}</strong> ?
               <br />
-              <span className="text-xs text-red-600 font-medium">Cette action est irréversible.</span>
+              <span className="text-xs text-red-600">Cette action est irréversible.</span>
             </p>
 
-            {/* Actions */}
             <div className="flex gap-3">
               <button 
                 onClick={() => setConfirmDelete(null)} 
-                className="flex-1 py-3.5 text-sm font-bold text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200 transition">
+                className="flex-1 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
                 Annuler
               </button>
               <button 
                 onClick={() => confirmDelete.type === 'client' ? handleDeleteClient(confirmDelete.id) : handleDeleteCard(confirmDelete.id)} 
                 disabled={actionLoading} 
-                className="flex-1 py-3.5 text-sm font-black text-white bg-gradient-to-r from-red-600 to-rose-600 rounded-xl hover:from-red-700 hover:to-rose-700 transition disabled:opacity-50 shadow-lg shadow-red-200">
-                {actionLoading ? '⏳ Suppression...' : '🗑️ Supprimer'}
+                className="flex-1 py-2.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition disabled:opacity-50">
+                {actionLoading ? 'Suppression...' : 'Supprimer'}
               </button>
             </div>
 
@@ -562,82 +543,79 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Modal Edit Card Premium */}
+      {/* Modal Edit Clean */}
       {editCard && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setEditCard(null)}>
-          <div className="bg-white rounded-3xl p-8 max-w-lg w-full shadow-2xl transform scale-100 animate-in zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setEditCard(null)}>
+          <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-xl" onClick={(e) => e.stopPropagation()}>
             
-            {/* Header */}
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-5">
               <div>
-                <h3 className="text-2xl font-black text-slate-900 mb-1">Modifier la carte</h3>
-                <p className="text-sm text-slate-500">{editCard.business_name} — {editCard.code}</p>
+                <h3 className="text-lg font-bold text-gray-900">Modifier la carte</h3>
+                <p className="text-sm text-gray-500">{editCard.business_name} — {editCard.code}</p>
               </div>
-              <button onClick={() => setEditCard(null)} className="p-2 hover:bg-slate-100 rounded-lg transition">
-                <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <button onClick={() => setEditCard(null)} className="p-2 hover:bg-gray-100 rounded-lg">
+                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
 
-            {/* Form */}
-            <div className="space-y-5">
+            <div className="space-y-4">
               <div>
-                <label className="text-sm font-bold text-slate-700 mb-2 block">Récompense offerte</label>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">Récompense offerte</label>
                 <input 
                   type="text" 
                   value={editForm.reward} 
                   onChange={(e) => setEditForm({ ...editForm, reward: e.target.value })} 
-                  className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition" 
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" 
                   placeholder="Ex: Un café offert"
                 />
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-sm font-bold text-slate-700 mb-2 block">Points max</label>
+                  <label className="text-sm font-medium text-gray-700 mb-2 block">Points max</label>
                   <input 
                     type="number" 
                     value={editForm.max_points} 
                     onChange={(e) => setEditForm({ ...editForm, max_points: parseInt(e.target.value) || 0 })} 
-                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition" 
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" 
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-bold text-slate-700 mb-2 block">Points/visite</label>
+                  <label className="text-sm font-medium text-gray-700 mb-2 block">Points/visite</label>
                   <input 
                     type="number" 
                     value={editForm.points_per_visit} 
                     onChange={(e) => setEditForm({ ...editForm, points_per_visit: parseInt(e.target.value) || 1 })} 
-                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition" 
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" 
                   />
                 </div>
               </div>
               
               <div>
-                <label className="text-sm font-bold text-slate-700 mb-2 block">Message de bienvenue</label>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">Message de bienvenue</label>
                 <input 
                   type="text" 
                   value={editForm.welcome_message} 
                   onChange={(e) => setEditForm({ ...editForm, welcome_message: e.target.value })} 
-                  className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition" 
-                  placeholder="Ex: Bienvenue dans notre programme !"
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" 
+                  placeholder="Ex: Bienvenue !"
                 />
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="flex gap-3 mt-8">
+            <div className="flex gap-3 mt-6">
               <button 
                 onClick={() => setEditCard(null)} 
-                className="flex-1 py-3.5 text-sm font-bold text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200 transition">
+                className="flex-1 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
                 Annuler
               </button>
               <button 
                 onClick={handleEditCard} 
                 disabled={actionLoading} 
-                className="flex-1 py-3.5 text-sm font-black text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition disabled:opacity-50 shadow-lg shadow-indigo-200">
-                {actionLoading ? '⏳ Sauvegarde...' : '✓ Sauvegarder'}
+                className="flex-1 py-2.5 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition disabled:opacity-50">
+                {actionLoading ? 'Sauvegarde...' : 'Sauvegarder'}
               </button>
             </div>
 
@@ -645,56 +623,41 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Modal QR Premium */}
+      {/* Modal QR Clean */}
       {showQR && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setShowQR(null)}>
-          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl transform scale-100 animate-in zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowQR(null)}>
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl" onClick={(e) => e.stopPropagation()}>
             {(() => {
               const card = cards.find((c) => c.code === showQR)
               if (!card) return null
               return (
                 <>
-                  {/* Header */}
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-2xl overflow-hidden bg-slate-100 flex items-center justify-center">
-                        {card.logo_emoji || '💳'}
-                      </div>
-                      <div>
-                        <h3 className="text-xl font-black text-slate-900">{card.business_name}</h3>
-                        <p className="text-xs text-slate-500">Code: {card.code}</p>
-                      </div>
+                  <div className="flex items-center justify-between mb-5">
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900">{card.business_name}</h3>
+                      <p className="text-xs text-gray-500">Code: {card.code}</p>
                     </div>
-                    <button onClick={() => setShowQR(null)} className="p-2 hover:bg-slate-100 rounded-lg transition">
-                      <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button onClick={() => setShowQR(null)} className="p-2 hover:bg-gray-100 rounded-lg">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
                     </button>
                   </div>
 
-                  {/* QR Code */}
-                  <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-3xl p-8 flex items-center justify-center mb-6 border-2 border-slate-200">
-                    <QRCode value={getCardURL(card.code)} size={240} level="H" />
+                  <div className="bg-gray-50 rounded-xl p-8 flex items-center justify-center mb-5">
+                    <QRCode value={getCardURL(card.code)} size={220} level="H" />
                   </div>
 
-                  {/* Actions */}
-                  <div className="grid grid-cols-3 gap-3 mb-4">
-                    <button onClick={() => handleCopyLink(card.code)} className="py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold transition shadow-lg shadow-indigo-200">
-                      {copied ? '✓ Copié' : '📋 Copier'}
+                  <div className="grid grid-cols-3 gap-3">
+                    <button onClick={() => handleCopyLink(card.code)} className="py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition">
+                      {copied ? 'Copié' : 'Copier'}
                     </button>
-                    <button onClick={() => handleShare(card)} className="py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold transition shadow-lg shadow-emerald-200">
-                      📤 Partager
+                    <button onClick={() => handleShare(card)} className="py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition">
+                      Partager
                     </button>
-                    <button onClick={() => handlePrintQR(card)} className="py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-sm font-bold transition shadow-lg shadow-violet-200">
-                      🖨️ Print
+                    <button onClick={() => handlePrintQR(card)} className="py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition">
+                      Print
                     </button>
-                  </div>
-
-                  {/* Info */}
-                  <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
-                    <p className="text-xs text-slate-600 text-center">
-                      Scannez ce QR pour rejoindre le programme de fidélité
-                    </p>
                   </div>
                 </>
               )
@@ -703,8 +666,8 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* CONTENT - Mieux espacé */}
-      <main className="max-w-[1400px] mx-auto px-6 lg:px-8 py-8 pb-32 md:pb-8 space-y-8">
+      {/* CONTENT Clean */}
+      <main className="max-w-[1280px] mx-auto px-6 py-6 pb-32 md:pb-6 space-y-6">
 
         {activeTab === 'overview' && (
           <div className="space-y-6">
@@ -747,28 +710,20 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* KPI Cards Premium */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* KPI Cards Clean */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {[
-                { label: 'Clients actifs', value: stats.total_clients, icon: '👤', gradient: 'from-blue-500 to-cyan-500', shadow: 'shadow-blue-200' },
-                { label: 'Cartes actives', value: cards.length, icon: '💳', gradient: 'from-violet-500 to-purple-500', shadow: 'shadow-violet-200' },
-                { label: 'Points distribués', value: stats.total_points, icon: '⭐', gradient: 'from-amber-500 to-orange-500', shadow: 'shadow-amber-200' },
-                { label: 'Récompenses', value: stats.total_rewards, icon: '🎁', gradient: 'from-emerald-500 to-teal-500', shadow: 'shadow-emerald-200' },
+                { label: 'Clients actifs', value: stats.total_clients, icon: '👤', color: 'blue' },
+                { label: 'Cartes actives', value: cards.length, icon: '💳', color: 'purple' },
+                { label: 'Points distribués', value: stats.total_points, icon: '⭐', color: 'amber' },
+                { label: 'Récompenses', value: stats.total_rewards, icon: '🎁', color: 'emerald' },
               ].map((s, i) => (
-                <div key={i} className="group bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-2xl hover:scale-105 transition-all duration-300 cursor-pointer relative overflow-hidden">
-                  {/* Gradient Background on Hover */}
-                  <div className={`absolute inset-0 bg-gradient-to-br ${s.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-300`} />
-                  
-                  <div className="relative z-10">
-                    <div className={`w-14 h-14 bg-gradient-to-br ${s.gradient} rounded-2xl flex items-center justify-center text-2xl mb-4 shadow-lg ${s.shadow} group-hover:scale-110 transition-transform duration-300`}>
-                      {s.icon}
-                    </div>
-                    <p className="text-4xl font-black text-slate-900 mb-1">{s.value.toLocaleString()}</p>
-                    <p className="text-sm text-slate-500 font-medium">{s.label}</p>
+                <div key={i} className="bg-white rounded-lg border border-gray-200 p-5 hover:shadow-md transition">
+                  <div className={`w-11 h-11 bg-${s.color}-50 rounded-lg flex items-center justify-center text-xl mb-3`}>
+                    {s.icon}
                   </div>
-
-                  {/* Decorative Circle */}
-                  <div className={`absolute -right-6 -top-6 w-24 h-24 bg-gradient-to-br ${s.gradient} rounded-full opacity-5 group-hover:opacity-10 transition-opacity duration-300`} />
+                  <p className="text-3xl font-bold text-gray-900 mb-1">{s.value.toLocaleString()}</p>
+                  <p className="text-sm text-gray-500 font-medium">{s.label}</p>
                 </div>
               ))}
             </div>
