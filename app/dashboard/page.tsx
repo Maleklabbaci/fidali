@@ -60,6 +60,9 @@ export default function DashboardPage() {
           router.push('/dashboard/pending')
           return
         }
+        if (profile.status !== 'active' && profile.status !== 'approved' && profile.status !== 'pending') {
+          // statut inconnu ou rejected
+        }
         if (profile.status === 'rejected') {
           router.push('/dashboard/pending?rejected=1')
           return
@@ -198,19 +201,51 @@ export default function DashboardPage() {
       const { supabase } = await import('@/database/supabase-client')
       const presence = pending.find((p) => p.id === presenceId)
       if (!presence) return
-      const { error: e1 } = await supabase.from('pending_presences').update({ status: dbStatus }).eq('id', presenceId)
+
+      // Vérifier que la présence est encore pending (pas déjà traitée par auto-validation)
+      const { data: freshPresence } = await supabase
+        .from('pending_presences').select('status').eq('id', presenceId).maybeSingle()
+      if (freshPresence?.status !== 'pending') {
+        showToast('Déjà traitée automatiquement', 'error')
+        setPending((prev) => prev.filter((p) => p.id !== presenceId))
+        return
+      }
+
+      const { error: e1 } = await supabase
+        .from('pending_presences')
+        .update({ status: dbStatus, resolved_at: new Date().toISOString() })
+        .eq('id', presenceId)
       if (e1) { showToast('Erreur: ' + e1.message, 'error'); return }
+
       if (action === 'validated') {
         const clientCard = clients.find((c) => c.client_id === presence.client_id && c.card_id === presence.card_id) || clients.find((c) => c.id === presence.client_card_id)
         if (clientCard) {
           const card = cards.find((c) => c.id === (clientCard.card_id || presence.card_id))
           const maxPts = card?.max_points || 10
-          const newPts = Math.min((clientCard.points || 0) + (card?.points_per_visit || 1), maxPts)
+          const pointsGain = card?.points_per_visit || 1
+          const newPts = Math.min((clientCard.points || 0) + pointsGain, maxPts)
           const reward = newPts >= maxPts
-          await supabase.from('client_cards').update({ points: reward ? 0 : newPts, total_rewards_redeemed: (clientCard.total_rewards_redeemed || 0) + (reward ? 1 : 0) }).eq('id', clientCard.id)
+
+          // Mise à jour complète — total_points_earned était oublié avant
+          await supabase.from('client_cards').update({
+            points: reward ? 0 : newPts,
+            total_rewards_redeemed: (clientCard.total_rewards_redeemed || 0) + (reward ? 1 : 0),
+            total_points_earned: (clientCard.total_points_earned || 0) + pointsGain,
+          }).eq('id', clientCard.id)
+
+          // Enregistrer dans activities (était oublié pour les validations manuelles)
+          await supabase.from('activities').insert({
+            merchant_id: presence.merchant_id,
+            card_id: presence.card_id,
+            client_id: presence.client_id,
+            type: 'validation',
+            points_amount: pointsGain,
+            description: `✅ Visite validée pour ${presence.client_name}`,
+          })
         }
         showToast('Visite confirmée ✓')
       } else { showToast('Visite refusée') }
+
       setPending((prev) => prev.filter((p) => p.id !== presenceId))
       setTimeout(() => { if (merchant) loadData(merchant.id) }, 500)
     } catch (err) { console.error('Error:', err) }
