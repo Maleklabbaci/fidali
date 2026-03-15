@@ -47,13 +47,26 @@ export async function POST(req: NextRequest) {
 
     const { data: clientCard } = await supabaseAdmin
       .from('client_cards')
-      .select('id, points, total_points_earned, total_rewards_redeemed')
+      .select('id, points, total_points_earned, total_rewards_redeemed, last_validation_at')
       .eq('client_id', client.id)
       .eq('card_id', card.id)
       .maybeSingle()
 
     if (!clientCard) {
       return NextResponse.json({ error: 'Client has not joined this card yet' }, { status: 404 })
+    }
+
+    // Cooldown 1h — empêche le spam via API
+    if (clientCard.last_validation_at) {
+      const timeSince = Date.now() - new Date(clientCard.last_validation_at).getTime()
+      const cooldownMs = 60 * 60 * 1000 // 1 heure
+      if (timeSince < cooldownMs) {
+        const minutesLeft = Math.ceil((cooldownMs - timeSince) / 60000)
+        return NextResponse.json({
+          error: `Cooldown actif. Réessayez dans ${minutesLeft} minute(s).`,
+          cooldown_minutes_remaining: minutesLeft,
+        }, { status: 429 })
+      }
     }
 
     const newPoints = clientCard.points + points
