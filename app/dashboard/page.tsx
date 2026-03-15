@@ -83,7 +83,23 @@ export default function DashboardPage() {
       try {
         const { supabase } = await import('@/database/supabase-client')
         const { data } = await supabase.from('merchants').select('plan, status, sub_start, sub_end, sub_billing').eq('id', m.id).maybeSingle()
-        if (data && (data.plan !== m.plan || data.sub_end !== m.sub_end)) {
+        if (!data) return
+
+        // Vérifier si l'abonnement a expiré → rétrograder vers starter
+        if (data.sub_end && data.plan !== 'starter') {
+          const isExpired = new Date(data.sub_end).getTime() < Date.now()
+          if (isExpired) {
+            await supabase.from('merchants').update({ plan: 'starter', sub_end: null }).eq('id', m.id)
+            const updated = { ...m, plan: 'starter', sub_end: null }
+            localStorage.setItem('merchant', JSON.stringify(updated))
+            sessionStorage.setItem('merchant', JSON.stringify(updated))
+            setMerchant(updated)
+            showToast('⚠️ Votre abonnement a expiré. Plan rétrogradé vers Starter.', 'error')
+            return
+          }
+        }
+
+        if (data.plan !== m.plan || data.sub_end !== m.sub_end) {
           const updated = { ...m, plan: data.plan, status: data.status, sub_start: data.sub_start, sub_end: data.sub_end, sub_billing: data.sub_billing }
           localStorage.setItem('merchant', JSON.stringify(updated))
           sessionStorage.setItem('merchant', JSON.stringify(updated))
