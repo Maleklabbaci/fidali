@@ -17,7 +17,7 @@ function PendingContent() {
         const m = JSON.parse(stored)
         const { getMerchantProfile } = await import('@/database/supabase-client')
         const profile = await getMerchantProfile(m.id)
-        if (profile?.status === 'active') {
+        if (profile?.status === 'active' || profile?.status === 'approved') {
           router.push('/dashboard')
         }
       } catch {}
