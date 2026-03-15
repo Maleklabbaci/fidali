@@ -73,6 +73,7 @@ export default function AuthPage() {
       overflow: 'hidden',
       fontFamily: "'DM Sans', sans-serif",
       position: 'relative',
+      width: '100vw',
     }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&family=DM+Serif+Display:ital@0;1&display=swap');
@@ -119,22 +120,28 @@ export default function AuthPage() {
         }
 
         /* Le wrapper principal — 200% de large, contient les 2 panneaux côte à côte */
+        .slider-wrapper {
+          width: 100vw;
+          min-height: 100vh;
+          overflow: hidden;
+          position: relative;
+        }
         .slider-track {
           display: flex;
-          width: 200%;
+          width: 200vw;
           min-height: 100vh;
           transition: transform 0.72s cubic-bezier(0.76, 0, 0.24, 1);
         }
         .slider-track.to-signup {
-          transform: translateX(-25%);
+          transform: translateX(-50vw);
         }
         .slider-track.to-login {
-          transform: translateX(0%);
+          transform: translateX(0);
         }
 
         /* Chaque "bloc" fait 50% du track = 25% de la largeur visible */
         .block {
-          width: 25%;
+          width: 50vw;
           min-height: 100vh;
           flex-shrink: 0;
         }
@@ -168,7 +175,7 @@ export default function AuthPage() {
         Le bloc 2 est le panel coloré PARTAGÉ qui glisse au milieu
       */}
 
-      <div className={`slider-track ${isLogin ? 'to-login' : 'to-signup'}`}>
+      <div className="slider-wrapper"><div className={`slider-track ${isLogin ? 'to-login' : 'to-signup'}`}>
 
         {/* BLOC 1 — Formulaire LOGIN (visible à gauche en mode login) */}
         <div className="block block-form" style={{
@@ -322,7 +329,7 @@ export default function AuthPage() {
         {/* BLOC 4 — vide (pour que le track fasse bien 200%) */}
         <div className="block" style={{ background: 'white' }} />
 
-      </div>
+      </div></div>
     </div>
   )
 }
