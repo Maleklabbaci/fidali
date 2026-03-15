@@ -40,7 +40,7 @@ export default function PrintPage() {
     try {
       const { supabase } = await import('@/database/supabase-client')
       const { data: cardData, error: cardErr } = await supabase
-        .from('loyalty_cards').select('*').eq('id', cardId).single()
+        .from('loyalty_cards').select('*').eq('id', cardId).maybeSingle()
       if (cardErr) throw cardErr
       setCard(cardData)
     } catch (err) {
