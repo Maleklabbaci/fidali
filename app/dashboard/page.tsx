@@ -313,10 +313,7 @@ export default function DashboardPage() {
     else { handleCopyLink(card.code) }
   }
   const handlePrintQR = (card: any) => {
-    const w = window.open('', '_blank')
-    if (!w) return
-    w.document.write(`<!DOCTYPE html><html><head><title>${card.business_name}</title></head><body style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:system-ui;margin:0"><h1>${card.business_name}</h1><p style="color:#666;margin-bottom:20px">Programme de fidélité</p><div style="padding:16px;border:2px solid #000;border-radius:12px"><img src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(getCardURL(card.code))}" width="300" height="300"/></div><p style="font-weight:bold;margin-top:12px">${card.reward}</p><script>setTimeout(()=>window.print(),500)</script></body></html>`)
-    w.document.close()
+    router.push(`/dashboard/print/${card.id}`)
   }
 
   const timeAgo = (d: string) => {
