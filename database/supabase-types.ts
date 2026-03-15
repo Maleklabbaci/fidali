@@ -12,7 +12,7 @@ export type Json =
   | Json[]
 
 export type PlanType = 'starter' | 'pro' | 'premium'
-export type MerchantStatus = 'pending' | 'active' | 'suspended'
+export type MerchantStatus = 'pending' | 'active' | 'approved' | 'suspended' | 'rejected'
 export type ActivityType = 'join' | 'pts' | 'redeem'
 export type PointsRuleType = 'visit' | 'da' | 'item' | 'custom'
 export type PaymentMethod = 'baridimob' | 'ccp' | 'especes'
