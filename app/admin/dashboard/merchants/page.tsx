@@ -53,16 +53,28 @@ export default function MerchantsPage() {
     setTimeout(() => setActionMsg(null), 3000)
   }
 
+
+  const adminId = () => {
+    const s = localStorage.getItem('admin')
+    return s ? JSON.parse(s)?.id || '' : ''
+  }
+
+  const adminPost = async (action: string, data: any) => {
+    const res = await fetch('/api/admin/data', {
+      method: 'POST',
+      headers: { 'x-admin-id': adminId(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, ...data }),
+    })
+    return res.json()
+  }
+
   const action = async (type: string, id: string, plan?: string) => {
-    const mod = await import('@/database/supabase-client')
     if (type === 'approve') {
-      const s = localStorage.getItem('admin')
-      const aid = s ? JSON.parse(s)?.id : ''
-      await fetch('/api/admin/data', { method: 'POST', headers: { 'x-admin-id': aid, 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'approve_merchant', merchantId: id }) })
+      await adminPost('approve_merchant', { merchantId: id })
       showMsg('✓ Commerçant validé')
     }
     if (type === 'plan') {
-      await mod.changeMerchantPlan(id, plan as any)
+      await adminPost('change_plan', { merchantId: id, plan })
       showMsg(`Plan mis à jour → ${plan}`)
       setSelected((prev: any) => prev ? { ...prev, plan } : null)
       setMerchants((prev: any[]) => prev.map(m => m.id === id ? { ...m, plan } : m))
@@ -77,19 +89,8 @@ export default function MerchantsPage() {
     if (!suspendModal) return
     setSuspending(true)
     try {
-      const { supabase } = await import('@/database/supabase-client')
       const days = parseInt(suspendDays) || 0
-      const suspendUntil = days > 0
-        ? new Date(Date.now() + days * 86400000).toISOString()
-        : null // illimité
-
-      const stored = localStorage.getItem('admin')
-      const adminId = stored ? JSON.parse(stored)?.id : ''
-      await fetch('/api/admin/data', {
-        method: 'POST',
-        headers: { 'x-admin-id': adminId, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'suspend_merchant', merchantId: suspendModal.id, days })
-      })
+      await adminPost('suspend_merchant', { merchantId: suspendModal.id, days })
 
       setSuspendModal(null)
       load()
@@ -100,14 +101,7 @@ export default function MerchantsPage() {
 
   // Réactiver
   const handleReactivate = async (id: string) => {
-    const { supabase } = await import('@/database/supabase-client')
-    const stored2 = localStorage.getItem('admin')
-    const adminId2 = stored2 ? JSON.parse(stored2)?.id : ''
-    await fetch('/api/admin/data', {
-      method: 'POST',
-      headers: { 'x-admin-id': adminId2, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'reactivate_merchant', merchantId: id })
-    })
+    await adminPost('reactivate_merchant', { merchantId: id })
     load()
     showMsg('✅ Compte réactivé')
   }
@@ -117,8 +111,7 @@ export default function MerchantsPage() {
     if (!deleteModal) return
     setDeleting(true)
     try {
-      const { deleteMerchant } = await import('@/database/supabase-client')
-      await deleteMerchant(deleteModal.id)
+      await adminPost('delete_merchant', { merchantId: deleteModal.id })
       setDeleteModal(null)
       load()
       showMsg('🗑️ Commerçant supprimé définitivement')
