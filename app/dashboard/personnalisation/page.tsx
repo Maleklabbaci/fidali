@@ -109,7 +109,7 @@ export default function PersonnalisationPage() {
 
   // Compresse et redimensionne une image côté client avant upload
   // Résultat : toujours <= ~50 Ko, peu importe la taille originale
-  const compressImage = (file: File): Promise<Blob> => {
+  const compressImage = (file: File | Blob): Promise<Blob> => {
     return new Promise((resolve, reject) => {
       const img = new Image()
       const url = URL.createObjectURL(file)
