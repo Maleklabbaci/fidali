@@ -306,6 +306,7 @@ export default function DashboardPage() {
     }
   }
   const getCardURL = (code: string) => `${typeof window !== 'undefined' ? window.location.origin : ''}/scan/${code}`
+  const handleCopyLink = (code: string) => { navigator.clipboard.writeText(getCardURL(code)); setCopied(true); setTimeout(() => setCopied(false), 2000) }
   const handleShare = async (card: any) => {
     const url = getCardURL(card.code)
     if (navigator.share) { try { await navigator.share({ title: card.business_name, text: `Rejoignez ${card.business_name}`, url }) } catch {} }
