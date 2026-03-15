@@ -13,7 +13,7 @@ export default function ShareModal({ card, onClose }: ShareModalProps) {
   const [downloading, setDownloading] = useState(false)
 
   const pageUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}/p/${card.public_slug}`
+    ? `${window.location.origin}/join/${card.code}`
     : ''
 
   const cardUrl = typeof window !== 'undefined'
