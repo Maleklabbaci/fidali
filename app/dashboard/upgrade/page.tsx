@@ -57,6 +57,7 @@ export default function UpgradePage() {
   const [method, setMethod] = useState<string>('baridimob')
   const [step, setStep] = useState<'plans' | 'contact' | 'done'>('plans')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const [form, setForm] = useState({ contact_name: '', contact_phone: '', note: '' })
 
   useEffect(() => {
@@ -83,15 +84,6 @@ export default function UpgradePage() {
       const plan = PLANS.find(p => p.id === selectedPlan)!
       const amount = getPrice(plan.monthlyPrice)
 
-      console.log('🚀 [Upgrade] Submitting payment request:', {
-        merchantId: merchant.id,
-        plan: selectedPlan,
-        method,
-        name: form.contact_name,
-        phone: form.contact_phone,
-        amount,
-      })
-
       const result = await requestUpgrade(merchant.id, {
         plan: selectedPlan as any,
         paymentMethod: method,
@@ -103,16 +95,14 @@ export default function UpgradePage() {
       })
 
       if (!result.success) {
-        console.error('❌ [Upgrade] Request failed:', result.error)
-        alert(`❌ Erreur lors de l'envoi de la demande:\n\n${result.error}\n\nContacte-nous si le problème persiste.`)
+        setError(result.error || "Erreur lors de l'envoi de la demande")
         return
       }
 
-      console.log('✅ [Upgrade] Request sent successfully')
       setStep('done')
     } catch (e: any) {
-      console.error('💥 [Upgrade] Unexpected error:', e)
-      alert(`❌ Erreur inattendue:\n\n${e.message}\n\nContacte-nous si le problème persiste.`)
+      console.error('[Upgrade] Error:', e.message)
+      setError(e.message || 'Erreur inattendue')
     } finally {
       setLoading(false)
     }
@@ -446,6 +436,11 @@ export default function UpgradePage() {
             </div>
 
             {/* Submit */}
+            {error && (
+              <div className="mb-4 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl text-sm text-red-400">
+                ❌ {error}
+              </div>
+            )}
             <button onClick={handleSubmit} disabled={loading || !form.contact_name || !form.contact_phone}
               className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm hover:bg-indigo-700 transition disabled:opacity-40 shadow-lg shadow-indigo-200 flex items-center justify-center gap-2">
               {loading
