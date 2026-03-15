@@ -36,9 +36,14 @@ export default function MerchantsPage() {
 
   const load = async () => {
     try {
-      const { getAllMerchants } = await import('@/database/supabase-client')
-      const data = await getAllMerchants()
-      setMerchants(Array.isArray(data) ? data : [])
+      const stored = localStorage.getItem('admin')
+      const adminId = stored ? JSON.parse(stored)?.id : ''
+      // Utiliser l'API admin (service role) pour bypasser le RLS
+      const res = await fetch('/api/admin/merchants', {
+        headers: { 'x-admin-id': adminId }
+      })
+      const json = await res.json()
+      setMerchants(Array.isArray(json.data) ? json.data : [])
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }
