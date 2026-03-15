@@ -56,7 +56,9 @@ export default function MerchantsPage() {
   const action = async (type: string, id: string, plan?: string) => {
     const mod = await import('@/database/supabase-client')
     if (type === 'approve') {
-      await mod.approveMerchant(id)
+      const s = localStorage.getItem('admin')
+      const aid = s ? JSON.parse(s)?.id : ''
+      await fetch('/api/admin/data', { method: 'POST', headers: { 'x-admin-id': aid, 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'approve_merchant', merchantId: id }) })
       showMsg('✓ Commerçant validé')
     }
     if (type === 'plan') {
@@ -81,11 +83,13 @@ export default function MerchantsPage() {
         ? new Date(Date.now() + days * 86400000).toISOString()
         : null // illimité
 
-      await supabase.from('merchants').update({
-        status: 'suspended',
-        suspend_until: suspendUntil,
-        updated_at: new Date().toISOString(),
-      }).eq('id', suspendModal.id)
+      const stored = localStorage.getItem('admin')
+      const adminId = stored ? JSON.parse(stored)?.id : ''
+      await fetch('/api/admin/data', {
+        method: 'POST',
+        headers: { 'x-admin-id': adminId, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'suspend_merchant', merchantId: suspendModal.id, days })
+      })
 
       setSuspendModal(null)
       load()
@@ -97,11 +101,13 @@ export default function MerchantsPage() {
   // Réactiver
   const handleReactivate = async (id: string) => {
     const { supabase } = await import('@/database/supabase-client')
-    await supabase.from('merchants').update({
-      status: 'active',
-      suspend_until: null,
-      updated_at: new Date().toISOString(),
-    }).eq('id', id)
+    const stored2 = localStorage.getItem('admin')
+    const adminId2 = stored2 ? JSON.parse(stored2)?.id : ''
+    await fetch('/api/admin/data', {
+      method: 'POST',
+      headers: { 'x-admin-id': adminId2, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'reactivate_merchant', merchantId: id })
+    })
     load()
     showMsg('✅ Compte réactivé')
   }
