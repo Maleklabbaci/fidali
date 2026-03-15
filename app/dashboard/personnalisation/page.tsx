@@ -101,14 +101,51 @@ export default function PersonnalisationPage() {
     })
   }
 
+  // Compresse et redimensionne une image côté client avant upload
+  // Résultat : toujours <= ~50 Ko, peu importe la taille originale
+  const compressImage = (file: File): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image()
+      const url = URL.createObjectURL(file)
+      img.onload = () => {
+        URL.revokeObjectURL(url)
+        const MAX = 400 // px max (largeur et hauteur)
+        let { width, height } = img
+        if (width > height) {
+          if (width > MAX) { height = Math.round(height * MAX / width); width = MAX }
+        } else {
+          if (height > MAX) { width = Math.round(width * MAX / height); height = MAX }
+        }
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')!
+        ctx.drawImage(img, 0, 0, width, height)
+        canvas.toBlob(
+          blob => blob ? resolve(blob) : reject(new Error('Compression échouée')),
+          'image/webp',
+          0.82 // qualité 82% → bon compromis qualité/poids
+        )
+      }
+      img.onerror = reject
+      img.src = url
+    })
+  }
+
   const handleLogoUpload = async (file: File) => {
     if (!file || !selectedCard) return
     setUploadingLogo(true)
     try {
       const { supabase } = await import('@/database/supabase-client')
-      const ext = file.name.split('.').pop()
-      const path = `logos/${selectedCard.id}-${Date.now()}.${ext}`
-      const { error: upErr } = await supabase.storage.from('merchant-assets').upload(path, file, { upsert: true })
+
+      // Compression avant upload — transforme n'importe quel fichier en ~50Ko max
+      const compressed = await compressImage(file)
+      const path = `logos/${selectedCard.id}-${Date.now()}.webp`
+
+      const { error: upErr } = await supabase.storage.from('merchant-assets').upload(path, compressed, {
+        upsert: true,
+        contentType: 'image/webp',
+      })
       if (upErr) throw upErr
       const { data } = supabase.storage.from('merchant-assets').getPublicUrl(path)
       set('logo_url', data.publicUrl)
