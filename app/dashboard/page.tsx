@@ -68,7 +68,7 @@ export default function DashboardPage() {
           return
         }
       } catch (e) {
-        console.warn('Vérification profil échouée:', e)
+        // Vérification profil échouée silencieusement
       }
       setMerchant(m)
       loadData(m.id)
