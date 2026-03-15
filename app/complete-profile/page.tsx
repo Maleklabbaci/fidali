@@ -3,418 +3,283 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
-const BUSINESS_TYPES = [
-  { value: 'cafe', label: '☕ Café' },
-  { value: 'restaurant', label: '🍕 Restaurant' },
-  { value: 'salon', label: '💇‍♀️ Salon de coiffure / beauté' },
-  { value: 'boulangerie', label: '🥖 Boulangerie / Pâtisserie' },
-  { value: 'boutique', label: '🛍️ Boutique / Magasin' },
-  { value: 'pharmacie', label: '💊 Pharmacie' },
-  { value: 'salle_sport', label: '💪 Salle de sport' },
-  { value: 'spa', label: '🧖‍♀️ Spa / Hammam' },
-  { value: 'lavage_auto', label: '🚗 Lavage auto' },
-  { value: 'epicerie', label: '🏪 Épicerie / Superette' },
-  { value: 'librairie', label: '📚 Librairie / Papeterie' },
-  { value: 'fleuriste', label: '💐 Fleuriste' },
-  { value: 'pressing', label: '👔 Pressing / Blanchisserie' },
-  { value: 'autre', label: '🏢 Autre' },
+const WILAYAS = [
+  'Adrar','Chlef','Laghouat','Oum El Bouaghi','Batna','Béjaïa','Biskra','Béchar',
+  'Blida','Bouira','Tamanrasset','Tébessa','Tlemcen','Tiaret','Tizi Ouzou','Alger',
+  'Djelfa','Jijel','Sétif','Saïda','Skikda','Sidi Bel Abbès','Annaba','Guelma',
+  'Constantine','Médéa','Mostaganem',"M'Sila",'Mascara','Ouargla','Oran','El Bayadh',
+  'Illizi','Bordj Bou Arréridj','Boumerdès','El Tarf','Tindouf','Tissemsilt','El Oued',
+  'Khenchela','Souk Ahras','Tipaza','Mila','Aïn Defla','Naâma','Aïn Témouchent',
+  'Ghardaïa','Relizane','Timimoun','Bordj Badji Mokhtar','Ouled Djellal','Béni Abbès',
+  'In Salah','In Guezzam','Touggourt','Djanet','El M\'Ghair','El Menia',
 ]
 
-const CITIES = [
-  'Alger', 'Oran', 'Constantine', 'Annaba', 'Blida',
-  'Batna', 'Sétif', 'Sidi Bel Abbès', 'Biskra', 'Tébessa',
-  'Tlemcen', 'Béjaïa', 'Tizi Ouzou', 'Djelfa', 'Bordj Bou Arréridj',
-  'Skikda', 'Chlef', 'Médéa', 'Mostaganem', 'Mascara',
-  'Ouargla', 'Ghardaïa', 'Jijel', 'Relizane', "M'sila",
-  'Tiaret', 'El Oued', 'Laghouat', 'Bouira', 'Boumerdès',
-  'Tipaza', 'Ain Defla', 'Khenchela', 'Souk Ahras', 'Mila',
-  'Autre',
+const BUSINESS_TYPES = [
+  { value: 'cafe',         label: '☕ Café / Salon de thé' },
+  { value: 'restaurant',   label: '🍕 Restaurant' },
+  { value: 'boulangerie',  label: '🥖 Boulangerie / Pâtisserie' },
+  { value: 'salon',        label: '💇 Salon de coiffure / Beauté' },
+  { value: 'boutique',     label: '🛍️ Boutique / Magasin' },
+  { value: 'pharmacie',    label: '💊 Pharmacie' },
+  { value: 'sport',        label: '💪 Salle de sport' },
+  { value: 'spa',          label: '🧖 Spa / Hammam' },
+  { value: 'lavage',       label: '🚗 Lavage auto' },
+  { value: 'epicerie',     label: '🏪 Épicerie / Superette' },
+  { value: 'librairie',    label: '📚 Librairie / Papeterie' },
+  { value: 'pressing',     label: '👔 Pressing' },
+  { value: 'autre',        label: '🏢 Autre' },
+]
+
+const HOW_HEARD = [
+  'Bouche à oreille', 'Réseaux sociaux (Facebook / Instagram)',
+  'Un ami commerçant', 'Google / Internet',
+  'Publicité', 'Autre',
+]
+
+const USE_FOR = [
+  'Fidéliser mes clients réguliers',
+  'Augmenter le nombre de visites',
+  'Remplacer mes cartes papier',
+  'Suivre mes clients et statistiques',
+  'Tout ça à la fois',
 ]
 
 export default function CompleteProfilePage() {
   const router = useRouter()
   const [merchant, setMerchant] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
   const [step, setStep] = useState(1)
+  const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState(false)
 
   const [form, setForm] = useState({
     fullName: '',
     phone: '',
     businessName: '',
     businessType: '',
-    businessTypeOther: '',
     businessAddress: '',
-    city: '',
+    wilaya: '',
+    howHeard: '',
+    useFor: '',
   })
 
   useEffect(() => {
     const stored = localStorage.getItem('merchant') || sessionStorage.getItem('merchant')
-    if (!stored) {
-      router.push('/login')
-      return
-    }
-
+    if (!stored) { router.push('/login'); return }
     const m = JSON.parse(stored)
     setMerchant(m)
+    setForm(f => ({ ...f, fullName: m.name || '', businessName: m.business_name || '' }))
 
+    // Si profil déjà soumis → redirect selon statut
     const checkProfile = async () => {
       try {
         const { getMerchantProfile } = await import('@/database/supabase-client')
         const profile = await getMerchantProfile(m.id)
-
-        if (profile) {
-          // Rediriger selon le statut réel du profil
-          if (profile.status === 'active' || profile.status === 'approved') {
-            router.push('/dashboard')
-          } else if (profile.status === 'pending') {
-            router.push('/dashboard/pending')
-          } else if (profile.status === 'rejected') {
-            router.push('/dashboard/pending?rejected=1')
-          } else {
-            router.push('/dashboard')
-          }
-          return
-        } else {
-          setForm(prev => ({
-            ...prev,
-            fullName: m.name || m.business_name || '',
-          }))
-        }
-      } catch (e) {
-        console.error(e)
-      }
-      setLoading(false)
+        if (profile?.status === 'active' || profile?.status === 'approved') router.push('/dashboard')
+        else if (profile?.status === 'pending') router.push('/dashboard/pending')
+        else if (profile?.status === 'suspended') router.push('/dashboard/suspended')
+        else if (profile?.status === 'rejected') router.push('/dashboard/pending?rejected=1')
+      } catch {}
     }
-
     checkProfile()
   }, [router])
 
-  const updateField = (field: string, value: string) => {
-    setForm(prev => ({ ...prev, [field]: value }))
-    setError('')
-  }
-
-  const formatPhone = (value: string) => {
-    const digits = value.replace(/\D/g, '')
-    if (digits.length <= 4) return digits
-    if (digits.length <= 6) return `${digits.slice(0, 4)} ${digits.slice(4)}`
-    if (digits.length <= 8) return `${digits.slice(0, 4)} ${digits.slice(4, 6)} ${digits.slice(6)}`
-    return `${digits.slice(0, 4)} ${digits.slice(4, 6)} ${digits.slice(6, 8)} ${digits.slice(8, 10)}`
-  }
-
-  const validateStep1 = () => {
-    if (!form.fullName.trim()) return 'Entrez votre nom complet'
-    if (form.fullName.trim().length < 3) return 'Le nom doit contenir au moins 3 caractères'
-    if (!form.phone.trim()) return 'Entrez votre numéro de téléphone'
-    const phoneClean = form.phone.replace(/\s/g, '')
-    if (!/^(0[567]\d{8}|\+213[567]\d{8})$/.test(phoneClean)) {
-      return 'Numéro invalide (ex: 0555 12 34 56)'
-    }
-    return ''
-  }
-
-  const validateStep2 = () => {
-    if (!form.businessName.trim()) return 'Entrez le nom de votre commerce'
-    if (!form.businessType) return 'Sélectionnez le type de commerce'
-    if (form.businessType === 'autre' && !form.businessTypeOther.trim()) {
-      return 'Précisez le type de votre commerce'
-    }
-    return ''
-  }
-
-  const validateStep3 = () => {
-    if (!form.businessAddress.trim()) return "Entrez l'adresse de votre commerce"
-    if (form.businessAddress.trim().length < 5) return "L'adresse doit être plus précise"
-    if (!form.city) return 'Sélectionnez votre ville'
-    return ''
-  }
-
-  const nextStep = () => {
-    let err = ''
-    if (step === 1) err = validateStep1()
-    if (step === 2) err = validateStep2()
-    if (err) { setError(err); return }
-    setStep(s => s + 1)
-    setError('')
-  }
-
-  const prevStep = () => {
-    setStep(s => s - 1)
-    setError('')
-  }
-
   const handleSubmit = async () => {
-    const err = validateStep3()
-    if (err) { setError(err); return }
-
     setSubmitting(true)
     setError('')
-
     try {
-      const { createMerchantProfile } = await import('@/database/supabase-client')
+      const { supabase } = await import('@/database/supabase-client')
 
-      const businessTypeLabel = form.businessType === 'autre'
-        ? form.businessTypeOther.trim()
-        : BUSINESS_TYPES.find(b => b.value === form.businessType)?.label || form.businessType
-
-      const result = await createMerchantProfile({
+      // Soumettre le profil complet
+      const { error: err } = await supabase.from('merchant_profiles').upsert({
         merchant_id: merchant.id,
-        email: merchant.email,
-        full_name: form.fullName.trim(),
-        phone: form.phone.replace(/\s/g, ''),
-        business_name: form.businessName.trim(),
-        business_type: form.businessType === 'autre' ? form.businessTypeOther.trim() : form.businessType,
-        business_type_label: businessTypeLabel,
-        business_address: form.businessAddress.trim(),
-        city: form.city,
+        full_name: form.fullName,
+        phone: form.phone,
+        business_name: form.businessName,
+        business_type: form.businessType,
+        business_address: form.businessAddress,
+        city: form.wilaya,
+        how_heard: form.howHeard,
+        use_for: form.useFor,
+        status: 'pending',
+        submitted_at: new Date().toISOString(),
+      }, { onConflict: 'merchant_id' })
+
+      if (err) throw err
+
+      // Mettre à jour le statut du merchant
+      await supabase.from('merchants').update({ status: 'pending' }).eq('id', merchant.id)
+
+      // Notifier l'admin via messages
+      await supabase.from('messages').insert({
+        merchant_id: merchant.id,
+        subject: '🆕 Nouveau commerçant à valider',
+        content: `${form.fullName} — ${form.businessName} (${form.businessType}) · ${form.wilaya}\nTéléphone: ${form.phone}\nAdresse: ${form.businessAddress}\nComment il a entendu parler de Fidali: ${form.howHeard}\nUtilisation prévue: ${form.useFor}`,
+        status: 'unread',
       })
 
-      if (result.success) {
-        router.push('/dashboard')
-      } else {
-        setError(result.error || "Erreur lors de l'envoi")
-      }
+      router.push('/dashboard/pending')
     } catch (e: any) {
-      console.error(e)
-      setError("Erreur lors de l'envoi. Réessayez.")
+      setError(e.message || 'Erreur lors de la soumission')
     } finally {
       setSubmitting(false)
     }
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#f8f9fb] flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    )
-  }
+  const Field = ({ label, children }: any) => (
+    <div>
+      <label style={{ display: 'block', fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 8, fontWeight: 500 }}>{label}</label>
+      {children}
+    </div>
+  )
 
-  if (success) {
-    return (
-      <div className="min-h-screen bg-[#f8f9fb] flex items-center justify-center px-4">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-md w-full text-center">
-          <div className="w-16 h-16 mx-auto mb-5 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center">
-            <svg className="w-8 h-8 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <h1 className="text-xl font-bold text-gray-900 mb-2">Demande envoyée !</h1>
-          <p className="text-gray-400 text-sm leading-relaxed mb-6">
-            Votre profil est en cours de vérification. Vous recevrez une confirmation très bientôt.
-          </p>
-          <div className="bg-gray-50 rounded-xl p-4 text-left mb-6 border border-gray-100">
-            <p className="text-[10px] text-gray-400 uppercase tracking-wider font-bold mb-3">Récapitulatif</p>
-            <div className="space-y-2">
-              {[
-                { l: 'Nom', v: form.fullName },
-                { l: 'Téléphone', v: form.phone },
-                { l: 'Commerce', v: form.businessName },
-                { l: 'Ville', v: form.city },
-              ].map((item, i) => (
-                <div key={i} className="flex justify-between">
-                  <span className="text-xs text-gray-400">{item.l}</span>
-                  <span className="text-xs text-gray-700 font-medium">{item.v || '—'}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="flex items-center justify-center gap-2 text-xs text-amber-600 bg-amber-50 rounded-lg py-2 px-3 border border-amber-200">
-            <div className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse" />
-            En attente de validation par l&apos;administrateur
-          </div>
-          <button onClick={() => router.push('/go')} className="mt-6 text-sm text-gray-400 hover:text-gray-600 transition-colors">
-            Retour à l&apos;accueil
-          </button>
-        </div>
-      </div>
-    )
-  }
+  const inputStyle = {
+    width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: 10, padding: '11px 14px', fontSize: 14, color: 'white', outline: 'none',
+    fontFamily: "'DM Sans', sans-serif",
+  } as any
+
+  const selectStyle = { ...inputStyle, cursor: 'pointer' }
+
+  const canNext1 = form.fullName && form.phone && form.businessName && form.businessType
+  const canNext2 = form.wilaya && form.businessAddress
+  const canSubmit = form.howHeard && form.useFor
 
   return (
-    <div className="min-h-screen bg-[#f8f9fb] flex items-center justify-center px-4 py-10">
-      <div className="w-full max-w-lg">
-        <div className="text-center mb-6">
-          <img src="/logo.png" alt="Fidali" className="w-12 h-12 rounded-xl object-contain mx-auto mb-3" />
-          <h1 className="text-xl font-bold text-gray-900 mb-1">Complétez votre profil</h1>
-          <p className="text-gray-400 text-sm">Informations nécessaires pour activer votre compte</p>
-        </div>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', background: 'linear-gradient(135deg, #0f0f14 0%, #1a1025 100%)', fontFamily: "'DM Sans', sans-serif" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap');
+        input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.2); }
+        input:focus, select:focus, textarea:focus { border-color: rgba(147,51,234,0.6) !important; }
+        option { background: #1a1025; color: white; }
+      `}</style>
 
-        <div className="flex items-center justify-center gap-2 mb-6">
-          {[1, 2, 3].map((s) => (
-            <div key={s} className="flex items-center gap-2">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                step >= s ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'bg-gray-100 text-gray-400 border border-gray-200'
-              }`}>
-                {step > s ? (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                  </svg>
-                ) : s}
-              </div>
-              {s < 3 && <div className={`w-10 h-[2px] rounded-full transition-all ${step > s ? 'bg-blue-500' : 'bg-gray-200'}`} />}
-            </div>
-          ))}
-        </div>
+      <div style={{ width: '100%', maxWidth: 480 }}>
 
-        <div className="flex justify-between mb-6 px-4">
-          {['Identité', 'Commerce', 'Adresse'].map((label, i) => (
-            <span key={i} className={`text-[10px] uppercase tracking-wider font-bold transition-colors ${
-              step === i + 1 ? 'text-blue-600' : 'text-gray-300'
-            }`}>{label}</span>
-          ))}
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-
-          {step === 1 && (
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1.5">Nom complet *</label>
-                <input type="text" value={form.fullName} onChange={(e) => updateField('fullName', e.target.value)}
-                  placeholder="Mohamed Benali"
-                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition" />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1.5">Numéro de téléphone *</label>
-                <div className="relative">
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none">
-                    <span className="text-sm">🇩🇿</span>
-                    <span className="text-gray-400 text-xs font-medium">+213</span>
-                    <div className="w-px h-4 bg-gray-200 ml-0.5" />
-                  </div>
-                  <input type="tel" value={form.phone} onChange={(e) => updateField('phone', formatPhone(e.target.value))}
-                    placeholder="0555 12 34 56" maxLength={14}
-                    className="w-full pl-[100px] pr-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition" />
-                </div>
-                <p className="text-[10px] text-gray-400 mt-1 ml-1">Format : 05XX XX XX XX ou 06XX XX XX XX</p>
-              </div>
-            </div>
-          )}
-
-          {step === 2 && (
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1.5">Nom du commerce *</label>
-                <input type="text" value={form.businessName} onChange={(e) => updateField('businessName', e.target.value)}
-                  placeholder="Café du Port"
-                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition" />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1.5">Type de commerce *</label>
-                <div className="grid grid-cols-2 gap-1.5 max-h-[260px] overflow-y-auto pr-1">
-                  {BUSINESS_TYPES.map((type) => (
-                    <button key={type.value} type="button" onClick={() => updateField('businessType', type.value)}
-                      className={`text-left px-3 py-2.5 rounded-lg border transition-all text-xs ${
-                        form.businessType === type.value
-                          ? 'bg-blue-50 border-blue-300 text-blue-700 font-medium'
-                          : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
-                      }`}>{type.label}</button>
-                  ))}
-                </div>
-              </div>
-              {form.businessType === 'autre' && (
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1.5">Précisez *</label>
-                  <input type="text" value={form.businessTypeOther} onChange={(e) => updateField('businessTypeOther', e.target.value)}
-                    placeholder="Ex: Bijouterie, Opticien..."
-                    className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition" />
-                </div>
-              )}
-            </div>
-          )}
-
-          {step === 3 && (
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1.5">Adresse du commerce *</label>
-                <textarea value={form.businessAddress} onChange={(e) => updateField('businessAddress', e.target.value)}
-                  placeholder="Rue Didouche Mourad, n°45, Alger Centre" rows={3}
-                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition resize-none" />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1.5">Ville / Wilaya *</label>
-                <div className="grid grid-cols-3 gap-1 max-h-[180px] overflow-y-auto pr-1">
-                  {CITIES.map((city) => (
-                    <button key={city} type="button" onClick={() => updateField('city', city)}
-                      className={`px-2 py-2 rounded-lg border transition-all text-[11px] font-medium ${
-                        form.city === city
-                          ? 'bg-blue-50 border-blue-300 text-blue-700'
-                          : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'
-                      }`}>{city}</button>
-                  ))}
-                </div>
-              </div>
-              <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                <p className="text-[10px] text-gray-400 uppercase tracking-wider font-bold mb-2">Récapitulatif</p>
-                <div className="space-y-1.5">
-                  {[
-                    { l: '👤', v: form.fullName },
-                    { l: '📞', v: form.phone },
-                    { l: '🏪', v: form.businessName },
-                    { l: '📍', v: `${form.city}${form.businessAddress ? ` — ${form.businessAddress.slice(0, 30)}...` : ''}` },
-                  ].map((r, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <span className="text-[10px]">{r.l}</span>
-                      <span className="text-xs text-gray-600">{r.v || '—'}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {error && (
-            <div className="mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-              {error}
-            </div>
-          )}
-
-          <div className="flex items-center justify-between mt-6">
-            {step > 1 ? (
-              <button type="button" onClick={prevStep}
-                className="text-sm text-gray-400 hover:text-gray-600 transition font-medium flex items-center gap-1">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-                </svg>
-                Retour
-              </button>
-            ) : <div />}
-
-            {step < 3 ? (
-              <button type="button" onClick={nextStep}
-                className="px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg text-sm hover:bg-blue-700 transition flex items-center gap-1">
-                Suivant
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                </svg>
-              </button>
-            ) : (
-              <button type="button" onClick={handleSubmit} disabled={submitting}
-                className="px-6 py-2.5 bg-emerald-600 text-white font-medium rounded-lg text-sm hover:bg-emerald-700 transition disabled:opacity-50 flex items-center gap-2">
-                {submitting ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Envoi...
-                  </>
-                ) : (
-                  <>
-                    Envoyer la demande
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                    </svg>
-                  </>
-                )}
-              </button>
-            )}
+        {/* Logo + progress */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <img src="/logo.png" alt="Fidali" style={{ width: 36, height: 36, borderRadius: 10, objectFit: 'contain' }} />
+            <span style={{ color: 'white', fontWeight: 800, fontSize: 18 }}>Fidali</span>
+          </div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {[1,2,3].map(s => (
+              <div key={s} style={{ width: 28, height: 4, borderRadius: 2, background: s <= step ? 'linear-gradient(90deg, #9333ea, #db2777)' : 'rgba(255,255,255,0.1)', transition: 'all 0.3s' }} />
+            ))}
           </div>
         </div>
 
-        <p className="text-center text-[10px] text-gray-300 mt-4">
-          Vos données sont sécurisées et ne seront jamais partagées.
+        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 24, padding: 28, marginBottom: 12 }}>
+
+          {/* Étape 1 — Infos de base */}
+          {step === 1 && (
+            <>
+              <h2 style={{ color: 'white', fontSize: 22, fontWeight: 800, marginBottom: 6, fontFamily: "'DM Serif Display', serif" }}>
+                Votre profil
+              </h2>
+              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginBottom: 24 }}>
+                Dites-nous qui vous êtes et votre commerce
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <Field label="Nom complet *">
+                  <input style={inputStyle} value={form.fullName} onChange={e => setForm(f => ({...f, fullName: e.target.value}))} placeholder="Mohamed Amine Benali" />
+                </Field>
+                <Field label="Numéro de téléphone *">
+                  <input style={inputStyle} type="tel" value={form.phone} onChange={e => setForm(f => ({...f, phone: e.target.value}))} placeholder="05xx xx xx xx" />
+                </Field>
+                <Field label="Nom du commerce *">
+                  <input style={inputStyle} value={form.businessName} onChange={e => setForm(f => ({...f, businessName: e.target.value}))} placeholder="Café El Baraka" />
+                </Field>
+                <Field label="Type de commerce *">
+                  <select style={selectStyle} value={form.businessType} onChange={e => setForm(f => ({...f, businessType: e.target.value}))}>
+                    <option value="">Sélectionner...</option>
+                    {BUSINESS_TYPES.map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
+                  </select>
+                </Field>
+              </div>
+              <button onClick={() => setStep(2)} disabled={!canNext1}
+                style={{ width: '100%', marginTop: 24, padding: 14, borderRadius: 12, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 15, background: canNext1 ? 'linear-gradient(135deg, #9333ea, #db2777)' : 'rgba(255,255,255,0.08)', color: canNext1 ? 'white' : 'rgba(255,255,255,0.3)', fontFamily: "'DM Sans', sans-serif", transition: 'all 0.2s' }}>
+                Continuer →
+              </button>
+            </>
+          )}
+
+          {/* Étape 2 — Localisation */}
+          {step === 2 && (
+            <>
+              <h2 style={{ color: 'white', fontSize: 22, fontWeight: 800, marginBottom: 6, fontFamily: "'DM Serif Display', serif" }}>
+                Votre localisation
+              </h2>
+              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginBottom: 24 }}>
+                Où se trouve votre commerce ?
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <Field label="Wilaya *">
+                  <select style={selectStyle} value={form.wilaya} onChange={e => setForm(f => ({...f, wilaya: e.target.value}))}>
+                    <option value="">Sélectionner votre wilaya...</option>
+                    {WILAYAS.map(w => <option key={w} value={w}>{w}</option>)}
+                  </select>
+                </Field>
+                <Field label="Adresse du commerce *">
+                  <textarea style={{ ...inputStyle, resize: 'none' }} rows={3} value={form.businessAddress} onChange={e => setForm(f => ({...f, businessAddress: e.target.value}))} placeholder="Rue, quartier, ville..." />
+                </Field>
+              </div>
+              <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
+                <button onClick={() => setStep(1)} style={{ flex: 1, padding: 14, borderRadius: 12, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 14, background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)', fontFamily: "'DM Sans', sans-serif" }}>
+                  ← Retour
+                </button>
+                <button onClick={() => setStep(3)} disabled={!canNext2}
+                  style={{ flex: 2, padding: 14, borderRadius: 12, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 15, background: canNext2 ? 'linear-gradient(135deg, #9333ea, #db2777)' : 'rgba(255,255,255,0.08)', color: canNext2 ? 'white' : 'rgba(255,255,255,0.3)', fontFamily: "'DM Sans', sans-serif", transition: 'all 0.2s' }}>
+                  Continuer →
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* Étape 3 — Questions finales */}
+          {step === 3 && (
+            <>
+              <h2 style={{ color: 'white', fontSize: 22, fontWeight: 800, marginBottom: 6, fontFamily: "'DM Serif Display', serif" }}>
+                Dernières questions
+              </h2>
+              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginBottom: 24 }}>
+                Aidez-nous à mieux vous connaître
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <Field label="Comment avez-vous entendu parler de Fidali ? *">
+                  <select style={selectStyle} value={form.howHeard} onChange={e => setForm(f => ({...f, howHeard: e.target.value}))}>
+                    <option value="">Sélectionner...</option>
+                    {HOW_HEARD.map(h => <option key={h} value={h}>{h}</option>)}
+                  </select>
+                </Field>
+                <Field label="Pour quoi voulez-vous utiliser Fidali ? *">
+                  <select style={selectStyle} value={form.useFor} onChange={e => setForm(f => ({...f, useFor: e.target.value}))}>
+                    <option value="">Sélectionner...</option>
+                    {USE_FOR.map(u => <option key={u} value={u}>{u}</option>)}
+                  </select>
+                </Field>
+              </div>
+
+              {error && (
+                <div style={{ marginTop: 16, padding: '12px 14px', borderRadius: 10, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171', fontSize: 13 }}>
+                  ❌ {error}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
+                <button onClick={() => setStep(2)} style={{ flex: 1, padding: 14, borderRadius: 12, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 14, background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)', fontFamily: "'DM Sans', sans-serif" }}>
+                  ← Retour
+                </button>
+                <button onClick={handleSubmit} disabled={!canSubmit || submitting}
+                  style={{ flex: 2, padding: 14, borderRadius: 12, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 15, background: (canSubmit && !submitting) ? 'linear-gradient(135deg, #9333ea, #db2777)' : 'rgba(255,255,255,0.08)', color: (canSubmit && !submitting) ? 'white' : 'rgba(255,255,255,0.3)', fontFamily: "'DM Sans', sans-serif", transition: 'all 0.2s' }}>
+                  {submitting ? 'Envoi...' : '🚀 Soumettre mon dossier'}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+
+        <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.15)', fontSize: 12 }}>
+          Étape {step}/3 — Vos données sont sécurisées 🔒
         </p>
       </div>
     </div>
