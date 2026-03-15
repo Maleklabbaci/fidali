@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   if (!checkAuth(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const type = req.nextUrl.searchParams.get('type')
-  const supabase = getServiceClient()
+  const supabase = getServiceClient() as any
 
   try {
     switch (type) {
