@@ -177,7 +177,7 @@ export async function signupMerchant(data: {
       sector: data.sector,
       phone: data.phone,
       plan: 'starter',
-      status: 'active',
+      status: 'pending', // En attente de validation admin via complete-profile
     })
 
     if (profileError) return { success: false as const, error: profileError.message }
