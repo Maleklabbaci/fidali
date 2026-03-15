@@ -10,6 +10,10 @@ function getAdmin() {
 }
 
 export async function GET(req: NextRequest) {
+  // Vérifier que c'est bien un admin connecté
+  const adminId = req.headers.get('x-admin-id')
+  if (!adminId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const supabaseAdmin = getAdmin()
     const { data, error } = await supabaseAdmin
@@ -24,6 +28,10 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  // Vérifier que c'est bien un admin connecté
+  const adminId = req.headers.get('x-admin-id')
+  if (!adminId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const body = await req.json()
     const { action } = body
