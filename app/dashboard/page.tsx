@@ -70,6 +70,8 @@ export default function DashboardPage() {
       setMerchant(m)
       loadData(m.id)
       loadMessages(m.id)
+      // 🔔 Activer les push notifications pour le commerçant automatiquement
+      setTimeout(() => enableMerchantPush(m.id), 2000)
     }
     init()
 
@@ -274,8 +276,36 @@ export default function DashboardPage() {
     router.push('/')
   }
 
+  function urlBase64ToUint8Array(base64String: string) {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
+    const rawData = window.atob(base64)
+    const outputArray = new Uint8Array(rawData.length)
+    for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i)
+    return outputArray
+  }
+
+  const enableMerchantPush = async (merchantId: string) => {
+    try {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
+      const reg = await navigator.serviceWorker.register('/sw.js')
+      await navigator.serviceWorker.ready
+      const perm = await Notification.requestPermission()
+      if (perm !== 'granted') return
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!),
+      })
+      await fetch('/api/push/subscribe-merchant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subscription: sub.toJSON(), merchantId }),
+      })
+    } catch (e) {
+      console.warn('Merchant push subscribe failed:', e)
+    }
+  }
   const getCardURL = (code: string) => `${typeof window !== 'undefined' ? window.location.origin : ''}/scan/${code}`
-  const handleCopyLink = (code: string) => { navigator.clipboard.writeText(getCardURL(code)); setCopied(true); setTimeout(() => setCopied(false), 2000) }
   const handleShare = async (card: any) => {
     const url = getCardURL(card.code)
     if (navigator.share) { try { await navigator.share({ title: card.business_name, text: `Rejoignez ${card.business_name}`, url }) } catch {} }
@@ -525,7 +555,8 @@ export default function DashboardPage() {
                   <div className="grid grid-cols-3 gap-3 mb-4">
                     <button onClick={() => handleCopyLink(card.code)} className="py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-xl text-xs font-semibold transition">{copied ? 'Copié !' : 'Copier'}</button>
                     <button onClick={() => handleShare(card)} className="py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-xl text-xs font-semibold transition">Partager</button>
-<button onClick={() => router.push(`/dashboard/print/${card.id}`)} className="py-2.5 bg-violet-50 hover:bg-violet-100 text-violet-600 rounded-xl text-xs font-semibold transition">🖨️ Imprimer</button>                  </div>
+                    <button onClick={() => handlePrintQR(card)} className="py-2.5 bg-violet-50 hover:bg-violet-100 text-violet-600 rounded-xl text-xs font-semibold transition">Imprimer</button>
+                  </div>
                   <button onClick={() => setShowQR(null)} className="w-full py-2.5 text-sm text-slate-400 hover:text-slate-600 transition">Fermer</button>
                 </>
               )
@@ -539,6 +570,33 @@ export default function DashboardPage() {
 
         {activeTab === 'overview' && (
           <div className="space-y-6">
+
+            {/* 🛡️ Bannière sécurité */}
+            <div className="bg-gradient-to-r from-slate-800 to-slate-900 rounded-2xl p-4 border border-slate-700">
+              <div className="flex items-start gap-3">
+                <span className="text-2xl shrink-0">🛡️</span>
+                <div className="flex-1">
+                  <p className="text-white font-bold text-sm mb-3">Système anti-fraude Fidali — Actif</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    {[
+                      { icon: '🔄', title: 'QR Dynamique', desc: 'Le lien change toutes les 10 min. Une photo du QR devient invalide rapidement.' },
+                      { icon: '⏱️', title: 'Auto-validation 2 min', desc: 'Sans action de ta part, le point est ajouté après 2 min. Tu peux refuser avant.' },
+                      { icon: '⏰', title: 'Cooldown 8h', desc: 'Impossible de gagner 2 points en moins de 8h avec le même numéro.' },
+                      { icon: '📊', title: 'Traçabilité complète', desc: 'Dans Clients : auto 🤖 = sans toi, manuel ✋ = tu as validé toi-même.' },
+                    ].map((item, i) => (
+                      <div key={i} className="bg-white/5 rounded-xl p-3 border border-white/10">
+                        <p className="text-xl mb-1.5">{item.icon}</p>
+                        <p className="text-white text-[11px] font-bold mb-1">{item.title}</p>
+                        <p className="text-white/40 text-[10px] leading-snug">{item.desc}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-white/30 text-[10px] mt-3 leading-relaxed">
+                    💡 Onglet Clients : <span className="text-amber-400 font-semibold">⚠️ Tous auto</span> = client jamais validé manuellement, peut être suspect. Bouton <span className="text-amber-400 font-semibold">-1pt</span> pour corriger une fraude détectée.
+                  </p>
+                </div>
+              </div>
+            </div>
             {pending.length > 0 && (
               <div className="bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl p-4 flex items-center justify-between cursor-pointer hover:shadow-lg transition shadow-md shadow-amber-200" onClick={() => setActiveTab('pending')}>
                 <div className="flex items-center gap-3 text-white">
@@ -799,10 +857,9 @@ export default function DashboardPage() {
                           </div>
                         </div>
                         <div className="flex gap-2 pt-3 border-t border-slate-100">
-                          <button onClick={() => router.push(`/dashboard/print/${card.id}`)} className="flex-1 py-2 text-xs font-semibold text-violet-600 hover:bg-violet-50 rounded-xl transition">🖨️ Imprimer</button>
-<button onClick={() => setShareCard(card)} className="flex-1 py-2 text-xs font-semibold text-emerald-600 hover:bg-emerald-50 rounded-xl transition">Partager</button>
-<button onClick={() => openEditCard(card)} className="flex-1 py-2 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 rounded-xl transition">Modifier</button>
-<button onClick={() => setConfirmDelete({ type: 'card', id: card.id, name: card.business_name })} className="flex-1 py-2 text-xs font-semibold text-red-500 hover:bg-red-50 rounded-xl transition">Supprimer</button>
+                          <button onClick={() => setShareCard(card)} className="flex-1 py-2 text-xs font-semibold text-emerald-600 hover:bg-emerald-50 rounded-xl transition">Partager</button>
+                          <button onClick={() => openEditCard(card)} className="flex-1 py-2 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 rounded-xl transition">Modifier</button>
+                          <button onClick={() => setConfirmDelete({ type: 'card', id: card.id, name: card.business_name })} className="flex-1 py-2 text-xs font-semibold text-red-500 hover:bg-red-50 rounded-xl transition">Supprimer</button>
                         </div>
                       </div>
                     </div>
@@ -815,7 +872,29 @@ export default function DashboardPage() {
 
         {activeTab === 'clients' && (
           <div className="space-y-4">
-            <h2 className="text-sm font-bold text-slate-800">Clients ({stats.total_clients})</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-bold text-slate-800">Clients ({stats.total_clients})</h2>
+            </div>
+
+            {/* Légende anti-fraude */}
+            <div className="bg-slate-800 rounded-xl p-3 flex flex-wrap gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] bg-orange-100 text-orange-600 px-2 py-0.5 rounded font-bold">🤖 Auto</span>
+                <p className="text-white/60 text-[11px]">Point validé automatiquement après 2 min</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] bg-green-100 text-green-600 px-2 py-0.5 rounded font-bold">✋ Manuel</span>
+                <p className="text-white/60 text-[11px]">Point que tu as validé toi-même</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-amber-400 font-bold">⚠️ Tous auto</span>
+                <p className="text-white/60 text-[11px]">Potentiellement suspect — vérifie</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] bg-amber-100 text-amber-600 px-2 py-0.5 rounded font-bold">-1pt</span>
+                <p className="text-white/60 text-[11px]">Retirer un point en cas de fraude</p>
+              </div>
+            </div>
             {clients.length === 0 ? (
               <div className="bg-white border border-slate-100 rounded-2xl p-12 text-center">
                 <p className="text-3xl mb-3">👤</p>
@@ -828,6 +907,7 @@ export default function DashboardPage() {
                     <tr className="bg-slate-50 border-b border-slate-100">
                       <th className="text-left text-[11px] font-semibold text-slate-400 px-5 py-3">Client</th>
                       <th className="text-left text-[11px] font-semibold text-slate-400 px-5 py-3">Progression</th>
+                      <th className="text-center text-[11px] font-semibold text-slate-400 px-5 py-3">Auto/Manuel</th>
                       <th className="text-center text-[11px] font-semibold text-slate-400 px-5 py-3">Récomp.</th>
                       <th className="text-right text-[11px] font-semibold text-slate-400 px-5 py-3">Actions</th>
                     </tr>
@@ -836,11 +916,15 @@ export default function DashboardPage() {
                     {[...clients].sort((a: any, b: any) => (b.points || 0) - (a.points || 0)).map((cc, i) => {
                       const maxPts = cc.loyalty_cards?.max_points || 10
                       const pct = Math.min(((cc.points || 0) / maxPts) * 100, 100)
+                      const autoPoints = cc.auto_validated_points || 0
+                      const manualPoints = (cc.total_points_earned || 0) - autoPoints
+                      const isSuspect = autoPoints > 0 && manualPoints === 0
                       return (
-                        <tr key={cc.id || i} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50">
+                        <tr key={cc.id || i} className={`border-b border-slate-50 last:border-0 hover:bg-slate-50/50 ${isSuspect ? 'bg-amber-50/50' : ''}`}>
                           <td className="px-5 py-3.5">
                             <p className="text-xs font-semibold text-slate-800">{cc.clients?.name || cc.client_name}</p>
                             <p className="text-[10px] text-slate-400">{cc.clients?.phone || cc.client_phone}</p>
+                            {isSuspect && <span className="text-[9px] text-amber-500 font-bold">⚠️ Tous auto</span>}
                           </td>
                           <td className="px-5 py-3.5">
                             <div className="flex items-center gap-2">
@@ -850,9 +934,32 @@ export default function DashboardPage() {
                               <span className="text-[11px] text-slate-500">{cc.points}/{maxPts}</span>
                             </div>
                           </td>
+                          <td className="px-5 py-3.5 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <span className="text-[10px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded font-bold" title="Points auto-validés">{autoPoints}🤖</span>
+                              <span className="text-[10px] bg-green-100 text-green-600 px-1.5 py-0.5 rounded font-bold" title="Points validés manuellement">{manualPoints > 0 ? manualPoints : 0}✋</span>
+                            </div>
+                          </td>
                           <td className="px-5 py-3.5 text-center text-xs font-bold text-slate-700">{cc.total_rewards_redeemed || 0}</td>
                           <td className="px-5 py-3.5 text-right">
-                            <button onClick={() => setConfirmDelete({ type: 'client', id: cc.id, name: cc.clients?.name || 'ce client' })} className="px-3 py-1 text-[10px] font-semibold text-red-500 hover:bg-red-50 rounded-lg transition">Supprimer</button>
+                            <div className="flex items-center justify-end gap-1">
+                              {cc.points > 0 && (
+                                <button
+                                  onClick={async () => {
+                                    if (!confirm(`Retirer 1 point à ${cc.clients?.name} ?`)) return
+                                    const { supabase } = await import('@/database/supabase-client')
+                                    await supabase.from('client_cards').update({ points: Math.max(0, (cc.points || 1) - 1) }).eq('id', cc.id)
+                                    showToast('Point retiré')
+                                    if (merchant) loadData(merchant.id)
+                                  }}
+                                  className="px-2 py-1 text-[10px] font-semibold text-amber-500 hover:bg-amber-50 rounded-lg transition"
+                                  title="Retirer 1 point (fraude)"
+                                >
+                                  -1pt
+                                </button>
+                              )}
+                              <button onClick={() => setConfirmDelete({ type: 'client', id: cc.id, name: cc.clients?.name || 'ce client' })} className="px-3 py-1 text-[10px] font-semibold text-red-500 hover:bg-red-50 rounded-lg transition">Supprimer</button>
+                            </div>
                           </td>
                         </tr>
                       )
