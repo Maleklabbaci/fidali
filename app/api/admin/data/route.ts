@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
 
       case 'overview': {
         const [merchants, clients, cards, actsToday, actsWeek, points, rewards] = await Promise.all([
-          supabase.from('merchants').select('id, status, plan').returns<{ id: string; status: string; plan: string }[]>(),
+          supabase.from('merchants').select('id, status, plan'),
           supabase.from('clients').select('id', { count: 'exact', head: true }),
           supabase.from('loyalty_cards').select('id', { count: 'exact', head: true }).eq('is_active', true),
           supabase.from('activities').select('id', { count: 'exact', head: true }).gte('created_at', new Date().toISOString().split('T')[0]),
@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
           supabase.from('client_cards').select('points'),
           supabase.from('client_cards').select('total_rewards_redeemed'),
         ])
-        const ms = merchants.data || []
+        const ms: any[] = merchants.data || []
         return NextResponse.json({
           total_merchants: ms.length,
           active_merchants: ms.filter(m => m.status === 'active' || m.status === 'approved').length,
