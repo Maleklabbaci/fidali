@@ -716,8 +716,10 @@ export async function requestUpgrade(merchantId: string, data: {
 
 export async function getAllMerchants(search?: string) {
   if (search) {
+    // Sanitiser le search — retirer les caractères spéciaux PostgREST
+    const safe = search.replace(/[%_\\]/g, '\\$&').substring(0, 100)
     const data = await safeQuery(() =>
-      supabase.from('merchants').select('*').or(`business_name.ilike.%${search}%,email.ilike.%${search}%,name.ilike.%${search}%`).order('created_at', { ascending: false })
+      supabase.from('merchants').select('*').or(`business_name.ilike.%${safe}%,email.ilike.%${safe}%,name.ilike.%${safe}%`).order('created_at', { ascending: false })
     )
     return data || []
   }
