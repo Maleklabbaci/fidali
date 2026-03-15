@@ -27,10 +27,23 @@ export default function SignupPage() {
     'Autre',
   ]
 
+  const validatePhone = (phone: string): boolean => {
+    const clean = phone.replace(/\s/g, '')
+    // Accepter numéros algériens : 0x xx xx xx xx (10 chiffres) ou +213x...
+    return /^(0[5-7]\d{8}|\+213[5-7]\d{8})$/.test(clean)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError('')
+
+    // Validation téléphone avant envoi
+    if (!validatePhone(form.phone)) {
+      setError('Numéro de téléphone invalide. Format attendu : 05xx xx xx xx')
+      setLoading(false)
+      return
+    }
 
     try {
       const { signupMerchant } = await import('@/database/supabase-client')
