@@ -557,7 +557,7 @@ export function subscribeToPresenceStatus(
 
 export function generateCardCode(bizName: string): string {
   const clean = bizName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 10).toUpperCase()
-  const random = Math.random().toString(36).substr(2, 4).toUpperCase()
+  const random = Array.from(crypto.getRandomValues(new Uint8Array(3))).map(b => b.toString(36)).join('').substr(0, 4).toUpperCase()
   return `${clean}-${random}`
 }
 
