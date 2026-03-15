@@ -59,9 +59,11 @@ export default function ApiPage() {
   }
 
   const generateKey = () => {
+    // Utiliser crypto.getRandomValues() — cryptographiquement sûr (contrairement à Math.random())
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-    let result = ''
-    for (let i = 0; i < 40; i++) result += chars.charAt(Math.floor(Math.random() * chars.length))
+    const randomBytes = new Uint8Array(40)
+    crypto.getRandomValues(randomBytes)
+    const result = Array.from(randomBytes).map(b => chars[b % chars.length]).join('')
     return `fid_live_${result}`
   }
 
@@ -87,7 +89,7 @@ export default function ApiPage() {
         key_prefix: prefix,
         key_hash: hash,
         is_active: true,
-      }).select().single()
+      }).select().maybeSingle()
 
       if (error) throw error
 
