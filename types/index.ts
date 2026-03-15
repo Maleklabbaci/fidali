@@ -1,7 +1,7 @@
 // ===== CORE TYPES =====
 
 export type PlanType = 'starter' | 'pro' | 'premium'
-export type MerchantStatus = 'active' | 'pending' | 'suspended'
+export type MerchantStatus = 'active' | 'approved' | 'pending' | 'suspended' | 'rejected'
 export type ActivityType = 'join' | 'pts' | 'redeem'
 export type PointsRuleType = 'visit' | 'da' | 'item' | 'custom'
 export type PaymentMethod = 'baridimob' | 'ccp' | 'especes'
