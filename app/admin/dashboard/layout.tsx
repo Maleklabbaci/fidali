@@ -17,9 +17,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [admin, setAdmin] = useState<any>(null)
   const [collapsed, setCollapsed] = useState(false)
   const [time, setTime] = useState('')
-  const [pendingCount, setPendingCount] = useState(0)
-  const [paymentCount, setPaymentCount] = useState(0)
-  const [messageCount, setMessageCount] = useState(0)
+  const [pendingCount, setPendingCount]   = useState(0)
+  const [paymentCount, setPaymentCount]   = useState(0)
+  const [messageCount, setMessageCount]   = useState(0)
+  const [totalMerchants, setTotalMerchants] = useState(0)
+  const [totalClients, setTotalClients]   = useState(0)
+  const [totalCards, setTotalCards]       = useState(0)
+  const [scansToday, setScansToday]       = useState(0)
 
   useEffect(() => {
     const stored = localStorage.getItem('admin')
@@ -44,10 +48,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           headers: { 'x-admin-id': adminId || '' }
         })
         if (res.ok) {
-          const { pending, payments, messages } = await res.json()
-          setPendingCount(pending || 0)
-          setPaymentCount(payments || 0)
-          setMessageCount(messages || 0)
+          const data = await res.json()
+          setPendingCount(data.pending || 0)
+          setPaymentCount(data.payments || 0)
+          setMessageCount(data.messages || 0)
+          setTotalMerchants(data.totalMerchants || 0)
+          setTotalClients(data.totalClients || 0)
+          setTotalCards(data.totalCards || 0)
+          setScansToday(data.scansToday || 0)
         }
       } catch {}
     }
@@ -68,6 +76,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     if (path === '/admin/dashboard/merchants') return pendingCount
     if (path === '/admin/dashboard/payments') return paymentCount
     return 0
+  }
+
+  // Chiffre affiché en gris à côté du label (total)
+  const getCount = (path: string) => {
+    if (path === '/admin/dashboard/merchants') return totalMerchants || null
+    if (path === '/admin/dashboard/payments')  return null
+    if (path === '/admin/dashboard/stats')     return totalClients ? `${totalClients} clients` : null
+    return null
   }
 
   return (
@@ -99,7 +115,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   active ? 'bg-white text-black font-semibold' : 'text-white/40 hover:text-white/80 hover:bg-white/[0.05]'
                 }`}>
                 <span className="text-base shrink-0">{item.icon}</span>
-                {!collapsed && <span className="truncate flex-1 text-left">{item.label}</span>}
+                {!collapsed && (
+                  <span className="truncate flex-1 text-left">{item.label}</span>
+                )}
+                {!collapsed && (() => {
+                  const count = getCount(item.path)
+                  return count ? (
+                    <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full shrink-0 ${active ? 'bg-black/10 text-black/50' : 'bg-white/[0.06] text-white/25'}`}>
+                      {count}
+                    </span>
+                  ) : null
+                })()}
                 {badge > 0 && (
                   <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
                     active ? 'bg-black/20 text-black' : 'bg-rose-500 text-white'
@@ -111,6 +137,28 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             )
           })}
         </nav>
+
+        {/* Mini stats */}
+        {!collapsed && (
+          <div className="mx-2 mb-2 p-3 bg-white/[0.03] border border-white/[0.06] rounded-xl space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-white/25">Commerçants</span>
+              <span className="text-[10px] font-bold text-white/50">{totalMerchants}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-white/25">Clients total</span>
+              <span className="text-[10px] font-bold text-white/50">{totalClients.toLocaleString('fr-DZ')}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-white/25">Cartes actives</span>
+              <span className="text-[10px] font-bold text-white/50">{totalCards}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-white/25">Scans aujourd'hui</span>
+              <span className={`text-[10px] font-bold ${scansToday > 0 ? 'text-emerald-400' : 'text-white/30'}`}>{scansToday}</span>
+            </div>
+          </div>
+        )}
 
         {/* Bottom */}
         <div className="p-2 border-t border-white/[0.06] space-y-0.5">
