@@ -62,7 +62,7 @@ export default function LoginPage() {
           outline: none;
           transition: border-color 0.2s;
         }
-        .input-line::placeholder { color: #d1d5db; }
+        .input-line::placeholder { color: #9ca3af; }
         .input-line:focus { border-bottom-color: #9333ea; }
         .btn-primary {
           background: #111;
