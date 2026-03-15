@@ -115,70 +115,159 @@ export default function PrintPage() {
             <p className="text-slate-500">{card.business_name} — {card.reward}</p>
           </div>
 
-          {/* Choix du format — 2 colonnes */}
-          <div className="grid md:grid-cols-2 gap-5 mb-6">
+          {/* Choix du format — 2 colonnes premium */}
+          <div className="grid md:grid-cols-2 gap-6 mb-8">
 
-            {/* Option 1 — Vitrine */}
+            {/* ========== OPTION 1 : VITRINE ========== */}
             <button onClick={() => handleSelectMode('large')}
-              className={`p-6 rounded-2xl border-2 text-left transition ${mode === 'large' ? 'border-indigo-600 bg-indigo-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
-              <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center mb-4">
-                <svg className="w-7 h-7 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
+              className={`group relative overflow-hidden p-8 rounded-3xl border-2 text-left transition-all duration-300 ${
+                mode === 'large' 
+                  ? 'border-indigo-500 bg-gradient-to-br from-indigo-50 to-blue-50 shadow-2xl shadow-indigo-100 scale-[1.02]' 
+                  : 'border-slate-200 bg-white hover:border-indigo-200 hover:shadow-xl'
+              }`}>
+              
+              {/* Badge sélectionné */}
+              {mode === 'large' && (
+                <div className="absolute top-4 right-4 bg-indigo-600 text-white text-xs font-black px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg">
+                  <span className="w-1.5 h-1.5 bg-green-300 rounded-full animate-pulse" />
+                  SÉLECTIONNÉ
+                </div>
+              )}
+              
+              {/* Icône + Badge */}
+              <div className="flex items-center gap-4 mb-5">
+                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all ${
+                  mode === 'large' ? 'bg-indigo-600' : 'bg-indigo-100 group-hover:bg-indigo-200'
+                }`}>
+                  <span className={`text-3xl ${mode === 'large' ? '' : 'grayscale opacity-60 group-hover:grayscale-0 group-hover:opacity-100'}`}>
+                    🏪
+                  </span>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-black text-slate-900 text-xl">Grand Format</h3>
+                    <span className="bg-indigo-100 text-indigo-700 text-xs font-bold px-2 py-0.5 rounded-full">VITRINE</span>
+                  </div>
+                  <p className="text-slate-500 text-sm">QR dynamique pour affichage en magasin</p>
+                </div>
               </div>
-              <h3 className="font-black text-slate-900 text-lg mb-1">Grand format — Vitrine</h3>
-              <p className="text-slate-500 text-sm mb-4">À coller en magasin, sur le comptoir ou la caisse</p>
-              <div className="space-y-2">
+
+              {/* Features */}
+              <div className="space-y-3 mb-5">
                 {[
-                  { icon: '🔄', text: 'QR dynamique — lien change toutes les 10 min' },
-                  { icon: '🛡️', text: 'Anti-fraude — photo du QR expire vite' },
-                  { icon: '♾️', text: 'Un seul QR pour toujours, jamais à réimprimer' },
-                  { icon: '📱', text: 'Client doit être présent pour scanner' },
+                  { icon: '🔄', title: 'QR Dynamique', desc: 'Lien change toutes les 10 min' },
+                  { icon: '🛡️', title: 'Anti-Fraude', desc: 'Photo du QR expire rapidement' },
+                  { icon: '♾️', title: 'Permanent', desc: 'Un seul QR pour toujours' },
+                  { icon: '📱', title: 'Présence', desc: 'Client doit être là pour scanner' },
                 ].map((item, i) => (
-                  <div key={i} className="flex items-start gap-2">
-                    <span className="text-sm">{item.icon}</span>
-                    <p className="text-xs text-slate-600">{item.text}</p>
+                  <div key={i} className="flex items-start gap-3 group/item">
+                    <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-sm ${
+                      mode === 'large' ? 'bg-white' : 'bg-slate-50 group-hover/item:bg-indigo-50'
+                    }`}>
+                      {item.icon}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-slate-900 font-bold text-sm">{item.title}</p>
+                      <p className="text-slate-500 text-xs">{item.desc}</p>
+                    </div>
                   </div>
                 ))}
               </div>
-              {mode === 'large' && (
-                <div className="mt-4 bg-indigo-100 rounded-xl p-3">
-                  <p className="text-indigo-700 text-xs font-bold">✓ Sélectionné — Prêt à imprimer</p>
+
+              {/* Statut */}
+              <div className={`rounded-2xl p-4 border-2 border-dashed ${
+                mode === 'large' 
+                  ? 'bg-white border-indigo-300' 
+                  : 'bg-slate-50 border-slate-200 group-hover:border-indigo-200'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${mode === 'large' ? 'bg-green-500 animate-pulse' : 'bg-slate-300'}`} />
+                    <p className={`text-xs font-bold ${mode === 'large' ? 'text-indigo-700' : 'text-slate-500'}`}>
+                      {mode === 'large' ? '✓ Prêt à imprimer' : 'Cliquez pour activer'}
+                    </p>
+                  </div>
+                  <span className="text-lg">📄</span>
                 </div>
-              )}
+              </div>
             </button>
 
-            {/* Option 2 — Livraison */}
+            {/* ========== OPTION 2 : LIVRAISON ========== */}
             <button onClick={() => handleSelectMode('delivery')}
-              className={`p-6 rounded-2xl border-2 text-left transition ${mode === 'delivery' ? 'border-orange-500 bg-orange-50' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
-              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mb-4">
-                <svg className="w-7 h-7 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                </svg>
+              className={`group relative overflow-hidden p-8 rounded-3xl border-2 text-left transition-all duration-300 ${
+                mode === 'delivery' 
+                  ? 'border-orange-500 bg-gradient-to-br from-orange-50 to-amber-50 shadow-2xl shadow-orange-100 scale-[1.02]' 
+                  : 'border-slate-200 bg-white hover:border-orange-200 hover:shadow-xl'
+              }`}>
+              
+              {/* Badge sélectionné */}
+              {mode === 'delivery' && (
+                <div className="absolute top-4 right-4 bg-orange-600 text-white text-xs font-black px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg">
+                  <span className="w-1.5 h-1.5 bg-yellow-300 rounded-full animate-pulse" />
+                  SÉLECTIONNÉ
+                </div>
+              )}
+              
+              {/* Icône + Badge */}
+              <div className="flex items-center gap-4 mb-5">
+                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all ${
+                  mode === 'delivery' ? 'bg-orange-600' : 'bg-orange-100 group-hover:bg-orange-200'
+                }`}>
+                  <span className={`text-3xl ${mode === 'delivery' ? '' : 'grayscale opacity-60 group-hover:grayscale-0 group-hover:opacity-100'}`}>
+                    📦
+                  </span>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-black text-slate-900 text-xl">Mini Étiquettes</h3>
+                    <span className="bg-orange-100 text-orange-700 text-xs font-bold px-2 py-0.5 rounded-full">COLIS</span>
+                  </div>
+                  <p className="text-slate-500 text-sm">8 QR uniques à découper pour livraisons</p>
+                </div>
               </div>
-              <h3 className="font-black text-slate-900 text-lg mb-1">Petite étiquette — Livraison/Colis</h3>
-              <p className="text-slate-500 text-sm mb-4">8 mini QR par page à découper et glisser dans chaque colis</p>
-              <div className="space-y-2">
+
+              {/* Features */}
+              <div className="space-y-3 mb-5">
                 {[
-                  { icon: '💀', text: 'QR usage unique — mort après 1 scan' },
-                  { icon: '8️⃣', text: '8 QR uniques générés par impression' },
-                  { icon: '✂️', text: 'À découper — 1 dans chaque colis' },
-                  { icon: '🔒', text: 'Impossible de scanner 2 fois le même' },
+                  { icon: '💀', title: 'Usage Unique', desc: 'Mort après 1 seul scan' },
+                  { icon: '8️⃣', title: '8 QR Uniques', desc: 'Générés à chaque impression' },
+                  { icon: '✂️', title: 'À Découper', desc: '1 étiquette dans chaque colis' },
+                  { icon: '🔒', title: 'Sécurisé', desc: 'Impossible de réutiliser' },
                 ].map((item, i) => (
-                  <div key={i} className="flex items-start gap-2">
-                    <span className="text-sm">{item.icon}</span>
-                    <p className="text-xs text-slate-600">{item.text}</p>
+                  <div key={i} className="flex items-start gap-3 group/item">
+                    <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-sm ${
+                      mode === 'delivery' ? 'bg-white' : 'bg-slate-50 group-hover/item:bg-orange-50'
+                    }`}>
+                      {item.icon}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-slate-900 font-bold text-sm">{item.title}</p>
+                      <p className="text-slate-500 text-xs">{item.desc}</p>
+                    </div>
                   </div>
                 ))}
               </div>
-              {mode === 'delivery' && (
-                <div className="mt-4 bg-orange-100 rounded-xl p-3">
-                  <p className="text-orange-700 text-xs font-bold">
-                    {tokensReady ? '✓ 8 QR uniques générés — Prêt à imprimer' : '⚡ 8 QR uniques seront générés au moment d\'imprimer'}
-                  </p>
+
+              {/* Statut */}
+              <div className={`rounded-2xl p-4 border-2 border-dashed ${
+                mode === 'delivery' 
+                  ? 'bg-white border-orange-300' 
+                  : 'bg-slate-50 border-slate-200 group-hover:border-orange-200'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${mode === 'delivery' ? (tokensReady ? 'bg-green-500 animate-pulse' : 'bg-orange-500 animate-pulse') : 'bg-slate-300'}`} />
+                    <p className={`text-xs font-bold ${mode === 'delivery' ? 'text-orange-700' : 'text-slate-500'}`}>
+                      {mode === 'delivery' 
+                        ? (tokensReady ? '✓ 8 QR générés' : '⚡ Génération au clic') 
+                        : 'Cliquez pour activer'}
+                    </p>
+                  </div>
+                  <span className="text-lg">✂️</span>
                 </div>
-              )}
+              </div>
             </button>
+
           </div>
 
           {/* Comment ça marche */}
@@ -201,12 +290,11 @@ export default function PrintPage() {
                 ))}
               </div>
             ) : (
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 {[
-                  { step: '1', title: 'Générez', desc: '8 QR uniques créés en base de données' },
-                  { step: '2', title: 'Découpez', desc: '1 mini étiquette par colis' },
-                  { step: '3', title: 'Glissez', desc: 'Dans chaque colis avant expédition' },
-                  { step: '4', title: 'Client scanne', desc: 'QR mort après 1 utilisation — zéro fraude' },
+                  { step: '1', title: 'Imprimez 8 QR', desc: 'Découpez chaque étiquette et glissez 1 par colis' },
+                  { step: '2', title: 'Client reçoit', desc: 'Il trouve le QR dans son colis et le scanne' },
+                  { step: '3', title: 'Point ajouté', desc: 'Le QR meurt après usage — impossible de réutiliser' },
                 ].map((s, i) => (
                   <div key={i} className="bg-white/5 rounded-xl p-3">
                     <div className="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center text-white text-xs font-black mb-2">{s.step}</div>
@@ -218,25 +306,70 @@ export default function PrintPage() {
             )}
           </div>
 
-          {/* Bouton imprimer */}
+          {/* Bouton imprimer premium */}
           <button onClick={handlePrint} disabled={savingTokens}
-            className={`w-full py-4 font-black text-lg rounded-2xl transition flex items-center justify-center gap-3 disabled:opacity-50 ${mode === 'large' ? 'bg-indigo-600 hover:bg-indigo-700 text-white' : 'bg-orange-500 hover:bg-orange-600 text-white'}`}>
-            {savingTokens ? (
-              <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Génération des QR uniques...</>
-            ) : (
-              <>🖨️ {mode === 'large' ? 'Imprimer le grand format vitrine' : 'Générer et imprimer 8 étiquettes colis'}</>
-            )}
+            className={`w-full group relative overflow-hidden rounded-2xl p-6 font-black text-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${
+              mode === 'large'
+                ? 'bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 shadow-xl shadow-indigo-200 hover:shadow-2xl hover:shadow-indigo-300'
+                : 'bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 shadow-xl shadow-orange-200 hover:shadow-2xl hover:shadow-orange-300'
+            }`}>
+            
+            {/* Effet de brillance */}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+            
+            <div className="relative z-10 flex items-center justify-center gap-3">
+              {savingTokens ? (
+                <>
+                  <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span className="text-white">Génération des QR...</span>
+                </>
+              ) : (
+                <>
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                  </svg>
+                  <span className="text-white">
+                    {mode === 'large' 
+                      ? '🖨️ Imprimer le Grand Format Vitrine' 
+                      : (tokensReady ? '🖨️ Imprimer les 8 Étiquettes' : '⚡ Générer 8 QR et Imprimer')}
+                  </span>
+                </>
+              )}
+            </div>
           </button>
 
-          {/* Aperçu */}
-          <div className="mt-6 bg-slate-200 rounded-2xl p-6">
-            <p className="text-slate-500 text-sm font-medium text-center mb-4">Aperçu</p>
-            <div style={{ transform: 'scale(0.4)', transformOrigin: 'top center', height: '340px', overflow: 'hidden' }}>
-              {mode === 'large' ? (
-                <LargeTemplate card={card} qrUrl={dynamicQrUrl} />
-              ) : (
-                <DeliveryTemplate card={card} tokens={uniqueTokens.length > 0 ? uniqueTokens : Array(8).fill('PREVIEW')} origin={origin} />
-              )}
+          {/* Aperçu premium */}
+          <div className="mt-8 bg-gradient-to-br from-slate-50 to-slate-100 rounded-3xl p-8 border border-slate-200 shadow-inner">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
+                  <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-slate-900 font-black text-sm">Aperçu avant impression</p>
+                  <p className="text-slate-500 text-xs">
+                    {mode === 'large' ? 'Format A4 — 210×297mm' : 'Page 8 étiquettes — À découper'}
+                  </p>
+                </div>
+              </div>
+              <div className={`px-3 py-1.5 rounded-full text-xs font-bold ${
+                mode === 'large' ? 'bg-indigo-100 text-indigo-700' : 'bg-orange-100 text-orange-700'
+              }`}>
+                {mode === 'large' ? '🏪 VITRINE' : '📦 COLIS'}
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+              <div style={{ transform: 'scale(0.4)', transformOrigin: 'top center', height: '340px', overflow: 'hidden' }}>
+                {mode === 'large' ? (
+                  <LargeTemplate card={card} qrUrl={dynamicQrUrl} />
+                ) : (
+                  <DeliveryTemplate card={card} tokens={uniqueTokens.length > 0 ? uniqueTokens : Array(8).fill('PREVIEW')} origin={origin} />
+                )}
+              </div>
             </div>
           </div>
         </div>
