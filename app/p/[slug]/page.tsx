@@ -29,12 +29,24 @@ export default function PublicCardPage() {
     try {
       const { supabase } = await import('@/database/supabase-client')
 
-      const { data: cardData } = await supabase
+      // Chercher d'abord par public_slug, sinon par code
+      let { data: cardData } = await supabase
         .from('loyalty_cards')
         .select('*')
         .eq('public_slug', s)
         .eq('is_active', true)
-        .single()
+        .maybeSingle()
+
+      // Fallback : chercher par code
+      if (!cardData) {
+        const { data: cardByCode } = await supabase
+          .from('loyalty_cards')
+          .select('*')
+          .eq('code', s.toUpperCase())
+          .eq('is_active', true)
+          .maybeSingle()
+        cardData = cardByCode
+      }
 
       if (!cardData) { setLoading(false); return }
       setCard(cardData)
