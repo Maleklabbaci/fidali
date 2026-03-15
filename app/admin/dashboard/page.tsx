@@ -28,17 +28,33 @@ export default function AdminDashboard() {
     setTimeout(() => setToast(null), 3500)
   }
 
+  const adminFetch = async (method: string, params?: any) => {
+    const stored = localStorage.getItem('admin')
+    const adminId = stored ? JSON.parse(stored)?.id : ''
+    const headers: any = { 'x-admin-id': adminId, 'Content-Type': 'application/json' }
+    if (method === 'GET') {
+      const qs = new URLSearchParams(params).toString()
+      const res = await fetch(`/api/admin/data?${qs}`, { headers })
+      return res.json()
+    }
+    const res = await fetch('/api/admin/data', { method: 'POST', headers, body: JSON.stringify(params) })
+    return res.json()
+  }
+
   const loadData = useCallback(async () => {
     try {
-      const { getPlatformOverview, getPendingMerchants, getAllMerchants, supabase } = await import('@/database/supabase-client')
-      const [ov, pending, all] = await Promise.all([getPlatformOverview(), getPendingMerchants(), getAllMerchants()])
-      const { data: pays } = await supabase.from('payment_requests').select('*, merchants(business_name, email, name)').order('created_at', { ascending: false })
-      const { data: msgs } = await supabase.from('messages').select('*').order('created_at', { ascending: false }).limit(100)
+      const [ov, merchants, pending, pays, msgs] = await Promise.all([
+        adminFetch('GET', { type: 'overview' }),
+        adminFetch('GET', { type: 'merchants' }),
+        adminFetch('GET', { type: 'pending' }),
+        adminFetch('GET', { type: 'payments' }),
+        adminFetch('GET', { type: 'messages' }),
+      ])
       setOverview(ov)
-      setPendingMerchants(Array.isArray(pending) ? pending : [])
-      setAllMerchants(Array.isArray(all) ? all : [])
-      setPayments(pays || [])
-      setMessages(msgs || [])
+      setAllMerchants(Array.isArray(merchants.data) ? merchants.data : [])
+      setPendingMerchants(Array.isArray(pending.data) ? pending.data : [])
+      setPayments(pays.data || [])
+      setMessages(msgs.data || [])
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }, [])
