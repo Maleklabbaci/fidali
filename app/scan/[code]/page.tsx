@@ -43,10 +43,12 @@ async function enablePushForClient(clientId: string) {
 function isQrTokenValid(cardCode: string, token: string | null): boolean {
   if (!token) return true // pas de token = QR classique = toujours valide
   const currentWindow = Math.floor(Date.now() / (10 * 60 * 1000))
-  const prevWindow = currentWindow - 1
+  // On accepte la fenêtre actuelle + les 2 précédentes (30 min de tolérance)
+  // Évite la race condition si le QR est scanné juste au moment du changement de fenêtre
   const validTokens = [
     btoa(`${cardCode}-${currentWindow}`).replace(/=/g, '').substring(0, 16),
-    btoa(`${cardCode}-${prevWindow}`).replace(/=/g, '').substring(0, 16),
+    btoa(`${cardCode}-${currentWindow - 1}`).replace(/=/g, '').substring(0, 16),
+    btoa(`${cardCode}-${currentWindow - 2}`).replace(/=/g, '').substring(0, 16),
   ]
   return validTokens.includes(token)
 }
