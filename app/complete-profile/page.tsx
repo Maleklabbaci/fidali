@@ -66,7 +66,16 @@ export default function CompleteProfilePage() {
         const profile = await getMerchantProfile(m.id)
 
         if (profile) {
-          router.push('/dashboard')
+          // Rediriger selon le statut réel du profil
+          if (profile.status === 'active' || profile.status === 'approved') {
+            router.push('/dashboard')
+          } else if (profile.status === 'pending') {
+            router.push('/dashboard/pending')
+          } else if (profile.status === 'rejected') {
+            router.push('/dashboard/pending?rejected=1')
+          } else {
+            router.push('/dashboard')
+          }
           return
         } else {
           setForm(prev => ({
