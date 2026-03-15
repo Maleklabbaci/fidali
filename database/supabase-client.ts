@@ -217,18 +217,19 @@ export async function logout() {
 
 export async function getMerchantProfile(merchantId: string) {
   try {
-    const { data, error } = await supabase
-      .from('merchant_profiles')
+    // Chercher d'abord dans merchants (contient le status)
+    const { data: merchant, error: merchantErr } = await supabase
+      .from('merchants')
       .select('*')
-      .eq('merchant_id', merchantId)
+      .eq('id', merchantId)
       .maybeSingle()
 
-    if (error) {
-      console.warn('getMerchantProfile error:', error.message)
+    if (merchantErr) {
+      console.warn('getMerchantProfile error:', merchantErr.message)
       return null
     }
 
-    return data || null
+    return merchant || null
   } catch (err) {
     console.error('getMerchantProfile error:', err)
     return null
