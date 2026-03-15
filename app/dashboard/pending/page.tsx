@@ -1,28 +1,36 @@
 'use client'
 
-import { useEffect, Suspense } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
 function PendingContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const rejected = searchParams.get('rejected')
+  const [merchant, setMerchant] = useState<any>(null)
+  const [dots, setDots] = useState('.')
 
   useEffect(() => {
-    // Vérifier toutes les 10 secondes si le statut a changé
+    const stored = localStorage.getItem('merchant') || sessionStorage.getItem('merchant')
+    if (!stored) { router.push('/login'); return }
+    setMerchant(JSON.parse(stored))
+
+    // Animation des points
+    const dotsInterval = setInterval(() => {
+      setDots(d => d.length >= 3 ? '.' : d + '.')
+    }, 600)
+
+    // Vérifier le statut toutes les 10s
     const interval = setInterval(async () => {
       try {
-        const stored = localStorage.getItem('merchant') || sessionStorage.getItem('merchant')
-        if (!stored) { router.push('/login'); return }
         const m = JSON.parse(stored)
         const { getMerchantProfile } = await import('@/database/supabase-client')
         const profile = await getMerchantProfile(m.id)
-        if (profile?.status === 'active' || profile?.status === 'approved') {
-          router.push('/dashboard')
-        }
+        if (profile?.status === 'active' || profile?.status === 'approved') router.push('/dashboard')
       } catch {}
     }, 10000)
-    return () => clearInterval(interval)
+
+    return () => { clearInterval(interval); clearInterval(dotsInterval) }
   }, [router])
 
   const handleLogout = () => {
@@ -32,50 +40,108 @@ function PendingContent() {
     router.push('/')
   }
 
+  // ── PAGE REJETÉ ──
   if (rejected) return (
-    <div className="min-h-screen bg-gradient-to-br from-red-900 to-rose-900 flex items-center justify-center p-6">
-      <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-3xl p-10 max-w-md w-full text-center">
-        <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-          <span className="text-4xl">❌</span>
-        </div>
-        <h1 className="text-2xl font-black text-white mb-3">Demande refusée</h1>
-        <p className="text-white/60 mb-2">Votre demande d'inscription a été refusée par notre équipe.</p>
-        <p className="text-white/40 text-sm mb-8">Si vous pensez que c'est une erreur, contactez-nous.</p>
-        <a href="mailto:support@fidali.dz"
-          className="block w-full py-3 bg-white text-red-900 rounded-2xl font-bold mb-3 hover:bg-white/90 transition">
-          Contacter le support
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', background: 'linear-gradient(135deg, #1a0a0a, #2d0f0f)', fontFamily: "'DM Sans', sans-serif" }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');`}</style>
+      <div style={{ maxWidth: 460, width: '100%', textAlign: 'center' }}>
+        <div style={{ fontSize: 56, marginBottom: 20 }}>❌</div>
+        <h1 style={{ color: 'white', fontSize: 26, fontWeight: 800, marginBottom: 12 }}>Demande refusée</h1>
+        <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, lineHeight: 1.7, marginBottom: 28 }}>
+          Votre demande d'inscription a été refusée par notre équipe.<br/>
+          Si vous pensez que c'est une erreur, contactez-nous.
+        </p>
+        <a href="mailto:contact@fidali.app" style={{ display: 'block', padding: '14px', borderRadius: 12, background: 'white', color: '#1a0a0a', fontWeight: 700, fontSize: 15, textDecoration: 'none', marginBottom: 12 }}>
+          📧 Contacter le support
         </a>
-        <button onClick={handleLogout} className="w-full py-3 text-white/50 text-sm hover:text-white transition">
+        <button onClick={handleLogout} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', fontSize: 13, fontFamily: "'DM Sans', sans-serif" }}>
           Se déconnecter
         </button>
       </div>
     </div>
   )
 
+  // ── PAGE EN ATTENTE ──
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-indigo-900 flex items-center justify-center p-6">
-      <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-3xl p-10 max-w-md w-full text-center">
-        <div className="w-20 h-20 bg-amber-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-          <div className="w-10 h-10 border-4 border-amber-400/40 border-t-amber-400 rounded-full animate-spin" />
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', background: 'linear-gradient(135deg, #0f0f14 0%, #1a1025 100%)', fontFamily: "'DM Sans', sans-serif" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap');
+        @keyframes pulse-ring {
+          0%   { transform: scale(1);   opacity: 0.6; }
+          100% { transform: scale(1.8); opacity: 0; }
+        }
+        @keyframes spin-slow {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
+        }
+        .spin-slow { animation: spin-slow 3s linear infinite; }
+      `}</style>
+
+      <div style={{ width: '100%', maxWidth: 500 }}>
+
+        {/* Logo */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 48, justifyContent: 'center' }}>
+          <img src="/logo.png" alt="Fidali" style={{ width: 40, height: 40, borderRadius: 12, objectFit: 'contain' }} />
+          <span style={{ color: 'white', fontWeight: 800, fontSize: 20 }}>Fidali</span>
         </div>
-        <h1 className="text-2xl font-black text-white mb-3">Compte en cours de validation</h1>
-        <p className="text-white/60 mb-2">Notre équipe examine votre demande.</p>
-        <p className="text-white/40 text-sm mb-8">Vous recevrez une confirmation sous 24-48h. Cette page se met à jour automatiquement.</p>
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-4 mb-6 text-left space-y-3">
-          {[
-            { icon: '✅', text: 'Inscription complétée' },
-            { icon: '⏳', text: 'Vérification en cours...' },
-            { icon: '🔒', text: 'Accès au dashboard' },
-          ].map((s, i) => (
-            <div key={i} className="flex items-center gap-3">
-              <span className="text-lg">{s.icon}</span>
-              <p className={`text-sm font-medium ${i === 1 ? 'text-amber-400' : i === 2 ? 'text-white/30' : 'text-white/70'}`}>{s.text}</p>
+
+        {/* Card principale */}
+        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 28, padding: '40px 32px', textAlign: 'center', marginBottom: 12 }}>
+
+          {/* Spinner animé */}
+          <div style={{ position: 'relative', width: 80, height: 80, margin: '0 auto 28px' }}>
+            <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '2px solid rgba(147,51,234,0.3)', animation: 'pulse-ring 2s ease-out infinite' }} />
+            <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '2px solid rgba(147,51,234,0.2)', animation: 'pulse-ring 2s ease-out infinite', animationDelay: '0.5s' }} />
+            <div style={{ position: 'relative', zIndex: 1, width: 80, height: 80, borderRadius: '50%', background: 'linear-gradient(135deg, rgba(147,51,234,0.2), rgba(219,39,119,0.2))', border: '1px solid rgba(147,51,234,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div className="spin-slow" style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid transparent', borderTopColor: '#9333ea', borderRightColor: '#db2777' }} />
             </div>
-          ))}
+          </div>
+
+          {merchant && (
+            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginBottom: 8 }}>
+              Bonjour, <span style={{ color: 'rgba(255,255,255,0.8)', fontWeight: 600 }}>{merchant.name || merchant.business_name}</span>
+            </p>
+          )}
+
+          <h1 style={{ color: 'white', fontSize: 26, fontWeight: 800, marginBottom: 12, fontFamily: "'DM Serif Display', serif" }}>
+            Configuration en cours{dots}
+          </h1>
+          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, lineHeight: 1.75, marginBottom: 32 }}>
+            Notre équipe configure votre espace et vérifie vos informations.
+            Cela peut prendre quelques minutes à quelques heures.
+          </p>
+
+          {/* Étapes */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 28, textAlign: 'left' }}>
+            {[
+              { icon: '✅', label: 'Inscription complétée',         done: true },
+              { icon: '⚙️', label: 'Configuration du compte',        done: false, active: true },
+              { icon: '🔍', label: 'Vérification par notre équipe', done: false },
+              { icon: '🚀', label: 'Accès au dashboard',            done: false },
+            ].map((s, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 12, background: s.active ? 'rgba(147,51,234,0.1)' : 'rgba(255,255,255,0.03)', border: s.active ? '1px solid rgba(147,51,234,0.25)' : '1px solid transparent' }}>
+                <span style={{ fontSize: 18, flexShrink: 0 }}>{s.icon}</span>
+                <span style={{ fontSize: 13, fontWeight: s.active ? 600 : 400, color: s.done ? 'rgba(255,255,255,0.7)' : s.active ? '#c084fc' : 'rgba(255,255,255,0.3)' }}>
+                  {s.label}
+                </span>
+                {s.active && <span style={{ marginLeft: 'auto', fontSize: 11, color: '#c084fc', fontWeight: 600 }}>EN COURS</span>}
+                {s.done && <span style={{ marginLeft: 'auto', fontSize: 16 }}>✓</span>}
+              </div>
+            ))}
+          </div>
+
+          <div style={{ padding: '12px 16px', borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12, lineHeight: 1.6 }}>
+              🔔 Cette page se met à jour automatiquement.<br/>
+              Vous serez redirigé dès que votre compte est prêt.
+            </p>
+          </div>
         </div>
-        <button onClick={handleLogout} className="w-full py-3 text-white/40 text-sm hover:text-white transition">
+
+        <button onClick={handleLogout} style={{ width: '100%', padding: 12, background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.2)', fontSize: 13, fontFamily: "'DM Sans', sans-serif" }}>
           Se déconnecter
         </button>
+
       </div>
     </div>
   )
@@ -84,8 +150,8 @@ function PendingContent() {
 export default function PendingPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-indigo-900 flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-white/20 border-t-white rounded-full animate-spin" />
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f0f14' }}>
+        <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid rgba(147,51,234,0.3)', borderTopColor: '#9333ea', animation: 'spin 1s linear infinite' }} />
       </div>
     }>
       <PendingContent />
