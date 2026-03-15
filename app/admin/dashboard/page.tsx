@@ -41,6 +41,10 @@ export default function AdminDashboard() {
     return res.json()
   }
 
+  const adminPost = async (action: string, data?: any) => {
+    return adminFetch('POST', { action, ...data })
+  }
+
   const loadData = useCallback(async () => {
     try {
       const [ov, merchants, pending, pays, msgs] = await Promise.all([
@@ -121,9 +125,8 @@ export default function AdminDashboard() {
   const handleMerchant = async (action: 'approve' | 'suspend', merchantId: string) => {
     setActionLoading(merchantId + action)
     try {
-      const mod = await import('@/database/supabase-client')
-      if (action === 'approve') await mod.approveMerchant(merchantId)
-      if (action === 'suspend') await mod.suspendMerchant(merchantId)
+      if (action === 'approve') await adminPost('approve_merchant', { merchantId })
+      if (action === 'suspend') await adminPost('suspend_merchant', { merchantId, days: 0 })
       showToast(action === 'approve' ? '✓ Commerçant validé' : 'Commerçant suspendu')
       await loadData()
     } finally { setActionLoading(null) }
@@ -132,8 +135,7 @@ export default function AdminDashboard() {
   const handleChangePlan = async (merchantId: string, plan: string) => {
     setActionLoading(merchantId + 'plan')
     try {
-      const { changeMerchantPlan } = await import('@/database/supabase-client')
-      await changeMerchantPlan(merchantId, plan)
+      await adminPost('change_plan', { merchantId, plan })
       showToast(`✓ Plan mis à jour → ${plan}`)
       setChangingPlan(null)
       await loadData()
@@ -153,7 +155,7 @@ export default function AdminDashboard() {
   const handleReply = async (msgId: string) => {
     if (!replyText.trim()) return
     const { supabase } = await import('@/database/supabase-client')
-    await supabase.from('messages').update({ admin_reply: replyText.trim(), status: 'replied', replied_at: new Date().toISOString() }).eq('id', msgId)
+    await adminPost('reply_message', { messageId: msgId, reply: replyText.trim() })
     setReplyingTo(null); setReplyText('')
     showToast('✓ Réponse envoyée')
     loadData()
