@@ -1,4 +1,4 @@
-'use client' 
+'use client'
 
 import { useState, useRef, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 function ConfirmContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const email = searchParams.get('email') || ''
+  const phone = searchParams.get('phone') || ''
 
   const [code, setCode] = useState(['', '', '', '', '', ''])
   const [loading, setLoading] = useState(false)
@@ -17,7 +17,6 @@ function ConfirmContent() {
 
   const inputs = useRef<(HTMLInputElement | null)[]>([])
 
-  // Cooldown timer pour le renvoi
   useEffect(() => {
     if (resendCooldown > 0) {
       const t = setTimeout(() => setResendCooldown(c => c - 1), 1000)
@@ -25,39 +24,33 @@ function ConfirmContent() {
     }
   }, [resendCooldown])
 
-  // Redirect si pas d'email
   useEffect(() => {
-    if (!email) router.push('/signup')
-  }, [email, router])
+    if (!phone) router.push('/signup')
+  }, [phone, router])
 
-  // Gérer la saisie de chaque digit
   const handleChange = (index: number, value: string) => {
-    if (!/^\d*$/.test(value)) return // Seulement des chiffres
+    if (!/^\d*$/.test(value)) return
 
     const newCode = [...code]
-    newCode[index] = value.slice(-1) // Garder un seul caractère
+    newCode[index] = value.slice(-1)
     setCode(newCode)
     setError('')
 
-    // Auto-focus sur le champ suivant
     if (value && index < 5) {
       inputs.current[index + 1]?.focus()
     }
 
-    // Auto-submit quand 6 digits sont remplis
     if (newCode.every(d => d !== '') && newCode.join('').length === 6) {
       handleVerify(newCode.join(''))
     }
   }
 
-  // Gérer le backspace
   const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
     if (e.key === 'Backspace' && !code[index] && index > 0) {
       inputs.current[index - 1]?.focus()
     }
   }
 
-  // Gérer le collage
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault()
     const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
@@ -68,7 +61,7 @@ function ConfirmContent() {
     }
   }
 
-  // Vérifier le code OTP
+  // ✅ Vérifier le code OTP via SMS (Twilio)
   const handleVerify = async (otp: string) => {
     setLoading(true)
     setError('')
@@ -76,15 +69,16 @@ function ConfirmContent() {
       const { supabase } = await import('@/database/supabase-client')
 
       const { data, error: verifyError } = await supabase.auth.verifyOtp({
-        email,
+        phone,
         token: otp,
-        type: 'signup',
+        type: 'sms',  // ✅ SMS au lieu de 'signup'
       })
 
       if (verifyError) {
-        setError(verifyError.message === 'Token has expired or is invalid'
-          ? 'Code expiré ou invalide. Réessayez.'
-          : verifyError.message
+        setError(
+          verifyError.message.includes('expired') || verifyError.message.includes('invalid')
+            ? 'Code expiré ou invalide. Réessayez.'
+            : verifyError.message
         )
         setCode(['', '', '', '', '', ''])
         inputs.current[0]?.focus()
@@ -106,12 +100,11 @@ function ConfirmContent() {
           localStorage.setItem('merchant', JSON.stringify(merchantData))
         }
 
-        // Rediriger vers complete-profile après 1.5s
         setTimeout(() => {
           router.push('/complete-profile')
         }, 1500)
       }
-    } catch (err: any) {
+    } catch {
       setError('Erreur de vérification. Réessayez.')
       setCode(['', '', '', '', '', ''])
       inputs.current[0]?.focus()
@@ -120,16 +113,15 @@ function ConfirmContent() {
     }
   }
 
-  // Renvoyer le code
+  // ✅ Renvoyer le code SMS
   const handleResend = async () => {
     setResending(true)
     setError('')
     try {
       const { supabase } = await import('@/database/supabase-client')
 
-      const { error: resendError } = await supabase.auth.resend({
-        type: 'signup',
-        email,
+      const { error: resendError } = await supabase.auth.signInWithOtp({
+        phone,
       })
 
       if (resendError) {
@@ -146,6 +138,11 @@ function ConfirmContent() {
     }
   }
 
+  // Masquer une partie du numéro pour la sécurité
+  const maskedPhone = phone
+    ? phone.slice(0, 4) + '••••' + phone.slice(-3)
+    : ''
+
   return (
     <div style={{
       minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -158,6 +155,7 @@ function ConfirmContent() {
         @keyframes fadeIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
         @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
         .code-input {
           width: 52px; height: 64px;
           text-align: center; font-size: 24px; font-weight: 800;
@@ -171,12 +169,9 @@ function ConfirmContent() {
         .code-input:focus { border-color: #9333ea; background: rgba(147,51,234,0.08); }
         .code-input.filled { border-color: rgba(147,51,234,0.4); background: rgba(147,51,234,0.06); }
         .code-input.error { border-color: rgba(239,68,68,0.5); animation: shake 0.3s ease-in-out; }
-        .code-input.success { border-color: rgba(16,185,129,0.5); background: rgba(16,185,129,0.06); color: #10b981; }
       `}</style>
 
-      <div style={{
-        maxWidth: 440, width: '100%', animation: 'fadeIn 0.5s ease-out',
-      }}>
+      <div style={{ maxWidth: 440, width: '100%', animation: 'fadeIn 0.5s ease-out' }}>
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 40, justifyContent: 'center' }}>
           <img src="/logo.png" alt="Fidali" style={{ width: 36, height: 36, borderRadius: 10, objectFit: 'contain' }} />
@@ -186,8 +181,7 @@ function ConfirmContent() {
         <div style={{
           background: 'rgba(255,255,255,0.03)',
           border: '1px solid rgba(255,255,255,0.08)',
-          borderRadius: 24, padding: '40px 32px',
-          textAlign: 'center',
+          borderRadius: 24, padding: '40px 32px', textAlign: 'center',
         }}>
           {/* Icône */}
           <div style={{
@@ -198,7 +192,7 @@ function ConfirmContent() {
             animation: success ? 'pulse 0.5s ease-out' : 'none',
             transition: 'all 0.3s',
           }}>
-            {success ? '✅' : '📧'}
+            {success ? '✅' : '📱'}
           </div>
 
           {/* Titre */}
@@ -206,7 +200,7 @@ function ConfirmContent() {
             color: 'white', fontSize: 24, fontWeight: 800, marginBottom: 8,
             fontFamily: "'DM Serif Display', serif",
           }}>
-            {success ? 'Email vérifié !' : 'Vérifiez votre email'}
+            {success ? 'Numéro vérifié !' : 'Vérifiez votre numéro'}
           </h1>
 
           {/* Sous-titre */}
@@ -217,9 +211,11 @@ function ConfirmContent() {
               'Redirection vers votre profil...'
             ) : (
               <>
-                Un code à 6 chiffres a été envoyé à
+                Un code à 6 chiffres a été envoyé par SMS au
                 <br />
-                <span style={{ color: 'rgba(147,51,234,0.8)', fontWeight: 600 }}>{email}</span>
+                <span style={{ color: 'rgba(147,51,234,0.8)', fontWeight: 600, fontSize: 16 }}>
+                  📱 {maskedPhone}
+                </span>
               </>
             )}
           </p>
@@ -270,7 +266,6 @@ function ConfirmContent() {
                     animation: 'spin 0.7s linear infinite',
                     margin: '0 auto',
                   }} />
-                  <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
                   <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12, marginTop: 8 }}>
                     Vérification en cours...
                   </p>
@@ -280,20 +275,21 @@ function ConfirmContent() {
               {/* Renvoyer */}
               <div style={{ marginTop: 8 }}>
                 <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13, marginBottom: 8 }}>
-                  Vous n{"'"}avez pas reçu le code ?
+                  Vous n{"'"}avez pas reçu le SMS ?
                 </p>
                 <button
                   onClick={handleResend}
                   disabled={resending || resendCooldown > 0}
                   style={{
-                    background: 'none', border: 'none', cursor: (resending || resendCooldown > 0) ? 'not-allowed' : 'pointer',
+                    background: 'none', border: 'none',
+                    cursor: (resending || resendCooldown > 0) ? 'not-allowed' : 'pointer',
                     color: (resending || resendCooldown > 0) ? 'rgba(255,255,255,0.2)' : '#9333ea',
                     fontWeight: 600, fontSize: 13, fontFamily: "'DM Sans', sans-serif",
                     padding: '8px 16px', borderRadius: 8,
                     transition: 'all 0.2s',
                   }}
                 >
-                  {resending ? 'Envoi...' : resendCooldown > 0 ? `Renvoyer dans ${resendCooldown}s` : 'Renvoyer le code'}
+                  {resending ? 'Envoi...' : resendCooldown > 0 ? `Renvoyer dans ${resendCooldown}s` : 'Renvoyer le SMS'}
                 </button>
               </div>
             </>
@@ -311,7 +307,7 @@ function ConfirmContent() {
               cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
             }}
           >
-            ← Changer d{"'"}adresse email
+            ← Changer de numéro
           </button>
         )}
 
