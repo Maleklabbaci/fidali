@@ -98,11 +98,24 @@ async function safeQuery(fn: any): Promise<any> {
 
 export async function loginMerchant(email: string, password: string) {
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) return { success: false as const, error: error.message }
+    // Essayer d'abord par email
+    let authResult = await supabase.auth.signInWithPassword({ email, password })
+
+    // Si échec et que ça ressemble à un numéro, essayer par téléphone
+    if (authResult.error && /^[0+]/.test(email)) {
+      const phoneFormatted = email.startsWith('+')
+        ? email
+        : '+213' + email.replace(/^0/, '').replace(/\s/g, '')
+      authResult = await supabase.auth.signInWithPassword({
+        phone: phoneFormatted,
+        password,
+      })
+    }
+
+    if (authResult.error) return { success: false as const, error: authResult.error.message }
 
     const merchantData = await safeQuery(() =>
-      supabase.from('merchants').select('*').eq('auth_user_id', data.user.id).maybeSingle()
+      supabase.from('merchants').select('*').eq('auth_user_id', authResult.data.user.id).maybeSingle()
     )
 
     if (!merchantData) return { success: false as const, error: 'Profil commerçant introuvable' }
@@ -119,35 +132,6 @@ export async function loginMerchant(email: string, password: string) {
     return { success: true as const, merchant, role: 'merchant' as const }
   } catch (err) {
     console.error('Login error:', err)
-    return { success: false as const, error: 'Erreur de connexion' }
-  }
-}
-
-export async function loginAdmin(email: string, password: string) {
-  try {
-    const { data: verified, error: rpcError } = await supabase.rpc('verify_admin_password', {
-      p_email: email,
-      p_password: password,
-    })
-
-    if (!rpcError && verified) {
-      const adminData = await safeQuery(() =>
-        supabase.from('admins').select('id, email, name').eq('email', email).maybeSingle()
-      )
-
-      return {
-        success: true as const,
-        admin: adminData || { id: 'admin', email, name: 'Admin Fidali', role: 'super_admin' },
-        role: 'admin' as const,
-      }
-    }
-
-    // ⚠️ Fallback supprimé — mot de passe hardcodé retiré pour la sécurité
-    // Si verify_admin_password échoue, on refuse l'accès
-
-    return { success: false as const, error: 'Email ou mot de passe incorrect' }
-  } catch (err) {
-    console.error('Admin login error:', err)
     return { success: false as const, error: 'Erreur de connexion' }
   }
 }
