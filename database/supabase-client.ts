@@ -169,33 +169,25 @@ export async function signupMerchant(data: {
   password: string
 }) {
   try {
-    // Formater le numéro au format international
     const phoneFormatted = data.phone.startsWith('+')
       ? data.phone
       : '+213' + data.phone.replace(/^0/, '').replace(/\s/g, '')
 
-    // ✅ Signup avec téléphone (Twilio envoie le SMS)
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      phone: phoneFormatted,
-      password: data.password,
+    // ✅ Utiliser l'API route server-side (bypass RLS)
+    const res = await fetch('/api/auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
     })
 
-    if (authError) return { success: false as const, error: authError.message }
-    if (!authData.user) return { success: false as const, error: 'Erreur création compte' }
+    const json = await res.json()
 
-    const { error: profileError } = await supabase.from('merchants').insert({
-      auth_user_id: authData.user.id,
-      email: data.email,
-      password_hash: '',
-      name: data.name,
-      business_name: data.business,
-      sector: data.sector,
-      phone: phoneFormatted,
-      plan: 'starter',
-      status: 'incomplete',
-    })
+    if (!res.ok || json.error) {
+      return { success: false as const, error: json.error || 'Erreur inscription' }
+    }
 
-    if (profileError) return { success: false as const, error: profileError.message }
+    // Envoyer le SMS OTP via le client
+    await supabase.auth.signInWithOtp({ phone: phoneFormatted })
 
     return { success: true as const }
   } catch (err) {
