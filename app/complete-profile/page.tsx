@@ -20,6 +20,7 @@ const BUSINESS_TYPES = [
   { value: 'boulangerie',  label: '🥖 Boulangerie / Pâtisserie' },
   { value: 'salon',        label: '💇 Salon de coiffure / Beauté' },
   { value: 'boutique',     label: '🛍️ Boutique / Magasin' },
+  { value: 'ecommerce',    label: '🛒 E-commerce / Boutique en ligne' },  // ✅ NOUVEAU
   { value: 'pharmacie',    label: '💊 Pharmacie' },
   { value: 'sport',        label: '💪 Salle de sport' },
   { value: 'spa',          label: '🧖 Spa / Hammam' },
