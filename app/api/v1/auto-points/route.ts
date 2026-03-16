@@ -1,22 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { authenticateApiKey, isAuthError, getSupabaseAdmin } from '@/lib/api-auth'
 
-// Gérer les requêtes OPTIONS (preflight CORS)
-export async function OPTIONS() {
-  return new Response(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      'Access-Control-Max-Age': '86400',
-    },
-  })
+// Headers CORS
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 }
+
+// Réponse avec CORS
+function cors(data: any, status: number = 200) {
+  return NextResponse.json(data, { status, headers: corsHeaders })
+}
+
+// Preflight
+export async function OPTIONS() {
+  return new Response(null, { status: 204, headers: { ...corsHeaders, 'Access-Control-Max-Age': '86400' } })
+}
+
 export async function POST(req: NextRequest) {
-  // Vérifier la clé API
   const authResult = await authenticateApiKey(req)
-  if (isAuthError(authResult)) return authResult
+  if (isAuthError(authResult)) {
+    return cors({ error: 'Invalid or unauthorized API key' }, 401)
+  }
 
   const { merchantId } = authResult
   const db = getSupabaseAdmin() as any
@@ -26,12 +32,11 @@ export async function POST(req: NextRequest) {
     const { card_code, phone, name, points } = body
 
     if (!card_code || !phone || !name) {
-      return NextResponse.json({ error: 'card_code, phone et name sont requis' }, { status: 400 })
+      return cors({ error: 'card_code, phone et name sont requis' }, 400)
     }
 
     const pointsToAdd = points || 1
 
-    // Formater le téléphone
     const phoneClean = phone.replace(/\s/g, '')
     const phoneFormatted = phoneClean.startsWith('+')
       ? phoneClean
@@ -48,9 +53,7 @@ export async function POST(req: NextRequest) {
       .eq('merchant_id', merchantId)
       .maybeSingle()
 
-    if (!card) {
-      return NextResponse.json({ error: 'Carte introuvable' }, { status: 404 })
-    }
+    if (!card) return cors({ error: 'Carte introuvable' }, 404)
 
     // 2. Chercher le client
     let client = null
@@ -65,15 +68,10 @@ export async function POST(req: NextRequest) {
     if (existingClient) {
       client = existingClient
     } else {
-      // 3. Créer le client automatiquement
       isNewClient = true
       const { data: newClient, error: clientError } = await db
         .from('clients')
-        .insert({
-          name: name,
-          phone: phoneFormatted,
-          merchant_id: merchantId,
-        })
+        .insert({ name, phone: phoneFormatted, merchant_id: merchantId })
         .select()
         .maybeSingle()
 
@@ -88,18 +86,16 @@ export async function POST(req: NextRequest) {
           client = retryClient
           isNewClient = false
         } else {
-          return NextResponse.json({ error: 'Erreur création client: ' + clientError.message }, { status: 500 })
+          return cors({ error: 'Erreur création client: ' + clientError.message }, 500)
         }
       } else {
         client = newClient
       }
     }
 
-    if (!client) {
-      return NextResponse.json({ error: 'Erreur client' }, { status: 500 })
-    }
+    if (!client) return cors({ error: 'Erreur client' }, 500)
 
-    // 4. Chercher ou créer le client_card
+    // 3. Chercher ou créer le client_card
     let clientCard = null
 
     const { data: existingCC } = await db
@@ -115,53 +111,39 @@ export async function POST(req: NextRequest) {
       const { data: newCC, error: ccError } = await db
         .from('client_cards')
         .insert({
-          client_id: client.id,
-          card_id: card.id,
-          merchant_id: merchantId,
-          points: 0,
-          total_visits: 0,
-          total_rewards_redeemed: 0,
+          client_id: client.id, card_id: card.id, merchant_id: merchantId,
+          points: 0, total_visits: 0, total_rewards_redeemed: 0,
         })
         .select()
         .maybeSingle()
 
-      if (ccError) {
-        return NextResponse.json({ error: 'Erreur inscription carte: ' + ccError.message }, { status: 500 })
-      }
+      if (ccError) return cors({ error: 'Erreur inscription carte: ' + ccError.message }, 500)
       clientCard = newCC
     }
 
-    if (!clientCard) {
-      return NextResponse.json({ error: 'Erreur carte client' }, { status: 500 })
-    }
+    if (!clientCard) return cors({ error: 'Erreur carte client' }, 500)
 
-    // 5. Ajouter les points
+    // 4. Ajouter les points
     const newPoints = Math.min(clientCard.points + pointsToAdd, card.max_points)
     const rewardReached = newPoints >= card.max_points
 
-    await db
-      .from('client_cards')
-      .update({
-        points: newPoints,
-        last_visit_at: new Date().toISOString(),
-        total_visits: (clientCard.total_visits || 0) + 1,
-      })
-      .eq('id', clientCard.id)
+    await db.from('client_cards').update({
+      points: newPoints,
+      last_visit_at: new Date().toISOString(),
+      total_visits: (clientCard.total_visits || 0) + 1,
+    }).eq('id', clientCard.id)
 
-    // 6. Log l'activité
+    // 5. Log
     await db.from('activities').insert({
-      merchant_id: merchantId,
-      client_id: client.id,
-      card_id: card.id,
-      type: 'points_added',
-      points_changed: pointsToAdd,
+      merchant_id: merchantId, client_id: client.id, card_id: card.id,
+      type: 'points_added', points_changed: pointsToAdd,
       description: isNewClient
         ? `Nouveau client auto-inscrit + ${pointsToAdd} point(s) via API`
         : `+${pointsToAdd} point(s) via API`,
       created_at: new Date().toISOString(),
     })
 
-    return NextResponse.json({
+    return cors({
       success: true,
       new_client: isNewClient,
       client_name: client.name,
@@ -175,6 +157,6 @@ export async function POST(req: NextRequest) {
 
   } catch (e: any) {
     console.error('Auto-points error:', e)
-    return NextResponse.json({ error: e.message }, { status: 500 })
+    return cors({ error: e.message }, 500)
   }
 }
