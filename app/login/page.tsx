@@ -13,37 +13,47 @@ export default function LoginPage() {
   const [showPw, setShowPw] = useState(false)
 
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
-    try {
-      const { loginMerchant, getMerchantProfile } = await import('@/database/supabase-client')
-      const result = await loginMerchant(email, password)
-      if (result.success) {
-        const merchant = result.merchant
-        if (rememberMe) {
-          localStorage.setItem('merchant', JSON.stringify(merchant))
-          localStorage.setItem('fidali_remember', 'true')
-        } else {
-          sessionStorage.setItem('merchant', JSON.stringify(merchant))
-          localStorage.removeItem('fidali_remember')
-          localStorage.removeItem('merchant')
-        }
-        try {
-try {
-  const profile = await getMerchantProfile(merchant.id)
-  if (!profile || profile.status === 'incomplete') router.push('/complete-profile')  // ✅ 
-  else if (profile.status === 'pending') router.push('/dashboard/pending')
-  else if (profile.status === 'approved' || profile.status === 'active') router.push('/dashboard')
-  else if (profile.status === 'rejected') router.push('/dashboard/pending?rejected=1')
-  else router.push('/complete-profile')  // ✅ fallback
-} catch { router.push('/complete-profile') }
+  e.preventDefault()
+  setLoading(true)
+  setError('')
+  try {
+    const { loginMerchant, getMerchantProfile } = await import('@/database/supabase-client')
+    const result = await loginMerchant(email, password)
+    if (result.success) {
+      const merchant = result.merchant
+      if (rememberMe) {
+        localStorage.setItem('merchant', JSON.stringify(merchant))
+        localStorage.setItem('fidali_remember', 'true')
       } else {
-        setError(result.error || 'Email ou mot de passe incorrect')
+        sessionStorage.setItem('merchant', JSON.stringify(merchant))
+        localStorage.removeItem('fidali_remember')
+        localStorage.removeItem('merchant')
       }
-    } catch { setError('Erreur de connexion au serveur') }
-    finally { setLoading(false) }
+      try {
+        const profile = await getMerchantProfile(merchant.id)
+        if (!profile || profile.status === 'incomplete') {
+          router.push('/complete-profile')
+        } else if (profile.status === 'pending') {
+          router.push('/dashboard/pending')
+        } else if (profile.status === 'approved' || profile.status === 'active') {
+          router.push('/dashboard')
+        } else if (profile.status === 'rejected') {
+          router.push('/dashboard/pending?rejected=1')
+        } else {
+          router.push('/complete-profile')
+        }
+      } catch {
+        router.push('/complete-profile')
+      }
+    } else {
+      setError(result.error || 'Email ou mot de passe incorrect')
+    }
+  } catch {
+    setError('Erreur de connexion au serveur')
+  } finally {
+    setLoading(false)
   }
+}
 
   return (
     <div className="min-h-screen flex overflow-hidden bg-white" style={{ fontFamily: "'DM Sans', sans-serif" }}>
