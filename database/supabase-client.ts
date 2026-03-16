@@ -173,7 +173,7 @@ export async function signupMerchant(data: {
       ? data.phone
       : '+213' + data.phone.replace(/^0/, '').replace(/\s/g, '')
 
-    // ✅ Utiliser l'API route server-side (bypass RLS)
+    // 1. Créer le compte via l'API server-side (bypass RLS)
     const res = await fetch('/api/auth/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -186,8 +186,15 @@ export async function signupMerchant(data: {
       return { success: false as const, error: json.error || 'Erreur inscription' }
     }
 
-    // Envoyer le SMS OTP via le client
-    await supabase.auth.signInWithOtp({ phone: phoneFormatted })
+    // 2. ✅ Envoyer le SMS OTP via signInWithOtp
+    const { error: otpError } = await supabase.auth.signInWithOtp({
+      phone: phoneFormatted,
+    })
+
+    if (otpError) {
+      console.error('OTP send error:', otpError.message)
+      // Ne pas bloquer — le compte est créé, on peut renvoyer le code après
+    }
 
     return { success: true as const }
   } catch (err) {
