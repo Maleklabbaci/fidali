@@ -1,6 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { authenticateApiKey, isAuthError, getSupabaseAdmin } from '@/lib/api-auth'
 
+// Gérer les requêtes OPTIONS (preflight CORS)
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Max-Age': '86400',
+    },
+  })
+}
 export async function POST(req: NextRequest) {
   // Vérifier la clé API
   const authResult = await authenticateApiKey(req)
