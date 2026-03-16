@@ -30,13 +30,14 @@ export default function LoginPage() {
           localStorage.removeItem('merchant')
         }
         try {
-          const profile = await getMerchantProfile(merchant.id)
-          if (!profile) router.push('/complete-profile')
-          else if (profile.status === 'pending') router.push('/dashboard/pending')
-          else if (profile.status === 'approved' || profile.status === 'active') router.push('/dashboard')
-          else if (profile.status === 'rejected') router.push('/dashboard/pending?rejected=1')
-          else router.push('/dashboard')
-        } catch { router.push('/complete-profile') }
+try {
+  const profile = await getMerchantProfile(merchant.id)
+  if (!profile || profile.status === 'incomplete') router.push('/complete-profile')  // ✅ 
+  else if (profile.status === 'pending') router.push('/dashboard/pending')
+  else if (profile.status === 'approved' || profile.status === 'active') router.push('/dashboard')
+  else if (profile.status === 'rejected') router.push('/dashboard/pending?rejected=1')
+  else router.push('/complete-profile')  // ✅ fallback
+} catch { router.push('/complete-profile') }
       } else {
         setError(result.error || 'Email ou mot de passe incorrect')
       }
