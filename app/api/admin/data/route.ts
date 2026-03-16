@@ -123,23 +123,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true })
     }
 
-    // ✅ REFUSER un marchand (nouveau !)
-    if (action === 'reject_merchant') {
-      const merchantId = body.merchantId
-      await db.from('merchant_profiles').delete().eq('merchant_id', merchantId)
-      await db.from('admin_requests').delete().eq('merchant_id', merchantId)
-      await db.from('messages').delete().eq('merchant_id', merchantId)
-      await db.from('client_cards').delete().eq('merchant_id', merchantId)
-      await db.from('loyalty_cards').delete().eq('merchant_id', merchantId)
-      await db.from('activities').delete().eq('merchant_id', merchantId)
-      await db.from('clients').delete().eq('merchant_id', merchantId)
-      await db.from('payment_requests').delete().eq('merchant_id', merchantId)
-      await db.from('merchants').delete().eq('id', merchantId)
-      const { error: authError } = await db.auth.admin.deleteUser(merchantId)
-      if (authError) console.error('Auth delete error:', authError)
-      return NextResponse.json({ success: true })
-    }
+// ✅ REFUSER — met le status en "rejected" (ne supprime PAS encore)
+if (action === 'reject_merchant') {
+  await db.from('merchants').update({
+    status: 'rejected',
+    updated_at: new Date().toISOString(),
+  }).eq('id', body.merchantId)
+  return NextResponse.json({ success: true })
+}
 
+// ✅ CLEANUP — supprime vraiment après que le marchand a vu le message
+if (action === 'cleanup_merchant') {
+  const merchantId = body.merchantId
+  await db.from('merchant_profiles').delete().eq('merchant_id', merchantId)
+  await db.from('admin_requests').delete().eq('merchant_id', merchantId)
+  await db.from('messages').delete().eq('merchant_id', merchantId)
+  await db.from('client_cards').delete().eq('merchant_id', merchantId)
+  await db.from('loyalty_cards').delete().eq('merchant_id', merchantId)
+  await db.from('activities').delete().eq('merchant_id', merchantId)
+  await db.from('clients').delete().eq('merchant_id', merchantId)
+  await db.from('payment_requests').delete().eq('merchant_id', merchantId)
+  await db.from('merchants').delete().eq('id', merchantId)
+  const { error: authError } = await db.auth.admin.deleteUser(merchantId)
+  if (authError) console.error('Auth cleanup error:', authError)
+  return NextResponse.json({ success: true })
+}
+    
     if (action === 'change_plan') {
       await db.from('merchants').update({ plan: body.plan, updated_at: new Date().toISOString() }).eq('id', body.merchantId)
       return NextResponse.json({ success: true })
