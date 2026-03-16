@@ -88,15 +88,17 @@ export default function CompleteProfilePage() {
   const [error, setError] = useState('')
 
   const [form, setForm] = useState({
-    fullName: '',
-    phone: '',
-    businessName: '',
-    businessType: '',
-    businessAddress: '',
-    wilaya: '',
-    howHeard: '',
-    useFor: '',
-  })
+  fullName: '',
+  phone: '',
+  businessName: '',
+  businessType: '',
+  businessTypeOther: '',  // ✅ Nouveau
+  businessAddress: '',
+  wilaya: '',
+  howHeard: '',
+  howHeardOther: '',      // ✅ Nouveau aussi pour "Comment avez-vous entendu"
+  useFor: '',
+})
 
   useEffect(() => {
   const stored = localStorage.getItem('merchant') || sessionStorage.getItem('merchant')
@@ -245,37 +247,50 @@ export default function CompleteProfilePage() {
         }}>
 
           {/* Étape 1 */}
-          {step === 1 && (
-            <>
-              <h2 style={{ color: 'white', fontSize: 22, fontWeight: 800, marginBottom: 6, fontFamily: "'DM Serif Display', serif" }}>
-                Votre profil
-              </h2>
-              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginBottom: 24 }}>
-                Dites-nous qui vous êtes et votre commerce
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <Field label="Nom complet *">
-                  <input style={inputStyle} value={form.fullName} onChange={updateField('fullName')} placeholder="Mohamed Amine Benali" />
-                </Field>
-                <Field label="Numéro de téléphone *">
-                  <input style={inputStyle} type="tel" value={form.phone} onChange={updateField('phone')} placeholder="05xx xx xx xx" />
-                </Field>
-                <Field label="Nom du commerce *">
-                  <input style={inputStyle} value={form.businessName} onChange={updateField('businessName')} placeholder="Café El Baraka" />
-                </Field>
-                <Field label="Type de commerce *">
-                  <select style={selectStyle} value={form.businessType} onChange={updateField('businessType')}>
-                    <option value="">Sélectionner...</option>
-                    {BUSINESS_TYPES.map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
-                  </select>
-                </Field>
-              </div>
-              <button onClick={() => setStep(2)} disabled={!canNext1}
-                style={{ marginTop: 24, ...(canNext1 ? btnActive : btnDisabled) }}>
-                Continuer →
-              </button>
-            </>
-          )}
+          {/* Étape 1 */}
+{step === 1 && (
+  <>
+    <h2 style={{ color: 'white', fontSize: 22, fontWeight: 800, marginBottom: 6, fontFamily: "'DM Serif Display', serif" }}>
+      Votre profil
+    </h2>
+    <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginBottom: 24 }}>
+      Dites-nous qui vous êtes et votre commerce
+    </p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <Field label="Nom complet *">
+        <input style={inputStyle} value={form.fullName} onChange={updateField('fullName')} placeholder="Mohamed Amine Benali" />
+      </Field>
+      <Field label="Numéro de téléphone *">
+        <input style={inputStyle} type="tel" value={form.phone} onChange={updateField('phone')} placeholder="05xx xx xx xx" />
+      </Field>
+      <Field label="Nom du commerce *">
+        <input style={inputStyle} value={form.businessName} onChange={updateField('businessName')} placeholder="Café El Baraka" />
+      </Field>
+      <Field label="Type de commerce *">
+        <select style={selectStyle} value={form.businessType} onChange={updateField('businessType')}>
+          <option value="">Sélectionner...</option>
+          {BUSINESS_TYPES.map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
+        </select>
+      </Field>
+
+      {/* ✅ Champ "Précisez" si "Autre" est sélectionné */}
+      {form.businessType === 'autre' && (
+        <Field label="Précisez votre activité *">
+          <input
+            style={inputStyle}
+            value={form.businessTypeOther}
+            onChange={updateField('businessTypeOther')}
+            placeholder="Ex: Studio photo, Agence de voyage..."
+          />
+        </Field>
+      )}
+    </div>
+    <button onClick={() => setStep(2)} disabled={!canNext1}
+      style={{ marginTop: 24, ...(canNext1 ? btnActive : btnDisabled) }}>
+      Continuer →
+    </button>
+  </>
+)}
 
           {/* Étape 2 */}
           {step === 2 && (
@@ -314,48 +329,62 @@ export default function CompleteProfilePage() {
           )}
 
           {/* Étape 3 */}
-          {step === 3 && (
-            <>
-              <h2 style={{ color: 'white', fontSize: 22, fontWeight: 800, marginBottom: 6, fontFamily: "'DM Serif Display', serif" }}>
-                Dernières questions
-              </h2>
-              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginBottom: 24 }}>
-                Aidez-nous à mieux vous connaître
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <Field label="Comment avez-vous entendu parler de Fidali ? *">
-                  <select style={selectStyle} value={form.howHeard} onChange={updateField('howHeard')}>
-                    <option value="">Sélectionner...</option>
-                    {HOW_HEARD.map(h => <option key={h} value={h}>{h}</option>)}
-                  </select>
-                </Field>
-                <Field label="Pour quoi voulez-vous utiliser Fidali ? *">
-                  <select style={selectStyle} value={form.useFor} onChange={updateField('useFor')}>
-                    <option value="">Sélectionner...</option>
-                    {USE_FOR.map(u => <option key={u} value={u}>{u}</option>)}
-                  </select>
-                </Field>
-              </div>
+         {/* Étape 3 */}
+{step === 3 && (
+  <>
+    <h2 style={{ color: 'white', fontSize: 22, fontWeight: 800, marginBottom: 6, fontFamily: "'DM Serif Display', serif" }}>
+      Dernières questions
+    </h2>
+    <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginBottom: 24 }}>
+      Aidez-nous à mieux vous connaître
+    </p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <Field label="Comment avez-vous entendu parler de Fidali ? *">
+        <select style={selectStyle} value={form.howHeard} onChange={updateField('howHeard')}>
+          <option value="">Sélectionner...</option>
+          {HOW_HEARD.map(h => <option key={h} value={h}>{h}</option>)}
+        </select>
+      </Field>
 
-              {error && (
-                <div style={{
-                  marginTop: 16, padding: '12px 14px', borderRadius: 10,
-                  background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)',
-                  color: '#f87171', fontSize: 13,
-                }}>
-                  ❌ {error}
-                </div>
-              )}
+      {/* ✅ Précisez si "Autre" */}
+      {form.howHeard === 'Autre' && (
+        <Field label="Précisez *">
+          <input
+            style={inputStyle}
+            value={form.howHeardOther}
+            onChange={updateField('howHeardOther')}
+            placeholder="Comment avez-vous découvert Fidali ?"
+          />
+        </Field>
+      )}
 
-              <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
-                <button onClick={() => setStep(2)} style={btnBack}>← Retour</button>
-                <button onClick={handleSubmit} disabled={!canSubmit || submitting}
-                  style={{ flex: 2, ...((canSubmit && !submitting) ? btnActive : btnDisabled) }}>
-                  {submitting ? 'Envoi...' : '🚀 Soumettre mon dossier'}
-                </button>
-              </div>
-            </>
-          )}
+      <Field label="Pour quoi voulez-vous utiliser Fidali ? *">
+        <select style={selectStyle} value={form.useFor} onChange={updateField('useFor')}>
+          <option value="">Sélectionner...</option>
+          {USE_FOR.map(u => <option key={u} value={u}>{u}</option>)}
+        </select>
+      </Field>
+    </div>
+
+    {error && (
+      <div style={{
+        marginTop: 16, padding: '12px 14px', borderRadius: 10,
+        background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)',
+        color: '#f87171', fontSize: 13,
+      }}>
+        ❌ {error}
+      </div>
+    )}
+
+    <div style={{ display: 'flex', gap: 10, marginTop: 24 }}>
+      <button onClick={() => setStep(2)} style={btnBack}>← Retour</button>
+      <button onClick={handleSubmit} disabled={!canSubmit || submitting}
+        style={{ flex: 2, ...((canSubmit && !submitting) ? btnActive : btnDisabled) }}>
+        {submitting ? 'Envoi...' : '🚀 Soumettre mon dossier'}
+      </button>
+    </div>
+  </>
+)}
         </div>
 
         <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.15)', fontSize: 12 }}>
