@@ -93,52 +93,67 @@ export async function POST(req: NextRequest) {
       await db.from('merchants').update({ status: 'active', validated_at: new Date().toISOString() }).eq('id', body.merchantId)
       return NextResponse.json({ success: true })
     }
+
     if (action === 'suspend_merchant') {
       const suspendUntil = body.days > 0 ? new Date(Date.now() + body.days * 86400000).toISOString() : null
       await db.from('merchants').update({ status: 'suspended', suspend_until: suspendUntil, updated_at: new Date().toISOString() }).eq('id', body.merchantId)
       return NextResponse.json({ success: true })
     }
+
     if (action === 'reactivate_merchant') {
       await db.from('merchants').update({ status: 'active', suspend_until: null, updated_at: new Date().toISOString() }).eq('id', body.merchantId)
       return NextResponse.json({ success: true })
     }
+
+    // ✅ SUPPRIMER un marchand
     if (action === 'delete_merchant') {
-  const merchantId = body.merchantId
+      const merchantId = body.merchantId
+      await db.from('merchant_profiles').delete().eq('merchant_id', merchantId)
+      await db.from('admin_requests').delete().eq('merchant_id', merchantId)
+      await db.from('messages').delete().eq('merchant_id', merchantId)
+      await db.from('client_cards').delete().eq('merchant_id', merchantId)
+      await db.from('loyalty_cards').delete().eq('merchant_id', merchantId)
+      await db.from('activities').delete().eq('merchant_id', merchantId)
+      await db.from('clients').delete().eq('merchant_id', merchantId)
+      await db.from('payment_requests').delete().eq('merchant_id', merchantId)
+      await db.from('merchants').delete().eq('id', merchantId)
+      const { error: authError } = await db.auth.admin.deleteUser(merchantId)
+      if (authError) console.error('Auth delete error:', authError)
+      return NextResponse.json({ success: true })
+    }
 
-  // 1️⃣ Supprimer les données liées (tables enfants)
-  await db.from('client_cards').delete().eq('merchant_id', merchantId)
-  await db.from('loyalty_cards').delete().eq('merchant_id', merchantId)
-  await db.from('activities').delete().eq('merchant_id', merchantId)
-  await db.from('clients').delete().eq('merchant_id', merchantId)
-  await db.from('messages').delete().eq('merchant_id', merchantId)
-  await db.from('payment_requests').delete().eq('merchant_id', merchantId)
+    // ✅ REFUSER un marchand (nouveau !)
+    if (action === 'reject_merchant') {
+      const merchantId = body.merchantId
+      await db.from('merchant_profiles').delete().eq('merchant_id', merchantId)
+      await db.from('admin_requests').delete().eq('merchant_id', merchantId)
+      await db.from('messages').delete().eq('merchant_id', merchantId)
+      await db.from('client_cards').delete().eq('merchant_id', merchantId)
+      await db.from('loyalty_cards').delete().eq('merchant_id', merchantId)
+      await db.from('activities').delete().eq('merchant_id', merchantId)
+      await db.from('clients').delete().eq('merchant_id', merchantId)
+      await db.from('payment_requests').delete().eq('merchant_id', merchantId)
+      await db.from('merchants').delete().eq('id', merchantId)
+      const { error: authError } = await db.auth.admin.deleteUser(merchantId)
+      if (authError) console.error('Auth delete error:', authError)
+      return NextResponse.json({ success: true })
+    }
 
-  // 2️⃣ Supprimer de la table merchants
-  await db.from('merchants').delete().eq('id', merchantId)
-
-  // 3️⃣ ✅ SUPPRIMER DE AUTH.USERS (c'est ça qui manquait !)
-  const { error: authError } = await db.auth.admin.deleteUser(merchantId)
-
-  if (authError) {
-    console.error('Erreur suppression auth.users:', authError)
-    // On ne return pas d'erreur car les données métier sont déjà supprimées
-    // mais on log l'erreur
-  }
-
-  return NextResponse.json({ success: true })
-}
     if (action === 'change_plan') {
       await db.from('merchants').update({ plan: body.plan, updated_at: new Date().toISOString() }).eq('id', body.merchantId)
       return NextResponse.json({ success: true })
     }
+
     if (action === 'reply_message') {
       await db.from('messages').update({ admin_reply: body.reply, status: 'replied', replied_at: new Date().toISOString() }).eq('id', body.messageId)
       return NextResponse.json({ success: true })
     }
+
     if (action === 'save_settings') {
       await db.from('platform_settings').upsert({ key: body.key, value: body.value, updated_at: new Date().toISOString() }, { onConflict: 'key' })
       return NextResponse.json({ success: true })
     }
+
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 })
