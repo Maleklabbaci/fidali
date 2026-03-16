@@ -3,11 +3,12 @@
 import { useState, useEffect } from 'react'
 
 const STATUS_STYLE: any = {
-  active:    'bg-emerald-500/10 text-emerald-400',
-  approved:  'bg-emerald-500/10 text-emerald-400',
-  pending:   'bg-amber-500/10 text-amber-400',
-  suspended: 'bg-red-500/10 text-red-400',
-  rejected:  'bg-red-500/10 text-red-400',
+  active:     'bg-emerald-500/10 text-emerald-400',
+  approved:   'bg-emerald-500/10 text-emerald-400',
+  pending:    'bg-amber-500/10 text-amber-400',
+  incomplete: 'bg-blue-500/10 text-blue-400',
+  suspended:  'bg-red-500/10 text-red-400',
+  rejected:   'bg-red-500/10 text-red-400',
 }
 const PLAN_STYLE: any = {
   starter: 'bg-white/[0.06] text-white/50',
@@ -32,13 +33,16 @@ export default function MerchantsPage() {
   const [deleteModal, setDeleteModal] = useState<{ id: string; name: string } | null>(null)
   const [deleting, setDeleting]       = useState(false)
 
+  // ✅ Modal refus
+  const [rejectModal, setRejectModal] = useState<{ id: string; name: string } | null>(null)
+  const [rejecting, setRejecting]     = useState(false)
+
   useEffect(() => { load() }, [])
 
   const load = async () => {
     try {
       const stored = localStorage.getItem('admin')
       const adminId = stored ? JSON.parse(stored)?.id : ''
-      // Utiliser l'API admin (service role) pour bypasser le RLS
       const res = await fetch('/api/admin/merchants', {
         headers: { 'x-admin-id': adminId }
       })
@@ -52,7 +56,6 @@ export default function MerchantsPage() {
     setActionMsg(msg)
     setTimeout(() => setActionMsg(null), 3000)
   }
-
 
   const adminId = () => {
     const s = localStorage.getItem('admin')
@@ -91,7 +94,6 @@ export default function MerchantsPage() {
     try {
       const days = parseInt(suspendDays) || 0
       await adminPost('suspend_merchant', { merchantId: suspendModal.id, days })
-
       setSuspendModal(null)
       load()
       showMsg(days > 0 ? `⏸️ Suspendu pour ${days} jour(s)` : '⏸️ Suspendu indéfiniment')
@@ -113,10 +115,25 @@ export default function MerchantsPage() {
     try {
       await adminPost('delete_merchant', { merchantId: deleteModal.id })
       setDeleteModal(null)
+      setSelected(null)
       load()
       showMsg('🗑️ Commerçant supprimé définitivement')
     } catch (e) { console.error(e) }
     finally { setDeleting(false) }
+  }
+
+  // ✅ Refuser (supprime aussi de auth.users)
+  const handleReject = async () => {
+    if (!rejectModal) return
+    setRejecting(true)
+    try {
+      await adminPost('reject_merchant', { merchantId: rejectModal.id })
+      setRejectModal(null)
+      setSelected(null)
+      load()
+      showMsg('✗ Commerçant refusé et supprimé')
+    } catch (e) { console.error(e) }
+    finally { setRejecting(false) }
   }
 
   const filtered = merchants.filter(m => {
@@ -128,7 +145,7 @@ export default function MerchantsPage() {
   const counts = {
     all:       merchants.length,
     active:    merchants.filter(m => m.status === 'active' || m.status === 'approved').length,
-    pending:   merchants.filter(m => m.status === 'pending').length,
+    pending:   merchants.filter(m => m.status === 'pending' || m.status === 'incomplete').length,
     suspended: merchants.filter(m => m.status === 'suspended').length,
   }
 
@@ -211,146 +228,186 @@ export default function MerchantsPage() {
           </div>
         </div>
       )}
-{/* ── MODAL DÉTAILS MARCHAND ── */}
-{selected && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-    <div className="bg-[#0f0f12] border border-white/10 rounded-2xl p-6 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
-      
-      {/* Header */}
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <h3 className="text-white font-bold text-lg">
-            {selected.business_name || selected.name}
-          </h3>
-          <p className="text-white/30 text-sm mt-0.5">{selected.email}</p>
-        </div>
-        <button
-          onClick={() => setSelected(null)}
-          className="text-white/30 hover:text-white transition text-xl leading-none"
-        >
-          ✕
-        </button>
-      </div>
 
-      {/* Infos principales */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        {[
-          ['Nom complet', selected.name || '—'],
-          ['Commerce', selected.business_name || '—'],
-          ['Email', selected.email || '—'],
-          ['Téléphone', selected.phone || '—'],
-          ['Secteur', selected.sector || '—'],
-          ['Adresse', selected.address || '—'],
-          ['Ville', selected.city || '—'],
-          ['Inscrit le', selected.created_at
-            ? new Date(selected.created_at).toLocaleDateString('fr-FR')
-            : '—'
-          ],
-        ].map(([label, value]) => (
-          <div key={label}>
-            <p className="text-[11px] text-white/25 uppercase tracking-wider mb-1">
-              {label}
-            </p>
-            <p className="text-sm text-white/70">{value}</p>
+      {/* ── ✅ MODAL REFUS ── */}
+      {rejectModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-[#0f0f12] border border-red-500/20 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+            <h3 className="text-white font-bold text-lg mb-1">✗ Refuser le commerçant</h3>
+            <p className="text-white/40 text-sm mb-4">{rejectModal.name}</p>
+            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 mb-5">
+              <p className="text-red-400 text-sm font-semibold mb-1">⚠️ Refus définitif</p>
+              <p className="text-red-400/70 text-xs">Le compte sera supprimé de la base de données et de l{"'"}authentification. Le commerçant pourra se réinscrire avec le même email.</p>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setRejectModal(null)}
+                className="flex-1 py-2.5 bg-white/[0.06] text-white/60 rounded-xl text-sm hover:bg-white/10 transition">
+                Annuler
+              </button>
+              <button onClick={handleReject} disabled={rejecting}
+                className="flex-1 py-2.5 bg-red-600 text-white rounded-xl text-sm font-bold hover:bg-red-700 transition disabled:opacity-50">
+                {rejecting ? 'Refus...' : 'Confirmer le refus'}
+              </button>
+            </div>
           </div>
-        ))}
-      </div>
-
-      {/* Statut & Plan */}
-      <div className="flex items-center gap-3 mb-6">
-        <div>
-          <p className="text-[11px] text-white/25 uppercase tracking-wider mb-1">Statut</p>
-          <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_STYLE[selected.status] || STATUS_STYLE.pending}`}>
-            {selected.status}
-          </span>
-          {selected.suspend_until && selected.status === 'suspended' && (
-            <p className="text-[10px] text-white/25 mt-1">
-              Jusqu'au {new Date(selected.suspend_until).toLocaleDateString('fr-FR')}
-            </p>
-          )}
         </div>
-        <div className="ml-6">
-          <p className="text-[11px] text-white/25 uppercase tracking-wider mb-1">Plan</p>
-          <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${PLAN_STYLE[selected.plan] || PLAN_STYLE.starter}`}>
-            {selected.plan || 'starter'}
-          </span>
-        </div>
-      </div>
+      )}
 
-      {/* Changer le plan */}
-      <div className="mb-6">
-        <p className="text-[11px] text-white/25 uppercase tracking-wider mb-2">
-          Changer le plan
-        </p>
-        <div className="flex gap-2">
-          {['starter', 'pro', 'premium'].map(p => (
-            <button
-              key={p}
-              onClick={() => action('plan', selected.id, p)}
-              disabled={selected.plan === p}
-              className={`px-4 py-2 rounded-lg text-xs font-bold transition ${
-                selected.plan === p
-                  ? 'bg-white text-black cursor-default'
-                  : 'bg-white/[0.06] text-white/50 hover:bg-white/10'
-              }`}
-            >
-              {p.charAt(0).toUpperCase() + p.slice(1)}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* ── MODAL DÉTAILS MARCHAND ── */}
+      {selected && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-[#0f0f12] border border-white/10 rounded-2xl p-6 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
 
-      {/* Actions rapides */}
-      <div className="border-t border-white/[0.06] pt-4 flex flex-wrap gap-2">
-        {selected.status === 'pending' && (
-          <button
-            onClick={() => action('approve', selected.id)}
-            className="px-4 py-2 bg-emerald-500/15 text-emerald-400 rounded-lg text-xs font-bold hover:bg-emerald-500/25 transition"
-          >
-            ✓ Valider le compte
-          </button>
-        )}
-        {(selected.status === 'active' || selected.status === 'approved') && (
-          <button
-            onClick={() => {
-              setSelected(null)
-              setSuspendModal({
-                id: selected.id,
-                name: selected.business_name || selected.name,
-              })
-            }}
-            className="px-4 py-2 bg-amber-500/10 text-amber-400 rounded-lg text-xs font-bold hover:bg-amber-500/20 transition"
-          >
-            ⏸️ Suspendre
-          </button>
-        )}
-        {selected.status === 'suspended' && (
-          <button
-            onClick={() => {
-              handleReactivate(selected.id)
-              setSelected(null)
-            }}
-            className="px-4 py-2 bg-emerald-500/15 text-emerald-400 rounded-lg text-xs font-bold hover:bg-emerald-500/25 transition"
-          >
-            ▶️ Réactiver
-          </button>
-        )}
-        <button
-          onClick={() => {
-            setSelected(null)
-            setDeleteModal({
-              id: selected.id,
-              name: selected.business_name || selected.name,
-            })
-          }}
-          className="px-4 py-2 bg-red-500/10 text-red-400 rounded-lg text-xs font-bold hover:bg-red-500/20 transition"
-        >
-          🗑️ Supprimer
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+            {/* Header */}
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <h3 className="text-white font-bold text-lg">
+                  {selected.business_name || selected.name}
+                </h3>
+                <p className="text-white/30 text-sm mt-0.5">{selected.email}</p>
+              </div>
+              <button
+                onClick={() => setSelected(null)}
+                className="text-white/30 hover:text-white transition text-xl leading-none"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Infos principales */}
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              {[
+                ['Nom complet', selected.name || '—'],
+                ['Commerce', selected.business_name || '—'],
+                ['Email', selected.email || '—'],
+                ['Téléphone', selected.phone || '—'],
+                ['Secteur', selected.sector || '—'],
+                ['Adresse', selected.address || '—'],
+                ['Ville', selected.city || '—'],
+                ['Inscrit le', selected.created_at
+                  ? new Date(selected.created_at).toLocaleDateString('fr-FR')
+                  : '—'
+                ],
+              ].map(([label, value]) => (
+                <div key={label}>
+                  <p className="text-[11px] text-white/25 uppercase tracking-wider mb-1">
+                    {label}
+                  </p>
+                  <p className="text-sm text-white/70">{value}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Statut & Plan */}
+            <div className="flex items-center gap-3 mb-6">
+              <div>
+                <p className="text-[11px] text-white/25 uppercase tracking-wider mb-1">Statut</p>
+                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_STYLE[selected.status] || STATUS_STYLE.pending}`}>
+                  {selected.status}
+                </span>
+                {selected.suspend_until && selected.status === 'suspended' && (
+                  <p className="text-[10px] text-white/25 mt-1">
+                    Jusqu{"'"}au {new Date(selected.suspend_until).toLocaleDateString('fr-FR')}
+                  </p>
+                )}
+              </div>
+              <div className="ml-6">
+                <p className="text-[11px] text-white/25 uppercase tracking-wider mb-1">Plan</p>
+                <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${PLAN_STYLE[selected.plan] || PLAN_STYLE.starter}`}>
+                  {selected.plan || 'starter'}
+                </span>
+              </div>
+            </div>
+
+            {/* Changer le plan */}
+            <div className="mb-6">
+              <p className="text-[11px] text-white/25 uppercase tracking-wider mb-2">
+                Changer le plan
+              </p>
+              <div className="flex gap-2">
+                {['starter', 'pro', 'premium'].map(p => (
+                  <button
+                    key={p}
+                    onClick={() => action('plan', selected.id, p)}
+                    disabled={selected.plan === p}
+                    className={`px-4 py-2 rounded-lg text-xs font-bold transition ${
+                      selected.plan === p
+                        ? 'bg-white text-black cursor-default'
+                        : 'bg-white/[0.06] text-white/50 hover:bg-white/10'
+                    }`}
+                  >
+                    {p.charAt(0).toUpperCase() + p.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Actions rapides */}
+            <div className="border-t border-white/[0.06] pt-4 flex flex-wrap gap-2">
+              {(selected.status === 'pending' || selected.status === 'incomplete') && (
+                <>
+                  <button
+                    onClick={() => action('approve', selected.id)}
+                    className="px-4 py-2 bg-emerald-500/15 text-emerald-400 rounded-lg text-xs font-bold hover:bg-emerald-500/25 transition"
+                  >
+                    ✓ Valider le compte
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSelected(null)
+                      setRejectModal({
+                        id: selected.id,
+                        name: selected.business_name || selected.name,
+                      })
+                    }}
+                    className="px-4 py-2 bg-red-500/10 text-red-400 rounded-lg text-xs font-bold hover:bg-red-500/20 transition"
+                  >
+                    ✗ Refuser
+                  </button>
+                </>
+              )}
+              {(selected.status === 'active' || selected.status === 'approved') && (
+                <button
+                  onClick={() => {
+                    setSelected(null)
+                    setSuspendModal({
+                      id: selected.id,
+                      name: selected.business_name || selected.name,
+                    })
+                  }}
+                  className="px-4 py-2 bg-amber-500/10 text-amber-400 rounded-lg text-xs font-bold hover:bg-amber-500/20 transition"
+                >
+                  ⏸️ Suspendre
+                </button>
+              )}
+              {selected.status === 'suspended' && (
+                <button
+                  onClick={() => {
+                    handleReactivate(selected.id)
+                    setSelected(null)
+                  }}
+                  className="px-4 py-2 bg-emerald-500/15 text-emerald-400 rounded-lg text-xs font-bold hover:bg-emerald-500/25 transition"
+                >
+                  ▶️ Réactiver
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  setSelected(null)
+                  setDeleteModal({
+                    id: selected.id,
+                    name: selected.business_name || selected.name,
+                  })
+                }}
+                className="px-4 py-2 bg-red-500/10 text-red-400 rounded-lg text-xs font-bold hover:bg-red-500/20 transition"
+              >
+                🗑️ Supprimer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -401,7 +458,7 @@ export default function MerchantsPage() {
                     <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_STYLE[m.status] || STATUS_STYLE.pending}`}>{m.status}</span>
                     {m.suspend_until && m.status === 'suspended' && (
                       <p className="text-[10px] text-white/25 mt-1">
-                        Jusqu'au {new Date(m.suspend_until).toLocaleDateString('fr-FR')}
+                        Jusqu{"'"}au {new Date(m.suspend_until).toLocaleDateString('fr-FR')}
                       </p>
                     )}
                   </div>
@@ -409,11 +466,18 @@ export default function MerchantsPage() {
                 <td className="px-5 py-3.5 text-sm text-white/30">{new Date(m.created_at).toLocaleDateString('fr-FR')}</td>
                 <td className="px-5 py-3.5">
                   <div className="flex items-center justify-end gap-2">
-                    {m.status === 'pending' && (
-                      <button onClick={() => action('approve', m.id)}
-                        className="px-3 py-1.5 bg-emerald-500/15 text-emerald-400 rounded-lg text-xs hover:bg-emerald-500/25 transition">
-                        ✓ Valider
-                      </button>
+                    {/* ✅ Pending : Valider + Refuser */}
+                    {(m.status === 'pending' || m.status === 'incomplete') && (
+                      <>
+                        <button onClick={() => action('approve', m.id)}
+                          className="px-3 py-1.5 bg-emerald-500/15 text-emerald-400 rounded-lg text-xs hover:bg-emerald-500/25 transition">
+                          ✓ Valider
+                        </button>
+                        <button onClick={() => setRejectModal({ id: m.id, name: m.business_name || m.name })}
+                          className="px-3 py-1.5 bg-red-500/10 text-red-400 rounded-lg text-xs hover:bg-red-500/20 transition">
+                          ✗ Refuser
+                        </button>
+                      </>
                     )}
                     {(m.status === 'active' || m.status === 'approved') && (
                       <button onClick={() => setSuspendModal({ id: m.id, name: m.business_name || m.name })}
