@@ -135,7 +135,31 @@ export async function loginMerchant(email: string, password: string) {
     return { success: false as const, error: 'Erreur de connexion' }
   }
 }
+export async function loginAdmin(email: string, password: string) {
+  try {
+    const { data: verified, error: rpcError } = await supabase.rpc('verify_admin_password', {
+      p_email: email,
+      p_password: password,
+    })
 
+    if (!rpcError && verified) {
+      const adminData = await safeQuery(() =>
+        supabase.from('admins').select('id, email, name').eq('email', email).maybeSingle()
+      )
+
+      return {
+        success: true as const,
+        admin: adminData || { id: 'admin', email, name: 'Admin Fidali', role: 'super_admin' },
+        role: 'admin' as const,
+      }
+    }
+
+    return { success: false as const, error: 'Email ou mot de passe incorrect' }
+  } catch (err) {
+    console.error('Admin login error:', err)
+    return { success: false as const, error: 'Erreur de connexion' }
+  }
+}
 export async function signupMerchant(data: {
   name: string
   business: string
