@@ -103,9 +103,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true })
     }
     if (action === 'delete_merchant') {
-      await db.from('merchants').delete().eq('id', body.merchantId)
-      return NextResponse.json({ success: true })
-    }
+  const merchantId = body.merchantId
+
+  // 1️⃣ Supprimer les données liées (tables enfants)
+  await db.from('client_cards').delete().eq('merchant_id', merchantId)
+  await db.from('loyalty_cards').delete().eq('merchant_id', merchantId)
+  await db.from('activities').delete().eq('merchant_id', merchantId)
+  await db.from('clients').delete().eq('merchant_id', merchantId)
+  await db.from('messages').delete().eq('merchant_id', merchantId)
+  await db.from('payment_requests').delete().eq('merchant_id', merchantId)
+
+  // 2️⃣ Supprimer de la table merchants
+  await db.from('merchants').delete().eq('id', merchantId)
+
+  // 3️⃣ ✅ SUPPRIMER DE AUTH.USERS (c'est ça qui manquait !)
+  const { error: authError } = await db.auth.admin.deleteUser(merchantId)
+
+  if (authError) {
+    console.error('Erreur suppression auth.users:', authError)
+    // On ne return pas d'erreur car les données métier sont déjà supprimées
+    // mais on log l'erreur
+  }
+
+  return NextResponse.json({ success: true })
+}
     if (action === 'change_plan') {
       await db.from('merchants').update({ plan: body.plan, updated_at: new Date().toISOString() }).eq('id', body.merchantId)
       return NextResponse.json({ success: true })
