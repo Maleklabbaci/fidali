@@ -21,53 +21,54 @@ export default function AuthPage() {
   const validatePhone = (p: string) => /^(0[5-7]\d{8}|\+213[5-7]\d{8})$/.test(p.replace(/\s/g, ''))
 
   const handleLogin = async (e: React.FormEvent) => {
-  e.preventDefault(); setLoading(true); setError('')
-  try {
-    const { loginMerchant, getMerchantProfile } = await import('@/database/supabase-client')
-    const result = await loginMerchant(form.email, form.password)
-    if (result.success) {
-      sessionStorage.setItem('merchant', JSON.stringify(result.merchant))
-      const profile = await getMerchantProfile(result.merchant.id).catch(() => null)
-      if (!profile || profile.status === 'incomplete') {
-        router.push('/complete-profile')
-      } else if (profile.status === 'pending') {
-        router.push('/dashboard/pending')
-      } else if (profile.status === 'approved' || profile.status === 'active') {
-        router.push('/dashboard')
-      } else if (profile.status === 'rejected') {
-        router.push('/dashboard/pending?rejected=1')
+    e.preventDefault(); setLoading(true); setError('')
+    try {
+      const { loginMerchant, getMerchantProfile } = await import('@/database/supabase-client')
+      const result = await loginMerchant(form.email, form.password)
+      if (result.success) {
+        sessionStorage.setItem('merchant', JSON.stringify(result.merchant))
+        const profile = await getMerchantProfile(result.merchant.id).catch(() => null)
+        if (!profile || profile.status === 'incomplete') {
+          router.push('/complete-profile')
+        } else if (profile.status === 'pending') {
+          router.push('/dashboard/pending')
+        } else if (profile.status === 'approved' || profile.status === 'active') {
+          router.push('/dashboard')
+        } else if (profile.status === 'rejected') {
+          router.push('/dashboard/pending?rejected=1')
+        } else {
+          router.push('/complete-profile')
+        }
       } else {
-        router.push('/complete-profile')
+        setError(result.error || 'Email ou mot de passe incorrect')
       }
-    } else {
-      setError(result.error || 'Email ou mot de passe incorrect')
+    } catch {
+      setError('Erreur de connexion')
+    } finally {
+      setLoading(false)
     }
-  } catch {
-    setError('Erreur de connexion')
-  } finally {
-    setLoading(false)
   }
-}
 
-const handleSignup = async (e: React.FormEvent) => {
-  e.preventDefault(); setLoading(true); setError('')
-  if (!validatePhone(form.phone)) { setError('Format : 05xx xx xx xx'); setLoading(false); return }
-  try {
-    const { signupMerchant } = await import('@/database/supabase-client')
-    const result = await signupMerchant(form)
-    if (result.success) {
-      // ✅ Rediriger avec le numéro de téléphone
-      // Formater le numéro au format international +213
-      const phoneFormatted = form.phone.startsWith('+')
-        ? form.phone
-        : '+213' + form.phone.replace(/^0/, '').replace(/\s/g, '')
-      router.push(`/confirm?phone=${encodeURIComponent(phoneFormatted)}`)
-    } else {
-      setError(result.error || "Erreur lors de l'inscription")
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault(); setLoading(true); setError('')
+    if (!validatePhone(form.phone)) { setError('Format : 05xx xx xx xx'); setLoading(false); return }
+    try {
+      const { signupMerchant } = await import('@/database/supabase-client')
+      const result = await signupMerchant(form)
+      if (result.success) {
+        const phoneFormatted = form.phone.startsWith('+')
+          ? form.phone
+          : '+213' + form.phone.replace(/^0/, '').replace(/\s/g, '')
+        router.push(`/confirm?phone=${encodeURIComponent(phoneFormatted)}`)
+      } else {
+        setError(result.error || "Erreur lors de l'inscription")
+      }
+    } catch {
+      setError('Erreur de connexion')
+    } finally {
+      setLoading(false)
     }
-  } catch { setError('Erreur de connexion') }
-  finally { setLoading(false) }
-}}
+  }
 
   const isLogin = mode === 'login'
 
@@ -98,7 +99,6 @@ const handleSignup = async (e: React.FormEvent) => {
         .btn-auth:hover:not(:disabled) { opacity: 0.85; }
         .btn-auth:disabled { opacity: 0.45; cursor: not-allowed; }
 
-        /* ── Les deux panneaux formulaires sont côte à côte, fixes ── */
         .auth-root {
           display: flex;
           width: 100%;
@@ -119,7 +119,6 @@ const handleSignup = async (e: React.FormEvent) => {
           z-index: 1;
         }
 
-        /* ── Le panel coloré est en POSITION ABSOLUE et glisse ── */
         .color-panel {
           position: absolute;
           top: 0; bottom: 0;
@@ -131,7 +130,6 @@ const handleSignup = async (e: React.FormEvent) => {
           justify-content: space-between;
           padding: 3.5rem;
           overflow: hidden;
-          /* Glisse de droite (50%) à gauche (0%) */
           transition: left 0.75s cubic-bezier(0.76, 0, 0.24, 1);
         }
         .color-panel.on-right { left: 50%; }
@@ -139,7 +137,6 @@ const handleSignup = async (e: React.FormEvent) => {
 
         .deco { position: absolute; border-radius: 50%; border: 1px solid rgba(255,255,255,0.18); pointer-events: none; }
 
-        /* Fade du contenu intérieur */
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(12px); }
           to   { opacity: 1; transform: translateY(0); }
@@ -154,7 +151,6 @@ const handleSignup = async (e: React.FormEvent) => {
             padding: 2.5rem 2rem !important;
             min-height: 100vh;
           }
-          /* Cacher le panel inactif sur mobile */
           .form-panel.hidden-mobile { display: none !important; }
         }
       `}</style>
@@ -172,7 +168,7 @@ const handleSignup = async (e: React.FormEvent) => {
                 Pas encore de compte ?{' '}
                 <button onClick={() => switchMode('signup')}
                   style={{ color: '#9333ea', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, padding: 0 }}>
-                  Créer un compte, c'est gratuit
+                  Créer un compte, c{"'"}est gratuit
                 </button>
               </p>
             </div>
@@ -217,7 +213,7 @@ const handleSignup = async (e: React.FormEvent) => {
                 placeholder="Nom du commerce" required className="input-line" />
               <select value={form.sector} onChange={e => setForm(f => ({...f, sector: e.target.value}))}
                 required className="input-line">
-                <option value="">Secteur d'activité</option>
+                <option value="">Secteur d{"'"}activité</option>
                 {sectors.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
               <input type="tel" value={form.phone} onChange={e => setForm(f => ({...f, phone: e.target.value}))}
@@ -236,18 +232,15 @@ const handleSignup = async (e: React.FormEvent) => {
 
         {/* ── PANEL COLORÉ — glisse par-dessus ── */}
         <div className={`color-panel ${isLogin ? 'on-right' : 'on-left'}`}>
-          {/* Cercles déco */}
           <div className="deco" style={{ width: 500, height: 500, top: -120, right: -160 }} />
           <div className="deco" style={{ width: 300, height: 300, bottom: 80, left: -120 }} />
           <div className="deco" style={{ width: 160, height: 160, top: '45%', right: -40 }} />
 
-          {/* Logo */}
           <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: 12 }}>
             <img src="/logo-white.png" alt="Fidali" style={{ width: 40, height: 40, objectFit: 'contain' }} />
             <span style={{ color: 'white', fontWeight: 800, fontSize: 20 }}>Fidali</span>
           </div>
 
-          {/* Contenu qui change */}
           <div style={{ position: 'relative', zIndex: 1 }} className="fade-in" key={mode}>
             {isLogin ? (
               <>
