@@ -177,12 +177,11 @@ export async function signupMerchant(data: {
       sector: data.sector,
       phone: data.phone,
       plan: 'starter',
-      status: 'pending', // En attente de validation admin via complete-profile
+      status: 'incomplete',  // ✅ CHANGÉ : "incomplete" au lieu de "pending"
     })
 
     if (profileError) return { success: false as const, error: profileError.message }
 
-    // Récupérer le merchant créé et le sauvegarder en localStorage
     const { data: merchantData } = await supabase
       .from('merchants')
       .select('*')
