@@ -1,19 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { authenticateApiKey, isAuthError, getSupabaseAdmin } from '@/lib/api-auth'
 
-// Headers CORS
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 }
 
-// Réponse avec CORS
 function cors(data: any, status: number = 200) {
   return NextResponse.json(data, { status, headers: corsHeaders })
 }
 
-// Preflight
 export async function OPTIONS() {
   return new Response(null, { status: 204, headers: { ...corsHeaders, 'Access-Control-Max-Age': '86400' } })
 }
@@ -71,7 +68,10 @@ export async function POST(req: NextRequest) {
       isNewClient = true
       const { data: newClient, error: clientError } = await db
         .from('clients')
-       .insert({ name, phone: phoneFormatted })
+        .insert({
+          name,
+          phone: phoneFormatted,
+        })
         .select()
         .maybeSingle()
 
@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
 
     const { data: existingCC } = await db
       .from('client_cards')
-      .select('id, points, total_visits, total_rewards_redeemed')
+      .select('id, points, total_points_earned, total_rewards_redeemed')
       .eq('client_id', client.id)
       .eq('card_id', card.id)
       .maybeSingle()
@@ -111,8 +111,11 @@ export async function POST(req: NextRequest) {
       const { data: newCC, error: ccError } = await db
         .from('client_cards')
         .insert({
-          client_id: client.id, card_id: card.id, merchant_id: merchantId,
-          points: 0, total_visits: 0, total_rewards_redeemed: 0,
+          client_id: client.id,
+          card_id: card.id,
+          points: 0,
+          total_points_earned: 0,
+          total_rewards_redeemed: 0,
         })
         .select()
         .maybeSingle()
@@ -126,17 +129,22 @@ export async function POST(req: NextRequest) {
     // 4. Ajouter les points
     const newPoints = Math.min(clientCard.points + pointsToAdd, card.max_points)
     const rewardReached = newPoints >= card.max_points
+    const newTotalEarned = (clientCard.total_points_earned || 0) + pointsToAdd
 
     await db.from('client_cards').update({
       points: newPoints,
-      last_visit_at: new Date().toISOString(),
-      total_visits: (clientCard.total_visits || 0) + 1,
+      total_points_earned: newTotalEarned,
+      updated_at: new Date().toISOString(),
     }).eq('id', clientCard.id)
 
-    // 5. Log
+    // 5. Log l'activité
     await db.from('activities').insert({
-      merchant_id: merchantId, client_id: client.id, card_id: card.id,
-      type: 'points_added', points_changed: pointsToAdd,
+      merchant_id: merchantId,
+      client_id: client.id,
+      card_id: card.id,
+      client_card_id: clientCard.id,
+      type: 'points_added',
+      points_amount: pointsToAdd,
       description: isNewClient
         ? `Nouveau client auto-inscrit + ${pointsToAdd} point(s) via API`
         : `+${pointsToAdd} point(s) via API`,
@@ -149,7 +157,7 @@ export async function POST(req: NextRequest) {
       client_name: client.name,
       points: newPoints,
       max_points: card.max_points,
-      total_visits: (clientCard.total_visits || 0) + 1,
+      total_points_earned: newTotalEarned,
       reward_reached: rewardReached,
       reward: rewardReached ? card.reward : null,
       card_name: card.business_name,
