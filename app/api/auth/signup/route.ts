@@ -5,7 +5,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const { name, business, sector, phone, email, password } = body
 
-  const db = getServiceClient()
+  const db = getServiceClient() as any  // ✅ Cast en any
 
   // Formater le numéro
   const phoneFormatted = phone.startsWith('+')
@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
   const { data: authData, error: authError } = await db.auth.admin.createUser({
     phone: phoneFormatted,
     password,
-    phone_confirm: false, // Le SMS sera envoyé
+    phone_confirm: false,
   })
 
   if (authError) {
@@ -43,15 +43,6 @@ export async function POST(req: NextRequest) {
   if (profileError) {
     return NextResponse.json({ error: profileError.message }, { status: 500 })
   }
-
-  // 3. Envoyer le SMS OTP
-  const { error: otpError } = await db.auth.admin.generateLink({
-    type: 'phone_change',
-    phone: phoneFormatted,
-  })
-
-  // Alternative : envoyer OTP via le client
-  // On laisse le client faire le signInWithOtp après
 
   return NextResponse.json({ success: true, userId: authData.user.id })
 }
