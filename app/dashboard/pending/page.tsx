@@ -1,11 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter } from 'next/navigation'
 
-export default function PendingPage() {
+function PendingContent() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const [status, setStatus] = useState<'pending' | 'rejected' | 'loading'>('loading')
   const [merchant, setMerchant] = useState<any>(null)
   const [loggingOut, setLoggingOut] = useState(false)
@@ -23,7 +22,6 @@ export default function PendingPage() {
         const profile = await getMerchantProfile(m.id)
 
         if (!profile) {
-          // Profil supprimé → traiter comme rejeté
           setStatus('rejected')
           return
         }
@@ -43,7 +41,6 @@ export default function PendingPage() {
           return
         }
 
-        // pending ou incomplete
         setStatus('pending')
       } catch {
         setStatus('pending')
@@ -51,19 +48,14 @@ export default function PendingPage() {
     }
 
     checkStatus()
-
-    // Vérifier toutes les 10 secondes si le status a changé
     const interval = setInterval(checkStatus, 10000)
     return () => clearInterval(interval)
   }, [router])
 
-  // ✅ Quand le marchand clique "Compris" après un refus
   const handleRejectionAcknowledged = async () => {
     setLoggingOut(true)
     try {
       if (merchant) {
-        // Appeler l'API pour supprimer le compte de auth.users
-        const stored = localStorage.getItem('admin') || ''
         await fetch('/api/admin/data', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-admin-id': 'system' },
@@ -71,19 +63,15 @@ export default function PendingPage() {
         })
       }
 
-      // Logout
       const { logout } = await import('@/database/supabase-client')
       await logout()
     } catch (e) {
       console.error('Cleanup error:', e)
     }
 
-    // Nettoyer le storage
     localStorage.removeItem('merchant')
     sessionStorage.removeItem('merchant')
     localStorage.removeItem('fidali_remember')
-
-    // Rediriger vers login
     router.push('/login')
   }
 
@@ -122,18 +110,15 @@ export default function PendingPage() {
           border: '1px solid rgba(239,68,68,0.15)',
           borderRadius: 24, padding: '48px 32px',
         }}>
-          {/* Icône */}
           <div style={{
             width: 80, height: 80, borderRadius: '50%',
             background: 'rgba(239,68,68,0.1)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 24px',
-            fontSize: 36,
+            margin: '0 auto 24px', fontSize: 36,
           }}>
             😔
           </div>
 
-          {/* Titre */}
           <h1 style={{
             color: 'white', fontSize: 26, fontWeight: 800, marginBottom: 12,
             fontFamily: "'DM Serif Display', serif",
@@ -141,22 +126,18 @@ export default function PendingPage() {
             Demande refusée
           </h1>
 
-          {/* Message */}
           <p style={{
-            color: 'rgba(255,255,255,0.5)', fontSize: 15, lineHeight: 1.7,
-            marginBottom: 12,
+            color: 'rgba(255,255,255,0.5)', fontSize: 15, lineHeight: 1.7, marginBottom: 12,
           }}>
             Nous sommes désolés, votre demande d{"'"}inscription sur
             <span style={{ color: 'rgba(147,51,234,0.8)', fontWeight: 600 }}> Fidali </span>
             n{"'"}a pas été approuvée.
           </p>
 
-          {/* Raison */}
           <div style={{
             background: 'rgba(239,68,68,0.08)',
             border: '1px solid rgba(239,68,68,0.15)',
-            borderRadius: 14, padding: '16px 20px',
-            marginBottom: 28,
+            borderRadius: 14, padding: '16px 20px', marginBottom: 28,
           }}>
             <p style={{ color: 'rgba(239,68,68,0.7)', fontSize: 13, fontWeight: 500, marginBottom: 6 }}>
               ⚠️ Motif du refus
@@ -167,17 +148,14 @@ export default function PendingPage() {
             </p>
           </div>
 
-          {/* Info */}
           <p style={{
-            color: 'rgba(255,255,255,0.3)', fontSize: 12, lineHeight: 1.6,
-            marginBottom: 32,
+            color: 'rgba(255,255,255,0.3)', fontSize: 12, lineHeight: 1.6, marginBottom: 32,
           }}>
             Votre compte sera supprimé automatiquement.
             Vous pouvez vous réinscrire ultérieurement avec le même email
             si vous remplissez les conditions.
           </p>
 
-          {/* Bouton */}
           <button
             onClick={handleRejectionAcknowledged}
             disabled={loggingOut}
@@ -194,10 +172,7 @@ export default function PendingPage() {
             {loggingOut ? 'Déconnexion en cours...' : 'Compris, me déconnecter'}
           </button>
 
-          {/* Contact */}
-          <p style={{
-            color: 'rgba(255,255,255,0.2)', fontSize: 11, marginTop: 20,
-          }}>
+          <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: 11, marginTop: 20 }}>
             Des questions ? Contactez-nous à <span style={{ color: 'rgba(147,51,234,0.5)' }}>support@fidali.app</span>
           </p>
         </div>
@@ -224,19 +199,16 @@ export default function PendingPage() {
         border: '1px solid rgba(255,255,255,0.08)',
         borderRadius: 24, padding: '48px 32px',
       }}>
-        {/* Icône animée */}
         <div style={{
           width: 80, height: 80, borderRadius: '50%',
           background: 'rgba(245,158,11,0.1)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          margin: '0 auto 24px',
-          fontSize: 36,
+          margin: '0 auto 24px', fontSize: 36,
           animation: 'pulse 2s ease-in-out infinite',
         }}>
           ⏳
         </div>
 
-        {/* Titre */}
         <h1 style={{
           color: 'white', fontSize: 26, fontWeight: 800, marginBottom: 12,
           fontFamily: "'DM Serif Display', serif",
@@ -244,18 +216,14 @@ export default function PendingPage() {
           En attente de validation
         </h1>
 
-        {/* Message */}
         <p style={{
-          color: 'rgba(255,255,255,0.5)', fontSize: 15, lineHeight: 1.7,
-          marginBottom: 32,
+          color: 'rgba(255,255,255,0.5)', fontSize: 15, lineHeight: 1.7, marginBottom: 32,
         }}>
           Votre demande d{"'"}inscription sur
           <span style={{ color: 'rgba(147,51,234,0.8)', fontWeight: 600 }}> Fidali </span>
           a bien été reçue ! Notre équipe examine votre dossier.
-          Vous serez notifié dès que votre compte sera activé.
         </p>
 
-        {/* Étapes */}
         <div style={{
           display: 'flex', flexDirection: 'column', gap: 16,
           textAlign: 'left', marginBottom: 32,
@@ -263,7 +231,7 @@ export default function PendingPage() {
           {[
             { icon: '✅', text: 'Inscription complétée', done: true },
             { icon: '✅', text: 'Profil soumis', done: true },
-            { icon: '⏳', text: 'Validation par l\'équipe Fidali', done: false },
+            { icon: '⏳', text: "Validation par l'équipe Fidali", done: false },
             { icon: '⬜', text: 'Accès au dashboard', done: false },
           ].map((step, i) => (
             <div key={i} style={{
@@ -283,19 +251,16 @@ export default function PendingPage() {
           ))}
         </div>
 
-        {/* Info refresh */}
         <div style={{
           background: 'rgba(147,51,234,0.08)',
           border: '1px solid rgba(147,51,234,0.15)',
-          borderRadius: 14, padding: '14px 18px',
-          marginBottom: 24,
+          borderRadius: 14, padding: '14px 18px', marginBottom: 24,
         }}>
           <p style={{ color: 'rgba(147,51,234,0.6)', fontSize: 12 }}>
             🔄 Cette page se met à jour automatiquement toutes les 10 secondes
           </p>
         </div>
 
-        {/* Bouton logout */}
         <button
           onClick={async () => {
             const { logout } = await import('@/database/supabase-client')
@@ -309,18 +274,36 @@ export default function PendingPage() {
             border: 'none', padding: '12px 24px', borderRadius: 10,
             fontSize: 13, fontWeight: 600, cursor: 'pointer',
             fontFamily: "'DM Sans', sans-serif",
-            transition: 'all 0.2s',
           }}
         >
           Se déconnecter
         </button>
 
-        <p style={{
-          color: 'rgba(255,255,255,0.15)', fontSize: 11, marginTop: 20,
-        }}>
+        <p style={{ color: 'rgba(255,255,255,0.15)', fontSize: 11, marginTop: 20 }}>
           © 2025 Fidali 💜
         </p>
       </div>
     </div>
+  )
+}
+
+// ✅ Wrapper avec Suspense pour éviter l'erreur Next.js
+export default function PendingPage() {
+  return (
+    <Suspense fallback={
+      <div style={{
+        minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'linear-gradient(135deg, #0f0f14 0%, #1a1025 100%)',
+      }}>
+        <div style={{
+          width: 40, height: 40, border: '3px solid rgba(255,255,255,0.1)',
+          borderTopColor: 'rgba(255,255,255,0.6)', borderRadius: '50%',
+          animation: 'spin 0.8s linear infinite',
+        }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+      </div>
+    }>
+      <PendingContent />
+    </Suspense>
   )
 }
