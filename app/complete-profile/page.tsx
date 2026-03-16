@@ -196,6 +196,8 @@ export default function CompleteProfilePage() {
 const canNext1 = form.fullName && form.phone && form.businessName && form.businessType
   && (form.businessType !== 'autre' || form.businessTypeOther.trim() !== '')
 
+const canNext2 = form.wilaya && form.businessAddress  // ✅ Ajouter cette ligne
+
 const canSubmit = form.howHeard && form.useFor
   && (form.howHeard !== 'Autre' || form.howHeardOther.trim() !== '')
 
