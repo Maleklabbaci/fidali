@@ -144,48 +144,61 @@ export default function CompleteProfilePage() {
   }
 
   const handleSubmit = async () => {
-    setSubmitting(true)
-    setError('')
-    try {
-      const { supabase } = await import('@/database/supabase-client')
+  setSubmitting(true)
+  setError('')
+  try {
+    const { supabase } = await import('@/database/supabase-client')
 
-      const { error: err } = await supabase.from('merchant_profiles').upsert({
-        merchant_id: merchant.id,
-        full_name: form.fullName,
-        phone: form.phone,
-        business_name: form.businessName,
-        business_type: form.businessType,
-        business_address: form.businessAddress,
-        city: form.wilaya,
-        how_heard: form.howHeard,
-        use_for: form.useFor,
-        status: 'pending',
-        submitted_at: new Date().toISOString(),
-      }, { onConflict: 'merchant_id' })
+    // ✅ Combiner le type avec "autre" si nécessaire
+    const finalBusinessType = form.businessType === 'autre'
+      ? `autre: ${form.businessTypeOther}`
+      : form.businessType
 
-      if (err) throw err
+    const finalHowHeard = form.howHeard === 'Autre'
+      ? `Autre: ${form.howHeardOther}`
+      : form.howHeard
 
-      await supabase.from('merchants').update({ status: 'pending' }).eq('id', merchant.id)
+    const { error: err } = await supabase.from('merchant_profiles').upsert({
+      merchant_id: merchant.id,
+      full_name: form.fullName,
+      phone: form.phone,
+      business_name: form.businessName,
+      business_type: finalBusinessType,      // ✅
+      business_address: form.businessAddress,
+      city: form.wilaya,
+      how_heard: finalHowHeard,              // ✅
+      use_for: form.useFor,
+      status: 'pending',
+      submitted_at: new Date().toISOString(),
+    }, { onConflict: 'merchant_id' })
 
-      await supabase.from('messages').insert({
-        merchant_id: merchant.id,
-        subject: '🆕 Nouveau commerçant à valider',
-        content: `${form.fullName} — ${form.businessName} (${form.businessType}) · ${form.wilaya}\nTéléphone: ${form.phone}\nAdresse: ${form.businessAddress}\nComment il a entendu parler de Fidali: ${form.howHeard}\nUtilisation prévue: ${form.useFor}`,
-        status: 'unread',
-      })
+    if (err) throw err
 
-      router.push('/dashboard/pending')
-    } catch (e: any) {
-      setError(e.message || 'Erreur lors de la soumission')
-    } finally {
-      setSubmitting(false)
-    }
+    await supabase.from('merchants').update({ status: 'pending' }).eq('id', merchant.id)
+
+    await supabase.from('messages').insert({
+      merchant_id: merchant.id,
+      subject: '🆕 Nouveau commerçant à valider',
+      content: `${form.fullName} — ${form.businessName} (${finalBusinessType}) · ${form.wilaya}\nTéléphone: ${form.phone}\nAdresse: ${form.businessAddress}\nComment: ${finalHowHeard}\nUtilisation: ${form.useFor}`,
+      status: 'unread',
+    })
+
+    router.push('/dashboard/pending')
+  } catch (e: any) {
+    setError(e.message || 'Erreur lors de la soumission')
+  } finally {
+    setSubmitting(false)
   }
+}
 
-  const canNext1 = form.fullName && form.phone && form.businessName && form.businessType
-  const canNext2 = form.wilaya && form.businessAddress
-  const canSubmit = form.howHeard && form.useFor
+// ✅ Si "autre" est sélectionné, il faut aussi remplir le champ "précisez"
+const canNext1 = form.fullName && form.phone && form.businessName && form.businessType
+  && (form.businessType !== 'autre' || form.businessTypeOther.trim() !== '')
 
+const canSubmit = form.howHeard && form.useFor
+  && (form.howHeard !== 'Autre' || form.howHeardOther.trim() !== '')
+
+  
   const btnActive: React.CSSProperties = {
     width: '100%', padding: 14, borderRadius: 12, border: 'none', cursor: 'pointer',
     fontWeight: 700, fontSize: 15,
