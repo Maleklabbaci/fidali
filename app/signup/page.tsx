@@ -21,22 +21,33 @@ export default function AuthPage() {
   const validatePhone = (p: string) => /^(0[5-7]\d{8}|\+213[5-7]\d{8})$/.test(p.replace(/\s/g, ''))
 
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault(); setLoading(true); setError('')
-    try {
-      const { loginMerchant, getMerchantProfile } = await import('@/database/supabase-client')
-      const result = await loginMerchant(form.email, form.password)
-      if (result.success) {
-        sessionStorage.setItem('merchant', JSON.stringify(result.merchant))
-        const profile = await getMerchantProfile(result.merchant.id).catch(() => null)
-        if (!profile) router.push('/complete-profile')
-        else if (profile.status === 'pending') router.push('/dashboard/pending')
-        else if (profile.status === 'approved' || profile.status === 'active') router.push('/dashboard')
-        else if (profile.status === 'rejected') router.push('/dashboard/pending?rejected=1')
-        else router.push('/dashboard')
-      } else setError(result.error || 'Email ou mot de passe incorrect')
-    } catch { setError('Erreur de connexion') }
-    finally { setLoading(false) }
+  e.preventDefault(); setLoading(true); setError('')
+  try {
+    const { loginMerchant, getMerchantProfile } = await import('@/database/supabase-client')
+    const result = await loginMerchant(form.email, form.password)
+    if (result.success) {
+      sessionStorage.setItem('merchant', JSON.stringify(result.merchant))
+      const profile = await getMerchantProfile(result.merchant.id).catch(() => null)
+      if (!profile || profile.status === 'incomplete') {
+        router.push('/complete-profile')
+      } else if (profile.status === 'pending') {
+        router.push('/dashboard/pending')
+      } else if (profile.status === 'approved' || profile.status === 'active') {
+        router.push('/dashboard')
+      } else if (profile.status === 'rejected') {
+        router.push('/dashboard/pending?rejected=1')
+      } else {
+        router.push('/complete-profile')
+      }
+    } else {
+      setError(result.error || 'Email ou mot de passe incorrect')
+    }
+  } catch {
+    setError('Erreur de connexion')
+  } finally {
+    setLoading(false)
   }
+}
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault(); setLoading(true); setError('')
