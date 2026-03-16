@@ -169,31 +169,64 @@ export async function signupMerchant(data: {
   password: string
 }) {
   try {
+    // Signup avec email/password (pas de confirmation)
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: data.email,
+      password: data.password,
+      options: {
+        data: { name: data.name },
+      },
+    })
+
+    if (authError) return { success: false as const, error: authError.message }
+    if (!authData.user) return { success: false as const, error: 'Erreur création compte' }
+
     const phoneFormatted = data.phone.startsWith('+')
       ? data.phone
       : '+213' + data.phone.replace(/^0/, '').replace(/\s/g, '')
 
-    // 1. Créer le compte via l'API server-side (bypass RLS)
-    const res = await fetch('/api/auth/signup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+    // Créer le profil merchant
+    const { error: profileError } = await supabase.from('merchants').insert({
+      auth_user_id: authData.user.id,
+      email: data.email,
+      password_hash: '',
+      name: data.name,
+      business_name: data.business,
+      sector: data.sector,
+      phone: phoneFormatted,
+      plan: 'starter',
+      status: 'incomplete',
     })
 
-    const json = await res.json()
-
-    if (!res.ok || json.error) {
-      return { success: false as const, error: json.error || 'Erreur inscription' }
+    if (profileError) {
+      // Si l'insert échoue à cause du RLS, essayer via l'API
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: authData.user.id,
+          name: data.name,
+          business: data.business,
+          sector: data.sector,
+          phone: phoneFormatted,
+          email: data.email,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok || json.error) {
+        return { success: false as const, error: json.error || profileError.message }
+      }
     }
 
-    // 2. ✅ Envoyer le SMS OTP via signInWithOtp
-    const { error: otpError } = await supabase.auth.signInWithOtp({
-      phone: phoneFormatted,
-    })
+    // Récupérer le merchant et sauvegarder
+    const { data: merchantData } = await supabase
+      .from('merchants')
+      .select('*')
+      .eq('auth_user_id', authData.user.id)
+      .maybeSingle()
 
-    if (otpError) {
-      console.error('OTP send error:', otpError.message)
-      // Ne pas bloquer — le compte est créé, on peut renvoyer le code après
+    if (merchantData) {
+      localStorage.setItem('merchant', JSON.stringify(merchantData))
     }
 
     return { success: true as const }
