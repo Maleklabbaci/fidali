@@ -3,7 +3,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServiceClient } from '@/lib/supabase-admin'
 
 function checkAuth(req: NextRequest) {
-  return !!req.headers.get('x-admin-id')
+  const adminId = req.headers.get('x-admin-id')
+  return !!adminId // accepte 'system' aussi
 }
 
 export async function GET(req: NextRequest) {
