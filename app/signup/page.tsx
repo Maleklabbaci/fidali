@@ -49,21 +49,25 @@ export default function AuthPage() {
   }
 }
 
- const handleSignup = async (e: React.FormEvent) => {
+const handleSignup = async (e: React.FormEvent) => {
   e.preventDefault(); setLoading(true); setError('')
   if (!validatePhone(form.phone)) { setError('Format : 05xx xx xx xx'); setLoading(false); return }
   try {
     const { signupMerchant } = await import('@/database/supabase-client')
     const result = await signupMerchant(form)
     if (result.success) {
-      // ✅ Rediriger vers la page de confirmation avec l'email
-      router.push(`/confirm?email=${encodeURIComponent(form.email)}`)
+      // ✅ Rediriger avec le numéro de téléphone
+      // Formater le numéro au format international +213
+      const phoneFormatted = form.phone.startsWith('+')
+        ? form.phone
+        : '+213' + form.phone.replace(/^0/, '').replace(/\s/g, '')
+      router.push(`/confirm?phone=${encodeURIComponent(phoneFormatted)}`)
     } else {
       setError(result.error || "Erreur lors de l'inscription")
     }
   } catch { setError('Erreur de connexion') }
   finally { setLoading(false) }
-}
+}}
 
   const isLogin = mode === 'login'
 
