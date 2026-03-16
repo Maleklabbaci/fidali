@@ -177,20 +177,13 @@ export async function signupMerchant(data: {
       sector: data.sector,
       phone: data.phone,
       plan: 'starter',
-      status: 'incomplete',  // ✅ CHANGÉ : "incomplete" au lieu de "pending"
+      status: 'incomplete',
     })
 
     if (profileError) return { success: false as const, error: profileError.message }
 
-    const { data: merchantData } = await supabase
-      .from('merchants')
-      .select('*')
-      .eq('auth_user_id', authData.user.id)
-      .maybeSingle()
-
-    if (merchantData) {
-      localStorage.setItem('merchant', JSON.stringify(merchantData))
-    }
+    // ✅ NE PAS sauvegarder en localStorage ici
+    // Le merchant sera sauvegardé après la confirmation email
 
     return { success: true as const }
   } catch (err) {
