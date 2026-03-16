@@ -161,10 +161,17 @@ export async function signupMerchant(data: {
   password: string
 }) {
   try {
+    // Formater le numéro au format international
+    const phoneFormatted = data.phone.startsWith('+')
+      ? data.phone
+      : '+213' + data.phone.replace(/^0/, '').replace(/\s/g, '')
+
+    // ✅ Signup avec téléphone (Twilio envoie le SMS)
     const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: data.email,
+      phone: phoneFormatted,
       password: data.password,
     })
+
     if (authError) return { success: false as const, error: authError.message }
     if (!authData.user) return { success: false as const, error: 'Erreur création compte' }
 
@@ -175,15 +182,12 @@ export async function signupMerchant(data: {
       name: data.name,
       business_name: data.business,
       sector: data.sector,
-      phone: data.phone,
+      phone: phoneFormatted,
       plan: 'starter',
       status: 'incomplete',
     })
 
     if (profileError) return { success: false as const, error: profileError.message }
-
-    // ✅ NE PAS sauvegarder en localStorage ici
-    // Le merchant sera sauvegardé après la confirmation email
 
     return { success: true as const }
   } catch (err) {
