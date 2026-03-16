@@ -1,160 +1,326 @@
 'use client'
 
-import { useEffect, useState, Suspense } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
-function PendingContent() {
+export default function PendingPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const rejected = searchParams.get('rejected')
+  const [status, setStatus] = useState<'pending' | 'rejected' | 'loading'>('loading')
   const [merchant, setMerchant] = useState<any>(null)
-  const [dots, setDots] = useState('.')
+  const [loggingOut, setLoggingOut] = useState(false)
 
   useEffect(() => {
     const stored = localStorage.getItem('merchant') || sessionStorage.getItem('merchant')
     if (!stored) { router.push('/login'); return }
-    setMerchant(JSON.parse(stored))
 
-    // Animation des points
-    const dotsInterval = setInterval(() => {
-      setDots(d => d.length >= 3 ? '.' : d + '.')
-    }, 600)
+    const m = JSON.parse(stored)
+    setMerchant(m)
 
-    // Vérifier le statut toutes les 10s
-    const interval = setInterval(async () => {
+    const checkStatus = async () => {
       try {
-        const m = JSON.parse(stored)
         const { getMerchantProfile } = await import('@/database/supabase-client')
         const profile = await getMerchantProfile(m.id)
-        if (profile?.status === 'active' || profile?.status === 'approved') router.push('/dashboard')
-      } catch {}
-    }, 10000)
 
-    return () => { clearInterval(interval); clearInterval(dotsInterval) }
+        if (!profile) {
+          // Profil supprimé → traiter comme rejeté
+          setStatus('rejected')
+          return
+        }
+
+        if (profile.status === 'active' || profile.status === 'approved') {
+          router.push('/dashboard')
+          return
+        }
+
+        if (profile.status === 'rejected') {
+          setStatus('rejected')
+          return
+        }
+
+        if (profile.status === 'suspended') {
+          router.push('/dashboard/suspended')
+          return
+        }
+
+        // pending ou incomplete
+        setStatus('pending')
+      } catch {
+        setStatus('pending')
+      }
+    }
+
+    checkStatus()
+
+    // Vérifier toutes les 10 secondes si le status a changé
+    const interval = setInterval(checkStatus, 10000)
+    return () => clearInterval(interval)
   }, [router])
 
-  const handleLogout = () => {
+  // ✅ Quand le marchand clique "Compris" après un refus
+  const handleRejectionAcknowledged = async () => {
+    setLoggingOut(true)
+    try {
+      if (merchant) {
+        // Appeler l'API pour supprimer le compte de auth.users
+        const stored = localStorage.getItem('admin') || ''
+        await fetch('/api/admin/data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-admin-id': 'system' },
+          body: JSON.stringify({ action: 'cleanup_merchant', merchantId: merchant.id }),
+        })
+      }
+
+      // Logout
+      const { logout } = await import('@/database/supabase-client')
+      await logout()
+    } catch (e) {
+      console.error('Cleanup error:', e)
+    }
+
+    // Nettoyer le storage
     localStorage.removeItem('merchant')
-    localStorage.removeItem('fidali_remember')
     sessionStorage.removeItem('merchant')
-    router.push('/')
+    localStorage.removeItem('fidali_remember')
+
+    // Rediriger vers login
+    router.push('/login')
   }
 
-  // ── PAGE REJETÉ ──
-  if (rejected) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', background: 'linear-gradient(135deg, #1a0a0a, #2d0f0f)', fontFamily: "'DM Sans', sans-serif" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');`}</style>
-      <div style={{ maxWidth: 460, width: '100%', textAlign: 'center' }}>
-        <div style={{ fontSize: 56, marginBottom: 20 }}>❌</div>
-        <h1 style={{ color: 'white', fontSize: 26, fontWeight: 800, marginBottom: 12 }}>Demande refusée</h1>
-        <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, lineHeight: 1.7, marginBottom: 28 }}>
-          Votre demande d'inscription a été refusée par notre équipe.<br/>
-          Si vous pensez que c'est une erreur, contactez-nous.
-        </p>
-        <a href="mailto:contact@fidali.app" style={{ display: 'block', padding: '14px', borderRadius: 12, background: 'white', color: '#1a0a0a', fontWeight: 700, fontSize: 15, textDecoration: 'none', marginBottom: 12 }}>
-          📧 Contacter le support
-        </a>
-        <button onClick={handleLogout} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.3)', fontSize: 13, fontFamily: "'DM Sans', sans-serif" }}>
-          Se déconnecter
-        </button>
+  // ── LOADING ──
+  if (status === 'loading') {
+    return (
+      <div style={{
+        minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'linear-gradient(135deg, #0f0f14 0%, #1a1025 100%)',
+        fontFamily: "'DM Sans', sans-serif",
+      }}>
+        <div style={{
+          width: 40, height: 40, border: '3px solid rgba(255,255,255,0.1)',
+          borderTopColor: 'rgba(255,255,255,0.6)', borderRadius: '50%',
+          animation: 'spin 0.8s linear infinite',
+        }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
       </div>
-    </div>
-  )
+    )
+  }
 
-  // ── PAGE EN ATTENTE ──
-  return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', background: 'linear-gradient(135deg, #0f0f14 0%, #1a1025 100%)', fontFamily: "'DM Sans', sans-serif" }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap');
-        @keyframes pulse-ring {
-          0%   { transform: scale(1);   opacity: 0.6; }
-          100% { transform: scale(1.8); opacity: 0; }
-        }
-        @keyframes spin-slow {
-          from { transform: rotate(0deg); }
-          to   { transform: rotate(360deg); }
-        }
-        .spin-slow { animation: spin-slow 3s linear infinite; }
-      `}</style>
+  // ── REJETÉ ──
+  if (status === 'rejected') {
+    return (
+      <div style={{
+        minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '2rem',
+        background: 'linear-gradient(135deg, #0f0f14 0%, #1a1025 100%)',
+        fontFamily: "'DM Sans', sans-serif",
+      }}>
+        <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap');`}</style>
 
-      <div style={{ width: '100%', maxWidth: 500 }}>
-
-        {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 48, justifyContent: 'center' }}>
-          <img src="/logo.png" alt="Fidali" style={{ width: 40, height: 40, borderRadius: 12, objectFit: 'contain' }} />
-          <span style={{ color: 'white', fontWeight: 800, fontSize: 20 }}>Fidali</span>
-        </div>
-
-        {/* Card principale */}
-        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 28, padding: '40px 32px', textAlign: 'center', marginBottom: 12 }}>
-
-          {/* Spinner animé */}
-          <div style={{ position: 'relative', width: 80, height: 80, margin: '0 auto 28px' }}>
-            <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '2px solid rgba(147,51,234,0.3)', animation: 'pulse-ring 2s ease-out infinite' }} />
-            <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '2px solid rgba(147,51,234,0.2)', animation: 'pulse-ring 2s ease-out infinite', animationDelay: '0.5s' }} />
-            <div style={{ position: 'relative', zIndex: 1, width: 80, height: 80, borderRadius: '50%', background: 'linear-gradient(135deg, rgba(147,51,234,0.2), rgba(219,39,119,0.2))', border: '1px solid rgba(147,51,234,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div className="spin-slow" style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid transparent', borderTopColor: '#9333ea', borderRightColor: '#db2777' }} />
-            </div>
+        <div style={{
+          maxWidth: 480, width: '100%', textAlign: 'center',
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid rgba(239,68,68,0.15)',
+          borderRadius: 24, padding: '48px 32px',
+        }}>
+          {/* Icône */}
+          <div style={{
+            width: 80, height: 80, borderRadius: '50%',
+            background: 'rgba(239,68,68,0.1)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 24px',
+            fontSize: 36,
+          }}>
+            😔
           </div>
 
-          {merchant && (
-            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginBottom: 8 }}>
-              Bonjour, <span style={{ color: 'rgba(255,255,255,0.8)', fontWeight: 600 }}>{merchant.name || merchant.business_name}</span>
-            </p>
-          )}
-
-          <h1 style={{ color: 'white', fontSize: 26, fontWeight: 800, marginBottom: 12, fontFamily: "'DM Serif Display', serif" }}>
-            Configuration en cours{dots}
+          {/* Titre */}
+          <h1 style={{
+            color: 'white', fontSize: 26, fontWeight: 800, marginBottom: 12,
+            fontFamily: "'DM Serif Display', serif",
+          }}>
+            Demande refusée
           </h1>
-          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, lineHeight: 1.75, marginBottom: 32 }}>
-            Notre équipe configure votre espace et vérifie vos informations.
-            Cela peut prendre quelques minutes à quelques heures.
+
+          {/* Message */}
+          <p style={{
+            color: 'rgba(255,255,255,0.5)', fontSize: 15, lineHeight: 1.7,
+            marginBottom: 12,
+          }}>
+            Nous sommes désolés, votre demande d{"'"}inscription sur
+            <span style={{ color: 'rgba(147,51,234,0.8)', fontWeight: 600 }}> Fidali </span>
+            n{"'"}a pas été approuvée.
           </p>
 
-          {/* Étapes */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 28, textAlign: 'left' }}>
-            {[
-              { icon: '✅', label: 'Inscription complétée',         done: true },
-              { icon: '⚙️', label: 'Configuration du compte',        done: false, active: true },
-              { icon: '🔍', label: 'Vérification par notre équipe', done: false },
-              { icon: '🚀', label: 'Accès au dashboard',            done: false },
-            ].map((s, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 12, background: s.active ? 'rgba(147,51,234,0.1)' : 'rgba(255,255,255,0.03)', border: s.active ? '1px solid rgba(147,51,234,0.25)' : '1px solid transparent' }}>
-                <span style={{ fontSize: 18, flexShrink: 0 }}>{s.icon}</span>
-                <span style={{ fontSize: 13, fontWeight: s.active ? 600 : 400, color: s.done ? 'rgba(255,255,255,0.7)' : s.active ? '#c084fc' : 'rgba(255,255,255,0.3)' }}>
-                  {s.label}
-                </span>
-                {s.active && <span style={{ marginLeft: 'auto', fontSize: 11, color: '#c084fc', fontWeight: 600 }}>EN COURS</span>}
-                {s.done && <span style={{ marginLeft: 'auto', fontSize: 16 }}>✓</span>}
-              </div>
-            ))}
-          </div>
-
-          <div style={{ padding: '12px 16px', borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12, lineHeight: 1.6 }}>
-              🔔 Cette page se met à jour automatiquement.<br/>
-              Vous serez redirigé dès que votre compte est prêt.
+          {/* Raison */}
+          <div style={{
+            background: 'rgba(239,68,68,0.08)',
+            border: '1px solid rgba(239,68,68,0.15)',
+            borderRadius: 14, padding: '16px 20px',
+            marginBottom: 28,
+          }}>
+            <p style={{ color: 'rgba(239,68,68,0.7)', fontSize: 13, fontWeight: 500, marginBottom: 6 }}>
+              ⚠️ Motif du refus
+            </p>
+            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, lineHeight: 1.6 }}>
+              Votre profil ne correspond pas aux critères requis pour le moment.
+              Cette décision a été prise pour des raisons internes à la plateforme.
             </p>
           </div>
+
+          {/* Info */}
+          <p style={{
+            color: 'rgba(255,255,255,0.3)', fontSize: 12, lineHeight: 1.6,
+            marginBottom: 32,
+          }}>
+            Votre compte sera supprimé automatiquement.
+            Vous pouvez vous réinscrire ultérieurement avec le même email
+            si vous remplissez les conditions.
+          </p>
+
+          {/* Bouton */}
+          <button
+            onClick={handleRejectionAcknowledged}
+            disabled={loggingOut}
+            style={{
+              width: '100%', padding: '14px 24px', borderRadius: 12,
+              border: 'none', cursor: loggingOut ? 'not-allowed' : 'pointer',
+              fontWeight: 700, fontSize: 15,
+              background: loggingOut ? 'rgba(255,255,255,0.08)' : 'rgba(239,68,68,0.15)',
+              color: loggingOut ? 'rgba(255,255,255,0.3)' : '#f87171',
+              fontFamily: "'DM Sans', sans-serif",
+              transition: 'all 0.2s',
+            }}
+          >
+            {loggingOut ? 'Déconnexion en cours...' : 'Compris, me déconnecter'}
+          </button>
+
+          {/* Contact */}
+          <p style={{
+            color: 'rgba(255,255,255,0.2)', fontSize: 11, marginTop: 20,
+          }}>
+            Des questions ? Contactez-nous à <span style={{ color: 'rgba(147,51,234,0.5)' }}>support@fidali.app</span>
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  // ── EN ATTENTE ──
+  return (
+    <div style={{
+      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: '2rem',
+      background: 'linear-gradient(135deg, #0f0f14 0%, #1a1025 100%)',
+      fontFamily: "'DM Sans', sans-serif",
+    }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap');
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+      `}</style>
+
+      <div style={{
+        maxWidth: 480, width: '100%', textAlign: 'center',
+        background: 'rgba(255,255,255,0.03)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: 24, padding: '48px 32px',
+      }}>
+        {/* Icône animée */}
+        <div style={{
+          width: 80, height: 80, borderRadius: '50%',
+          background: 'rgba(245,158,11,0.1)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          margin: '0 auto 24px',
+          fontSize: 36,
+          animation: 'pulse 2s ease-in-out infinite',
+        }}>
+          ⏳
         </div>
 
-        <button onClick={handleLogout} style={{ width: '100%', padding: 12, background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.2)', fontSize: 13, fontFamily: "'DM Sans', sans-serif" }}>
+        {/* Titre */}
+        <h1 style={{
+          color: 'white', fontSize: 26, fontWeight: 800, marginBottom: 12,
+          fontFamily: "'DM Serif Display', serif",
+        }}>
+          En attente de validation
+        </h1>
+
+        {/* Message */}
+        <p style={{
+          color: 'rgba(255,255,255,0.5)', fontSize: 15, lineHeight: 1.7,
+          marginBottom: 32,
+        }}>
+          Votre demande d{"'"}inscription sur
+          <span style={{ color: 'rgba(147,51,234,0.8)', fontWeight: 600 }}> Fidali </span>
+          a bien été reçue ! Notre équipe examine votre dossier.
+          Vous serez notifié dès que votre compte sera activé.
+        </p>
+
+        {/* Étapes */}
+        <div style={{
+          display: 'flex', flexDirection: 'column', gap: 16,
+          textAlign: 'left', marginBottom: 32,
+        }}>
+          {[
+            { icon: '✅', text: 'Inscription complétée', done: true },
+            { icon: '✅', text: 'Profil soumis', done: true },
+            { icon: '⏳', text: 'Validation par l\'équipe Fidali', done: false },
+            { icon: '⬜', text: 'Accès au dashboard', done: false },
+          ].map((step, i) => (
+            <div key={i} style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '12px 16px', borderRadius: 12,
+              background: step.done ? 'rgba(16,185,129,0.05)' : 'rgba(255,255,255,0.02)',
+              border: `1px solid ${step.done ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.05)'}`,
+            }}>
+              <span style={{ fontSize: 18 }}>{step.icon}</span>
+              <span style={{
+                fontSize: 13, fontWeight: 500,
+                color: step.done ? 'rgba(16,185,129,0.7)' : 'rgba(255,255,255,0.3)',
+              }}>
+                {step.text}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Info refresh */}
+        <div style={{
+          background: 'rgba(147,51,234,0.08)',
+          border: '1px solid rgba(147,51,234,0.15)',
+          borderRadius: 14, padding: '14px 18px',
+          marginBottom: 24,
+        }}>
+          <p style={{ color: 'rgba(147,51,234,0.6)', fontSize: 12 }}>
+            🔄 Cette page se met à jour automatiquement toutes les 10 secondes
+          </p>
+        </div>
+
+        {/* Bouton logout */}
+        <button
+          onClick={async () => {
+            const { logout } = await import('@/database/supabase-client')
+            await logout()
+            localStorage.removeItem('merchant')
+            sessionStorage.removeItem('merchant')
+            router.push('/login')
+          }}
+          style={{
+            background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.4)',
+            border: 'none', padding: '12px 24px', borderRadius: 10,
+            fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            fontFamily: "'DM Sans', sans-serif",
+            transition: 'all 0.2s',
+          }}
+        >
           Se déconnecter
         </button>
 
+        <p style={{
+          color: 'rgba(255,255,255,0.15)', fontSize: 11, marginTop: 20,
+        }}>
+          © 2025 Fidali 💜
+        </p>
       </div>
     </div>
-  )
-}
-
-export default function PendingPage() {
-  return (
-    <Suspense fallback={
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f0f14' }}>
-        <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid rgba(147,51,234,0.3)', borderTopColor: '#9333ea', animation: 'spin 1s linear infinite' }} />
-      </div>
-    }>
-      <PendingContent />
-    </Suspense>
   )
 }
