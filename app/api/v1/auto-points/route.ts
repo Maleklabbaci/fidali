@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
       isNewClient = true
       const { data: newClient, error: clientError } = await db
         .from('clients')
-        .insert({ name, phone: phoneFormatted, merchant_id: merchantId })
+       .insert({ name, phone: phoneFormatted })
         .select()
         .maybeSingle()
 
