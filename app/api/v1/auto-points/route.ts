@@ -1,24 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyApiKey, getServiceClient } from '@/lib/api-auth'
+import { authenticateApiKey, isAuthError, getSupabaseAdmin } from '@/lib/api-auth'
 
 export async function POST(req: NextRequest) {
   // Vérifier la clé API
-  const auth = await verifyApiKey(req)
-  if (!auth.valid) {
-    return NextResponse.json({ error: auth.error }, { status: 401 })
-  }
+  const authResult = await authenticateApiKey(req)
+  if (isAuthError(authResult)) return authResult
 
-  const db = getServiceClient() as any
-  const merchant = auth.merchant
+  const { merchantId } = authResult
+  const db = getSupabaseAdmin() as any
 
   try {
     const body = await req.json()
     const { card_code, phone, name, points } = body
 
     if (!card_code || !phone || !name) {
-      return NextResponse.json({
-        error: 'card_code, phone et name sont requis'
-      }, { status: 400 })
+      return NextResponse.json({ error: 'card_code, phone et name sont requis' }, { status: 400 })
     }
 
     const pointsToAdd = points || 1
@@ -32,20 +28,22 @@ export async function POST(req: NextRequest) {
         : phoneClean
 
     // 1. Trouver la carte
-    const { data: card, error: cardError } = await db
+    const { data: card } = await db
       .from('loyalty_cards')
       .select('id, max_points, reward, points_per_visit, merchant_id, business_name')
       .eq('code', card_code.toUpperCase())
       .eq('is_active', true)
-      .eq('merchant_id', merchant.id)
+      .eq('merchant_id', merchantId)
       .maybeSingle()
 
-    if (cardError || !card) {
+    if (!card) {
       return NextResponse.json({ error: 'Carte introuvable' }, { status: 404 })
     }
 
-    // 2. Chercher le client (par téléphone)
+    // 2. Chercher le client
     let client = null
+    let isNewClient = false
+
     const { data: existingClient } = await db
       .from('clients')
       .select('id, name')
@@ -55,19 +53,19 @@ export async function POST(req: NextRequest) {
     if (existingClient) {
       client = existingClient
     } else {
-      // 3. ✅ Créer le client automatiquement
+      // 3. Créer le client automatiquement
+      isNewClient = true
       const { data: newClient, error: clientError } = await db
         .from('clients')
         .insert({
           name: name,
           phone: phoneFormatted,
-          merchant_id: merchant.id,
+          merchant_id: merchantId,
         })
         .select()
         .maybeSingle()
 
       if (clientError) {
-        // Peut-être que le client existe avec un format différent
         const { data: retryClient } = await db
           .from('clients')
           .select('id, name')
@@ -76,6 +74,7 @@ export async function POST(req: NextRequest) {
 
         if (retryClient) {
           client = retryClient
+          isNewClient = false
         } else {
           return NextResponse.json({ error: 'Erreur création client: ' + clientError.message }, { status: 500 })
         }
@@ -85,11 +84,12 @@ export async function POST(req: NextRequest) {
     }
 
     if (!client) {
-      return NextResponse.json({ error: 'Erreur client introuvable' }, { status: 500 })
+      return NextResponse.json({ error: 'Erreur client' }, { status: 500 })
     }
 
     // 4. Chercher ou créer le client_card
     let clientCard = null
+
     const { data: existingCC } = await db
       .from('client_cards')
       .select('id, points, total_visits, total_rewards_redeemed')
@@ -100,13 +100,12 @@ export async function POST(req: NextRequest) {
     if (existingCC) {
       clientCard = existingCC
     } else {
-      // ✅ Inscrire le client à la carte automatiquement
       const { data: newCC, error: ccError } = await db
         .from('client_cards')
         .insert({
           client_id: client.id,
           card_id: card.id,
-          merchant_id: merchant.id,
+          merchant_id: merchantId,
           points: 0,
           total_visits: 0,
           total_rewards_redeemed: 0,
@@ -117,7 +116,6 @@ export async function POST(req: NextRequest) {
       if (ccError) {
         return NextResponse.json({ error: 'Erreur inscription carte: ' + ccError.message }, { status: 500 })
       }
-
       clientCard = newCC
     }
 
@@ -128,7 +126,6 @@ export async function POST(req: NextRequest) {
     // 5. Ajouter les points
     const newPoints = Math.min(clientCard.points + pointsToAdd, card.max_points)
     const rewardReached = newPoints >= card.max_points
-    const isNewClient = !existingClient
 
     await db
       .from('client_cards')
@@ -141,7 +138,7 @@ export async function POST(req: NextRequest) {
 
     // 6. Log l'activité
     await db.from('activities').insert({
-      merchant_id: merchant.id,
+      merchant_id: merchantId,
       client_id: client.id,
       card_id: card.id,
       type: 'points_added',
