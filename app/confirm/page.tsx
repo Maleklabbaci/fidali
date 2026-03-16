@@ -115,28 +115,29 @@ function ConfirmContent() {
 
   // ✅ Renvoyer le code SMS
   const handleResend = async () => {
-    setResending(true)
-    setError('')
-    try {
-      const { supabase } = await import('@/database/supabase-client')
+  setResending(true)
+  setError('')
+  try {
+    const { supabase } = await import('@/database/supabase-client')
 
-      const { error: resendError } = await supabase.auth.signInWithOtp({
-        phone,
-      })
+    // ✅ Renvoyer le SMS OTP
+    const { error: resendError } = await supabase.auth.signInWithOtp({
+      phone,
+    })
 
-      if (resendError) {
-        setError(resendError.message)
-      } else {
-        setResendCooldown(60)
-        setCode(['', '', '', '', '', ''])
-        inputs.current[0]?.focus()
-      }
-    } catch {
-      setError('Erreur lors du renvoi')
-    } finally {
-      setResending(false)
+    if (resendError) {
+      setError(resendError.message)
+    } else {
+      setResendCooldown(60)
+      setCode(['', '', '', '', '', ''])
+      inputs.current[0]?.focus()
     }
+  } catch {
+    setError('Erreur lors du renvoi')
+  } finally {
+    setResending(false)
   }
+}
 
   // Masquer une partie du numéro pour la sécurité
   const maskedPhone = phone
