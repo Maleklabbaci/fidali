@@ -19,12 +19,15 @@ export default function PaymentsPage() {
 
   useEffect(() => { load() }, [])
 
+  const adminId = () => {
+    const s = localStorage.getItem('admin')
+    return s ? JSON.parse(s)?.id || '' : ''
+  }
+
   const load = async () => {
     try {
-      const stored = localStorage.getItem('admin')
-      const adminId = stored ? JSON.parse(stored)?.id : ''
       const res = await fetch('/api/admin/payments', {
-        headers: { 'x-admin-id': adminId }
+        headers: { 'x-admin-id': adminId() }
       })
       const json = await res.json()
       if (json.error) {
@@ -50,19 +53,28 @@ export default function PaymentsPage() {
     try {
       const res = await fetch('/api/admin/payments', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-id': adminId(),
+        },
         body: JSON.stringify({
           action: type,
           paymentId: p.id,
           merchantId: p.merchant_id,
           plan: p.requested_plan,
+          note: p.note,
         }),
       })
       const json = await res.json()
       if (json.error) {
         showToast('Erreur : ' + json.error, false)
       } else {
-        showToast(type === 'approve' ? `✓ Paiement confirmé — plan ${p.requested_plan} activé` : 'Paiement refusé', type === 'approve')
+        showToast(
+          type === 'approve'
+            ? `✓ Paiement confirmé — plan ${p.requested_plan} activé`
+            : 'Paiement refusé',
+          type === 'approve'
+        )
         await load()
       }
     } finally {
@@ -218,13 +230,13 @@ export default function PaymentsPage() {
                             )}
                             {p.merchants.sub_start && (
                               <div>
-                                <span className="text-white/30">Début abonnement:</span>
+                                <span className="text-white/30">Début abo:</span>
                                 <span className="text-white/60 ml-1.5">{new Date(p.merchants.sub_start).toLocaleDateString('fr-FR')}</span>
                               </div>
                             )}
                             {p.merchants.sub_end && (
                               <div>
-                                <span className="text-white/30">Fin abonnement:</span>
+                                <span className="text-white/30">Fin abo:</span>
                                 <span className={`ml-1.5 font-medium ${
                                   new Date(p.merchants.sub_end) < new Date() ? 'text-rose-400' : 'text-emerald-400'
                                 }`}>
@@ -255,12 +267,12 @@ export default function PaymentsPage() {
                       <button onClick={() => action('approve', p)}
                         disabled={!!actionLoading}
                         className="px-4 py-2 bg-emerald-500/15 text-emerald-400 rounded-xl text-xs font-semibold hover:bg-emerald-500/25 transition disabled:opacity-40">
-                        {actionLoading === p.id + 'approve' ? '…' : 'Confirmer'}
+                        {actionLoading === p.id + 'approve' ? '…' : '✓ Confirmer'}
                       </button>
                       <button onClick={() => action('reject', p)}
                         disabled={!!actionLoading}
                         className="px-4 py-2 bg-red-500/10 text-red-400 rounded-xl text-xs font-semibold hover:bg-red-500/20 transition disabled:opacity-40">
-                        {actionLoading === p.id + 'reject' ? '…' : 'Refuser'}
+                        {actionLoading === p.id + 'reject' ? '…' : '✗ Refuser'}
                       </button>
                     </div>
                   )}
