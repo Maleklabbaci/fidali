@@ -63,25 +63,29 @@ export default function CompleteProfilePage() {
   })
 
   useEffect(() => {
-    const stored = localStorage.getItem('merchant') || sessionStorage.getItem('merchant')
-    if (!stored) { router.push('/login'); return }
-    const m = JSON.parse(stored)
-    setMerchant(m)
-    setForm(f => ({ ...f, fullName: m.name || '', businessName: m.business_name || '' }))
+  const stored = localStorage.getItem('merchant') || sessionStorage.getItem('merchant')
+  if (!stored) { router.push('/login'); return }
+  const m = JSON.parse(stored)
+  setMerchant(m)
+  setForm(f => ({ ...f, fullName: m.name || '', businessName: m.business_name || '' }))
 
-    // Si profil déjà soumis → redirect selon statut
-    const checkProfile = async () => {
-      try {
-        const { getMerchantProfile } = await import('@/database/supabase-client')
-        const profile = await getMerchantProfile(m.id)
-        if (profile?.status === 'active' || profile?.status === 'approved') router.push('/dashboard')
-        else if (profile?.status === 'pending') router.push('/dashboard/pending')
-        else if (profile?.status === 'suspended') router.push('/dashboard/suspended')
-        else if (profile?.status === 'rejected') router.push('/dashboard/pending?rejected=1')
-      } catch {}
-    }
-    checkProfile()
-  }, [router])
+  const checkProfile = async () => {
+    try {
+      const { getMerchantProfile } = await import('@/database/supabase-client')
+      const profile = await getMerchantProfile(m.id)
+      
+      // ✅ Si "incomplete" ou pas de profil → rester sur cette page (ne rien faire)
+      if (!profile || profile.status === 'incomplete') return  // ← AJOUTÉ
+      
+      // Seulement rediriger si le profil est VRAIMENT soumis/traité
+      if (profile.status === 'active' || profile.status === 'approved') router.push('/dashboard')
+      else if (profile.status === 'pending') router.push('/dashboard/pending')
+      else if (profile.status === 'suspended') router.push('/dashboard/suspended')
+      else if (profile.status === 'rejected') router.push('/dashboard/pending?rejected=1')
+    } catch {}
+  }
+  checkProfile()
+}, [router])
 
   const handleSubmit = async () => {
     setSubmitting(true)
