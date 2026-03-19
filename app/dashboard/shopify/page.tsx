@@ -1,10 +1,10 @@
 // app/dashboard/shopify/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 
-export default function ShopifyDashboard() {
+function ShopifyDashboardContent() {
   const searchParams = useSearchParams();
   const merchantId = searchParams.get('merchant');
   const shop = searchParams.get('shop');
@@ -39,7 +39,7 @@ export default function ShopifyDashboard() {
             🎯 Fidali - Tableau de Bord Shopify
           </h1>
           <p className="text-gray-600 mt-2">
-            Boutique: <span className="font-medium">{shop}</span>
+            Boutique: <span className="font-medium">{shop || 'Chargement...'}</span>
           </p>
         </div>
 
@@ -88,5 +88,13 @@ export default function ShopifyDashboard() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ShopifyDashboard() {
+  return (
+    <Suspense fallback={<div className="p-8">Chargement...</div>}>
+      <ShopifyDashboardContent />
+    </Suspense>
   );
 }
