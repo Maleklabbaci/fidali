@@ -90,22 +90,3 @@ export default function ShopifyDashboard() {
     </div>
   );
 }
-```
-
-**Commit!**
-
----
-
-## ⚙️ **FICHIER 7: Variables d'environnement Vercel**
-
-**Sur Vercel Dashboard:**
-
-1. Va sur ton projet Fidali
-2. Settings → Environment Variables
-3. Ajoute ces variables:
-```
-SHOPIFY_API_KEY = ton_client_id_shopify
-SHOPIFY_API_SECRET = ton_client_secret_shopify
-NEXT_PUBLIC_APP_URL = https://fidali.vercel.app
-SHOPIFY_SCOPES = write_price_rules,read_price_rules,write_discounts,read_discounts,read_orders,read_customers,write_script_tags
-SHOPIFY_TOKEN_ENCRYPTION_KEY = random_32_caracteres_ici
